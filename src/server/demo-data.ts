@@ -233,8 +233,33 @@ export function demoOrderLines(index: number): { sku: string; quantity: number }
   });
 }
 
+/**
+ * Demo prices per SKU in euro cents (D33, NUD-196). Only the demo has prices — the real catalog has
+ * none, the office types the amount of an order. Chosen so a demo bill has readable numbers.
+ */
+export const DEMO_PRICES: Record<string, number> = {
+  "NUDELN-BEUTEL": 990,
+  "NUDELN-KARTON": 2900,
+  "WANTAN-TEIG": 1250,
+};
+
+/** Every fifth demo customer pays cash on delivery; the rest is on the monthly bill (D33). */
+export function demoPaymentTerm(index: number): "MONTHLY" | "ON_DELIVERY" {
+  return index % 5 === 0 ? "ON_DELIVERY" : "MONTHLY";
+}
+
 /** Two demo vehicles (NUD-146): the capacities are placeholders, the owner enters the real fleet. */
 export const DEMO_VEHICLES = [
   { name: "Transporter 1", plate: "W-12345A", capacityKg: 800 },
   { name: "Transporter 2", plate: "W-67890B", capacityKg: 1200 },
+] as const;
+
+/**
+ * Two standing tours for the day plan (NUD-194, D32): fixed groups of demo customers with a demo
+ * driver, `from`/`to` are 1-based indexes into `DEMO_CUSTOMERS`. D-015 .. D-020 deliberately belong
+ * to no group, so the off-route list at the bottom of the page has content in the demo.
+ */
+export const DEMO_STANDING_TOURS = [
+  { name: "Stammtour 1", driverUsername: "fahrer-de", from: 1, to: 8 },
+  { name: "Stammtour 2", driverUsername: "driver-en", from: 9, to: 14 },
 ] as const;

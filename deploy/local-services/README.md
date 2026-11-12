@@ -1,5 +1,13 @@
 # Self-hosted ORS and Photon for the vServer (NUD-156, NUD-157)
 
+> **⛔ OBSOLETE since 2026-11-04 — read as history, not as instructions.**
+> openrouteservice and Photon now run **on the dedicated server `65.109.100.79`** itself
+> (containers `nudel-ors`, `photon-austria`, plus `nominatim` as Photon's data source), reached as
+> `127.0.0.1:8082` / `127.0.0.1:2322`. There is **no reverse SSH tunnel any more**, and the old
+> vServer `87.106.60.131` (and its 2 GB RAM constraint) is retired. `tunnel.ps1` now exits with an
+> explanation instead of forwarding. To operate the services, work on the server, not on the dev PC.
+
+
 The app runs on the client's vServer, which has **2 GB RAM** — far too little for
 openrouteservice (needs ~4 GB for Austria) or Photon. So both run **on this development PC**
 in Docker, and the vServer reaches them through a **reverse SSH tunnel** as

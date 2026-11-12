@@ -27,8 +27,16 @@ import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { isInsideWindow, isValidWindow } from "@/domain/delivery-window";
+import { amountInputValue, parseAmountToCents } from "@/domain/money";
 import {
   hasDuplicateProducts,
   orderWarnings,
@@ -36,6 +44,7 @@ import {
   parseQuantity,
 } from "@/domain/order";
 import type { ExtractionAnswer, OrderDraft, UnmatchedLine } from "@/domain/order-extraction";
+import { DEFAULT_PAYMENT_TERM, type PaymentTerm } from "@/domain/payment";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -64,6 +73,10 @@ export type EditableOrder = {
   windowToTime: string;
   status: "CONFIRMED" | "DRAFT";
   note: string;
+  /** Monthly bill (default) or cash at the stop (D33, NUD-196). */
+  paymentTerm?: PaymentTerm;
+  /** Euro cents typed by the office; `null` = no amount set. */
+  amountCents?: number | null;
   lines: Array<{ productId: string; quantity: string }>;
   /** Signed URL of the attached screenshot, shown read-only next to the form. */
   screenshotUrl: string | null;
@@ -148,6 +161,12 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
       : [{ key: 1, productId: undefined, quantity: "" }],
   );
   const [note, setNote] = useState(order?.note ?? "");
+  // Payment (D33, NUD-196): monthly bill is the default, cash at the stop the exception; the amount
+  // is typed by the office (the catalog has no prices).
+  const [paymentTerm, setPaymentTerm] = useState<PaymentTerm>(
+    order?.paymentTerm ?? DEFAULT_PAYMENT_TERM,
+  );
+  const [amount, setAmount] = useState(amountInputValue(order?.amountCents ?? null));
   const [submitted, setSubmitted] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [screenshot, setScreenshot] = useState<Screenshot | null>(
@@ -422,7 +441,9 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
         ? "linesRequired"
         : filled.some((l) => lineErrors(l) !== null)
           ? "invalid"
-          : null;
+          : amount.trim() !== "" && parseAmountToCents(amount) === null
+            ? "amountInvalid"
+            : null;
 
   function save(status: SaveStatus) {
     setSubmitted(true);
@@ -444,6 +465,8 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
       windowToTime,
       status,
       internalNote: note,
+      paymentTerm,
+      amount,
       screenshotKey: editing ? null : (screenshot?.storageKey ?? null),
       // The AI draft is only a proposal: the message and the raw answer ride along with the saved
       // order so the office can see what the model read (NUD-150). Never sent when editing.
@@ -940,6 +963,54 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
                     </Alert>
                   ) : null}
                 </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label={t("paymentTerm")} description={t("paymentTermHint")}>
+                  <Select
+                    value={paymentTerm}
+                    onValueChange={(next) => setPaymentTerm(next as PaymentTerm)}
+                  >
+                    <SelectTrigger
+                      id="order-payment-term"
+                      data-testid="order-payment-term"
+                      aria-label={t("paymentTerm")}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MONTHLY">{t("paymentMonthly")}</SelectItem>
+                      <SelectItem value="ON_DELIVERY">{t("paymentCash")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormField>
+                <FormField label={t("amount")} description={t("amountHint")}>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="order-amount"
+                      value={amount}
+                      onChange={(event) => setAmount(event.target.value)}
+                      inputMode="decimal"
+                      autoComplete="off"
+                      placeholder="0,00"
+                      className="w-40 text-right tabular-nums"
+                      aria-invalid={amount.trim() !== "" && parseAmountToCents(amount) === null}
+                      data-testid="order-amount"
+                    />
+                    <span className="text-base font-semibold" aria-hidden>
+                      €
+                    </span>
+                  </div>
+                </FormField>
+              </div>
+              {amount.trim() !== "" && parseAmountToCents(amount) === null ? (
+                <p className="mt-2 text-sm text-destructive" role="alert">
+                  {t("amountInvalid")}
+                </p>
               ) : null}
             </CardContent>
           </Card>

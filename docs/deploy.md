@@ -405,9 +405,47 @@ The schedule is Sundays 02:23 UTC. A failed run sends GitHub's standard e-mail t
 
 ---
 
-## 13. Self-hosting on a vServer (sub-path `/delivery-app/`)
+## 13. Self-hosting on the dedicated server (`https://nudel.stragas.com`, root path)
 
-This is the alternative to Vercel/Neon/R2 above: the app runs on the client's own vServer, behind the
+> **RETIRED (2026-11-04):** everything from §13.1 down describes the deployment that ran on the
+> vServer **`87.106.60.131`** under the sub-path `/delivery-app/`. That host is gone. Production now
+> runs on the dedicated server **`65.109.100.79`** at the **root** of <https://nudel.stragas.com>,
+> with its own nginx vhost `/etc/nginx/sites-available/nudel-stragas` and no path prefix;
+> PostgreSQL, MinIO, openrouteservice and Photon all live on that one host, TLS via
+> `certbot --nginx`. `deploy/server-setup.sh` still builds the old sub-path layout and therefore
+> **refuses to run against the new host** — a root-path variant has to be written before `deploy.bat`
+> is usable again. Until then, deploy by hand:
+
+### 13.0 Deploying to the current server (by hand)
+
+The Turbopack build inlines pnpm store paths into the server chunks, so a `.next` built on another
+machine fails with `Cannot find module '@prisma/client-<hash>'`. **Always build on the server.**
+
+```bash
+# 1. ship the source (tracked files only), from the repo root
+tar -czf /tmp/nudel-src.tgz --exclude=node_modules --exclude=.next/cache --exclude=.git --exclude=.env .
+scp /tmp/nudel-src.tgz root@65.109.100.79:/root/
+
+# 2. on the server
+systemctl stop delivery-app
+tar -xzf /root/nudel-src.tgz -C /opt/delivery-app
+cd /opt/delivery-app && set -a && . /etc/delivery-app.env && set +a
+runuser -u deliveryapp -- env HOME=/var/lib/delivery-app pnpm install --frozen-lockfile
+runuser -u deliveryapp -- env HOME=/var/lib/delivery-app DATABASE_URL="$DATABASE_URL" npx prisma migrate deploy
+runuser -u deliveryapp -- env HOME=/var/lib/delivery-app SKIP_TYPECHECK=1 NODE_OPTIONS=--max-old-space-size=8192 pnpm build
+systemctl start delivery-app
+curl -s http://127.0.0.1:3100/api/health        # {"status":"ok",...}
+```
+
+Never export `NEXT_PUBLIC_BASE_PATH` on this host: the app is served from the root. The service
+reaches MinIO and ORS/Photon on `127.0.0.1` and resolves its own S3 endpoint through
+`/etc/hosts` (`127.0.0.1 nudel.stragas.com`) — removing that line breaks photo uploads.
+
+---
+
+### 13.1 The retired vServer deployment (sub-path `/delivery-app/`)
+
+This was the alternative to Vercel/Neon/R2 above: the app ran on the client's own vServer, behind the
 existing nginx, under the path prefix `https://<server>/delivery-app/`. The full specification, the
 server facts and the open decisions live in
 [`docs/handoff-vserver-deploy-and-help.md`](./handoff-vserver-deploy-and-help.md); this section is the
@@ -415,11 +453,11 @@ short version.
 
 | Piece | Where |
 | --- | --- |
-| One-command deploy (Windows) | `deploy.bat` ? `deploy/deploy.ps1` (`REMOTE_IP` / `REMOTE_USER` / `REMOTE_PASSWORD` from `.env`, an SSH key is installed on first run) |
-| Server side | `deploy/server-setup.sh` (idempotent; Node 22, pnpm, swap, PostgreSQL 16, MinIO in Docker, build, systemd, nginx include, health check) |
+| One-command deploy (Windows) | `deploy.bat` ? `deploy/deploy.ps1` (`REMOTE_IP` / `REMOTE_USER` from `.env`, an SSH key is installed on first run) |
+| Server side | `deploy/server-setup.sh` (idempotent; Node 22, pnpm, swap, PostgreSQL 16, MinIO in Docker, build, systemd, nginx include, health check) | |
 | nginx | `deploy/delivery-app.nginx.conf` (kept in the repo for review; the script writes the same snippet) |
 | systemd | `deploy/delivery-app.service`, port **3100**, `HOSTNAME=127.0.0.1` |
-| Sub-path build | `NEXT_PUBLIC_BASE_PATH=/delivery-app` � read by `next.config.ts` and inlined at build time; it must also be in the service env so `next start` routes the prefix |
+| Sub-path build | `NEXT_PUBLIC_BASE_PATH=/delivery-app` — read by `next.config.ts` and inlined at build time; it must also be in the service env so `next start` routes the prefix |
 
 Layout on the server: `/opt/delivery-app` (built in place), `/opt/delivery-app.old` (rollback),
 `/var/lib/delivery-app`, `/etc/delivery-app.env` (`chmod 600`, root:deliveryapp), the systemd unit

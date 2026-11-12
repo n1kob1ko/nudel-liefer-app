@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { type AbstractIntlMessages, NextIntlClientProvider } from "next-intl";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -13,6 +13,7 @@ import zhHans from "../../../messages/zh-Hans.json";
 import { TodayTour } from "./today-tour";
 
 const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
+const mocks = vi.hoisted(() => ({ enqueue: vi.fn(), undo: vi.fn() }));
 const mapProps = vi.hoisted(() => ({ onSelect: null as null | ((id: string) => void) }));
 vi.mock("@/i18n/navigation", () => ({
   useRouter: () => router,
@@ -39,7 +40,10 @@ vi.mock("@/lib/offline/outbox-browser", () => ({
     failure: null,
     confirmed: {},
   }),
+  enqueueMutation: mocks.enqueue,
+  undoStopStatus: mocks.undo,
 }));
+vi.mock("@/lib/offline/browser", () => ({ requestOfflineSync: vi.fn() }));
 
 const LOCALES: Record<string, AbstractIntlMessages> = {
   de,
@@ -153,6 +157,31 @@ describe.each(Object.keys(LOCALES))("TodayTour in %s", (locale) => {
     expect(within(next).getByTestId("details")).toHaveAttribute("href", "/driver/stops/s3");
     expect(screen.getAllByTestId("stop-row")).toHaveLength(4);
     expect(screen.queryByTestId("updated-banner")).toBeNull();
+  });
+
+  it("marks the next stop delivered straight from the card (NUD-195)", async () => {
+    mocks.enqueue.mockImplementation(async (mutation: unknown) => ({
+      clientMutationId: "m1",
+      ...(mutation as object),
+    }));
+    renderIn(
+      locale,
+      <TodayTour today={today([stop(1), stop(2, { status: "DELIVERED" })])} tiles={TILES} />,
+    );
+    const next = screen.getByTestId("next-stop");
+    const button = within(next).getByTestId("btn-quick-delivered");
+    // The button sits in the same row as "Navigation starten", so no detour over the stop screen.
+    expect(within(next).getByTestId("navigate")).toBeInTheDocument();
+    expect(button).toHaveAccessibleName(/\S/);
+
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(mocks.enqueue).toHaveBeenCalledWith({
+        type: "delivered",
+        stopId: "s1",
+        customerName: "Trattoria 1",
+      }),
+    );
   });
 
   it("has a page heading and a named progress bar (NUD-095)", () => {

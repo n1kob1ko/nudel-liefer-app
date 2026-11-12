@@ -36,8 +36,13 @@ export function AuditTimeline({ entries }: { entries: AuditEntryView[] }) {
   const tu = useTranslations("driver.unitsTotal");
   const locale = useLocale() as AppLocale;
   const fmt = createAppFormatters(useFormatter());
+  const money = useFormatter();
 
   const qty = (cents: number) => fmt.quantity(cents / 100);
+  const euro = (cents: number | null) =>
+    cents === null
+      ? t("values.none")
+      : money.number(cents / 100, { style: "currency", currency: "EUR" });
 
   const lineText = (line: AuditProductLine) => {
     // The unit always follows the quantity it belongs to, so the plural follows that one.
@@ -101,6 +106,12 @@ export function AuditTimeline({ entries }: { entries: AuditEntryView[] }) {
         return t("tapped", { time: fmt.dateTime(new Date(d.at)) });
       case "photo":
         return `${t(`photo.${d.photoKind as "STORE" | "PARKING"}`)}, ${t(`photo.via.${d.via}`)}`;
+      case "money":
+        return `${t("money.collected")}: ${
+          d.before === null
+            ? euro(d.after)
+            : t("change", { before: euro(d.before), after: euro(d.after) })
+        }${d.dueCents !== null ? ` (${t("money.due", { amount: euro(d.dueCents) })})` : ""}`;
       case "stopGroup":
         return "";
     }

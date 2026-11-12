@@ -75,6 +75,8 @@ async function Guarded({ locale, id }: { locale: string; id: string }) {
           windowToTime: order.window.toTime ?? "",
           status,
           note: order.internalNote ?? "",
+          paymentTerm: order.paymentTerm,
+          amountCents: order.amountCents,
           lines: order.items.map((i) => ({ productId: i.productId, quantity: String(i.quantity) })),
           screenshotUrl: order.screenshot?.url ?? null,
         }}

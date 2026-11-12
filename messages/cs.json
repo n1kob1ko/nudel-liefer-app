@@ -412,7 +412,8 @@
       "mutationLoading": "seznam otevřen",
       "mutationDepart": "odjezd",
       "outboxWaitingForConnection": "{count, plural, one {# zápis čeká na připojení – právě se nic neodesílá.} few {# zápisy čekají na připojení – právě se nic neodesílá.} many {# zápisu čeká na připojení – právě se nic neodesílá.} other {# zápisů čeká na připojení – právě se nic neodesílá.}}",
-      "outboxUnreachable": "Server je momentálně nedostupný. Zápisy zůstávají v zařízení a odešlou se znovu automaticky."
+      "outboxUnreachable": "Server je momentálně nedostupný. Zápisy zůstávají v zařízení a odešlou se znovu automaticky.",
+      "mutationPayment": "Platba"
     },
     "unitsTotal": {
       "KG": "kg",
@@ -502,6 +503,24 @@
       "empty": "Není co kontrolovat. Můžete vyrazit.",
       "emptyTrip": "Není co kontrolovat.",
       "storageError": "Uložení v zařízení se nezdařilo. Zkuste to znovu."
+    },
+    "payment": {
+      "title": "Platba v hotovosti",
+      "due": "Vybrat při dodání: {amount}",
+      "collectedBadge": "{amount} vybráno",
+      "collected": "Vybráno: {amount}",
+      "short": "Chybí ještě {amount}",
+      "over": "{amount} více než bylo splatné",
+      "change": "Změnit částku",
+      "amountLabel": "Vybraná částka",
+      "save": "Vybráno",
+      "saved": "Vybráno od {name}",
+      "needDelivery": "Nejprve klepněte na „Dodáno“, poté zadejte částku.",
+      "cancel": "Zrušit",
+      "errors": {
+        "storage": "Uložení v telefonu není možné. Zkuste to znovu.",
+        "amount": "Zadejte částku jako 42 nebo 42,50."
+      }
     }
   },
   "pwa": {

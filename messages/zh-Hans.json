@@ -250,6 +250,7 @@
     },
     "nav": {
       "dashboard": "总览",
+      "planning": "每日规划",
       "orders": "订单",
       "tours": "配送线路",
       "customers": "客户",
@@ -262,7 +263,101 @@
         "system": "系统"
       },
       "vehicles": "车辆",
-      "utilization": "工时利用率"
+      "utilization": "工时利用率",
+      "payments": "收款"
+    },
+    "planning": {
+      "title": "每日规划",
+      "description": "某一天的固定线路：始终相同的客户，可在此直接调整数量，或仅为这一天添加客户。",
+      "save": "保存数量",
+      "saving": "保存中…",
+      "saved": "{count, plural, other {已保存 # 个订单。}}",
+      "savedMerged": "{count, plural, other {已合并 # 个重复订单。}}",
+      "savedNothing": "没有变化：未保存任何内容。",
+      "readOnly": {
+        "released": {
+          "title": "这一天的线路已发布",
+          "body": "线路一旦发布，司机就按已发布的数量工作。请在配送线路页面通过“编辑”修改数量。"
+        },
+        "past": {
+          "title": "已过去的送货日",
+          "body": "这一天的订单已成为历史，无法在此修改。"
+        },
+        "toTours": "前往线路规划"
+      },
+      "noRoutes": {
+        "title": "还没有固定线路",
+        "body": "固定线路是带有固定司机的固定客户组。请通过“编辑固定线路”创建第一个。"
+      },
+      "columns": {
+        "customer": "客户",
+        "weight": "重量",
+        "state": "状态",
+        "total": "合计"
+      },
+      "state": {
+        "nothing": "未订货",
+        "fromRule": "来自定期订单",
+        "cancelled": "已取消",
+        "merged": "多个订单"
+      },
+      "route": {
+        "summary": "{count, plural, other {# 个客户}} · {weight} kg",
+        "driver": "司机（固定线路）",
+        "noDriver": "无司机",
+        "driverSaved": "已更改固定线路的司机。",
+        "empty": "该固定线路还没有客户。",
+        "ruleHint": "标记为“来自定期订单”的行只有在保存数量后才会成为订单。"
+      },
+      "offRoute": {
+        "title": "不在固定线路中",
+        "body": "没有固定线路但这一天有订单的客户。“添加”只为这个送货日创建订单——固定线路保持不变。",
+        "search": "搜索客户（名称、编号、城市）",
+        "onlyWithOrder": "仅显示有订单",
+        "empty": "未找到客户。",
+        "add": "添加"
+      },
+      "errors": {
+        "generic": "出现问题，请重试。",
+        "invalid": "输入无效。",
+        "date_in_past": "已过去的日期无法修改数量。",
+        "tour_released": "这一天的线路已发布。请在配送线路页面通过“编辑”修改数量。",
+        "customer_not_found": "未找到某个客户。请重新加载页面。",
+        "customer_inactive": "某个客户已停用。请重新加载页面。",
+        "product_not_found": "未找到某个产品。请重新加载页面。",
+        "product_inactive": "某个产品已停用。请重新加载页面。"
+      },
+      "manage": {
+        "open": "编辑固定线路",
+        "title": "固定线路",
+        "description": "带有固定司机的固定客户组。每个客户只属于一个固定线路；每个送货日都会以相同的客户显示。",
+        "new": "+ 固定线路",
+        "name": "名称",
+        "namePlaceholder": "例如：固定线路 1",
+        "driver": "司机",
+        "customers": "客户",
+        "selected": "已选择 {count} 个",
+        "search": "搜索客户",
+        "noMatch": "未找到客户。",
+        "inOther": "已在其他固定线路中",
+        "archive": "归档固定线路",
+        "created": "已创建固定线路。",
+        "saved": "已保存固定线路。",
+        "archived": "已归档固定线路。其客户现在显示在下方列表中。",
+        "cancel": "关闭",
+        "save": "保存",
+        "saving": "保存中…",
+        "errors": {
+          "invalid": "请输入名称。",
+          "not_found": "未找到该固定线路。",
+          "name_taken": "另一个固定线路已使用这个名称。",
+          "too_many": "固定线路过多。",
+          "driver_invalid": "该司机已停用。",
+          "customer_not_found": "未找到某个客户。",
+          "customer_inactive": "某个客户已停用。",
+          "customer_in_other": "该客户已属于另一个固定线路。"
+        }
+      }
     },
     "drivers": {
       "title": "司机",
@@ -1220,7 +1315,14 @@
         "import": {
           "toggle": "消息或截图",
           "optional": "可选：AI 据此填写草稿。"
-        }
+        },
+        "paymentTerm": "付款方式",
+        "paymentTermHint": "默认为月度账单；“货到付款”由司机在站点收取。",
+        "paymentMonthly": "月度账单（累计）",
+        "paymentCash": "货到付款",
+        "amount": "金额",
+        "amountHint": "此订单的欧元金额，例如 42.50。留空 = 尚未填写（月度账单上显示为“无金额”）。",
+        "amountInvalid": "请输入如 42 或 42.50 的金额（最多两位小数）。"
       },
       "detail": {
         "title": "订单",
@@ -1333,7 +1435,11 @@
         "label": "送货时间段"
       },
       "fromRecurring": "来自长期订单",
-      "newDescription": "选择客户和产品，核对送货信息，保存。"
+      "newDescription": "选择客户和产品，核对送货信息，保存。",
+      "paymentTerm": "付款方式",
+      "paymentMonthly": "月度账单",
+      "paymentCash": "货到付款",
+      "amountNone": "未填写金额"
     },
     "tours": {
       "title": "配送线路",
@@ -1727,7 +1833,11 @@
           "driver": "由司机拍摄"
         }
       },
-      "unknownActor": "未知用户"
+      "unknownActor": "未知用户",
+      "money": {
+        "collected": "已收款",
+        "due": "应收 {amount}"
+      }
     },
     "vehicles": {
       "title": "车辆",
@@ -1833,6 +1943,84 @@
       },
       "percentValue": "{percent} %",
       "scheduleHint": "工作时间在“司机 → 行 → 操作 → 编辑工作时间”中维护。"
+    },
+    "payments": {
+      "title": "收款",
+      "description": "未收的现金和未结的月度账单。现金由司机在站点收取，月度账单由办公室标记为已付。",
+      "summary": "未结金额概览",
+      "backToPayments": "返回收款",
+      "monthLabel": "{month}",
+      "columns": {
+        "date": "送货日",
+        "customer": "客户",
+        "driver": "司机",
+        "due": "应收",
+        "collected": "已收",
+        "open": "未结",
+        "month": "月份",
+        "orders": "订单",
+        "total": "合计",
+        "amount": "金额",
+        "items": "产品",
+        "noDriver": "无司机"
+      },
+      "cash": {
+        "title": "未收现金",
+        "body": "标记为“货到付款”但司机尚未收到或未收足的站点。",
+        "openTotal": "现金未结（{count}）",
+        "emptyTitle": "没有未收现金",
+        "emptyBody": "所有现金订单都已收齐，或尚未送货。",
+        "toTour": "前往线路"
+      },
+      "monthly": {
+        "title": "未结月度账单",
+        "body": "已结束且含有月度账单订单、但尚未标记为已付的月份。",
+        "openTotal": "月度账单未结（{count}）",
+        "emptyTitle": "没有未结月度账单",
+        "emptyBody": "所有已结束的月份都已标记为已付。",
+        "open": "打开账单",
+        "noAmount": "{count} 个无金额"
+      },
+      "paid": {
+        "title": "已标记已付",
+        "body": "办公室最近标记为已付的月份。",
+        "badge": "已付"
+      },
+      "state": {
+        "open": "未结",
+        "paid": "已付",
+        "current": "当月"
+      },
+      "bill": {
+        "title": "月度账单 {customer}",
+        "description": "{month} 的累计账单。",
+        "totalHeading": "本月合计",
+        "customerLine": "{number} · {city}",
+        "paidOn": "已于 {date} 付 {amount}",
+        "ordersHeading": "本月订单",
+        "ordersCount": "月度账单上有 {count} 个订单",
+        "emptyTitle": "本月没有订单",
+        "emptyBody": "本月没有已确认的月度账单订单。",
+        "currentMonth": "本月尚未结束；从下月 1 日起可标记为已付。",
+        "noAmount": "无金额"
+      },
+      "note": "备注（可选）",
+      "notePlaceholder": "例如：现金结清，或 3 日转账",
+      "mark": "标记为已付",
+      "marking": "保存中…",
+      "unmark": "撤销已付标记",
+      "print": "打印",
+      "toast": {
+        "marked": "已标记该月为已付。",
+        "unmarked": "已撤销已付标记。"
+      },
+      "errors": {
+        "generic": "出现问题，请重试。",
+        "invalid": "输入无效。",
+        "not_found": "未找到该记录。",
+        "nothing_to_pay": "本月无应付金额（没有订单，或本月尚未结束）。",
+        "conflict": "该记录同时被修改。请重新加载。"
+      }
     }
   },
   "driver": {
@@ -2087,7 +2275,8 @@
       "mutationLoading": "已打开清单",
       "mutationDepart": "出发",
       "outboxWaitingForConnection": "{count} 条内容正在等待网络连接，目前没有在发送。",
-      "outboxUnreachable": "暂时无法连接服务器。内容仍保存在设备上，会再次自动发送。"
+      "outboxUnreachable": "暂时无法连接服务器。内容仍保存在设备上，会再次自动发送。",
+      "mutationPayment": "现金付款"
     },
     "unitsTotal": {
       "KG": "公斤",
@@ -2177,6 +2366,24 @@
       "empty": "没有需要检查的内容，可以出发。",
       "emptyTrip": "没有需要检查的内容。",
       "storageError": "无法保存到本设备，请重试。"
+    },
+    "payment": {
+      "title": "现金付款",
+      "due": "送货时应收：{amount}",
+      "collectedBadge": "已收 {amount}",
+      "collected": "已收：{amount}",
+      "short": "还差 {amount}",
+      "over": "比应收多 {amount}",
+      "change": "修改金额",
+      "amountLabel": "已收金额",
+      "save": "已收款",
+      "saved": "已向 {name} 收款",
+      "needDelivery": "请先点“已送达”，再填写金额。",
+      "cancel": "取消",
+      "errors": {
+        "storage": "无法保存到手机，请重试。",
+        "amount": "请输入如 42 或 42.50 的金额。"
+      }
     }
   },
   "pwa": {

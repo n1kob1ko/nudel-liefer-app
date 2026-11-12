@@ -1,4 +1,6 @@
 import {
+  BanknoteIcon,
+  CalendarDaysIcon,
   CarFrontIcon,
   ClipboardListIcon,
   GaugeIcon,
@@ -13,8 +15,10 @@ import {
 
 export const ADMIN_SECTIONS = [
   "dashboard",
+  "planning",
   "orders",
   "tours",
+  "payments",
   "customers",
   "products",
   "vehicles",
@@ -26,7 +30,7 @@ export type AdminSection = (typeof ADMIN_SECTIONS)[number];
 
 /** Sidebar groups (re-design.md §8.1): Betrieb / Stammdaten / System. */
 export const ADMIN_NAV_GROUPS = [
-  { id: "operations", sections: ["dashboard", "orders", "tours"] },
+  { id: "operations", sections: ["dashboard", "planning", "orders", "tours", "payments"] },
   { id: "masterData", sections: ["customers", "products", "vehicles", "drivers"] },
   { id: "system", sections: ["utilization", "settings"] },
 ] as const satisfies ReadonlyArray<{
@@ -39,8 +43,10 @@ export type AdminNavGroupId = (typeof ADMIN_NAV_GROUPS)[number]["id"];
 /** Locale-less paths (the i18n navigation helpers add the locale prefix). */
 export const ADMIN_NAV: ReadonlyArray<{ section: AdminSection; href: string; icon: LucideIcon }> = [
   { section: "dashboard", href: "/admin", icon: LayoutDashboardIcon },
+  { section: "planning", href: "/admin/planning", icon: CalendarDaysIcon },
   { section: "orders", href: "/admin/orders", icon: ClipboardListIcon },
   { section: "tours", href: "/admin/tours", icon: RouteIcon },
+  { section: "payments", href: "/admin/payments", icon: BanknoteIcon },
   { section: "customers", href: "/admin/customers", icon: StoreIcon },
   { section: "products", href: "/admin/products", icon: PackageIcon },
   { section: "vehicles", href: "/admin/vehicles", icon: CarFrontIcon },

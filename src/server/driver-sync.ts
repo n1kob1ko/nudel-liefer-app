@@ -11,6 +11,7 @@ import {
   type SyncResponse,
   type SyncTourState,
 } from "@/domain/driver-sync";
+import { MAX_AMOUNT_CENTS } from "@/domain/money";
 import { PROBLEM_NOTE_MAX, PROBLEM_REASONS } from "@/domain/stop-status";
 import type { PrismaClient } from "@/generated/prisma/client";
 
@@ -22,6 +23,7 @@ import { getDb } from "./db";
 import { readTextLimited } from "./http-body";
 import { applyDriverParking } from "./parking-spots";
 import { scheduleProblemNoteTranslation } from "./problem-note-translation";
+import { applyDriverPayment } from "./stop-payment";
 import { applyStopMutation, type StopStatusResult } from "./stop-status";
 import { applyDriverDeparture } from "./tour-departure";
 
@@ -64,6 +66,11 @@ export const syncRequestSchema = z.strictObject({
           type: z.literal("abbreviation"),
           ...entryFields,
           abbreviation: z.string().max(ABBREVIATION_MAX).optional(),
+        }),
+        z.strictObject({
+          type: z.literal("payment"),
+          ...entryFields,
+          collectedCents: z.number().int().min(0).max(MAX_AMOUNT_CENTS),
         }),
       ]),
     )
@@ -156,6 +163,24 @@ export async function applySyncBatch(
                 clientMutationId: entry.clientMutationId,
                 outcome: "rejected",
                 error: abbreviationResult.error,
+              },
+        );
+        continue;
+      }
+      if (entry.type === "payment") {
+        // Cash collected at the stop (D33, NUD-196): not part of the stop status either.
+        const payment = await applyDriverPayment(db, actor, mutation, at, { clientCreatedAt: at });
+        results.set(
+          entry.clientMutationId,
+          payment.ok
+            ? {
+                clientMutationId: entry.clientMutationId,
+                outcome: payment.replayed ? "replayed" : "applied",
+              }
+            : {
+                clientMutationId: entry.clientMutationId,
+                outcome: "rejected",
+                error: payment.error,
               },
         );
         continue;
@@ -253,6 +278,7 @@ async function touchedTours(
           status: true,
           problemReason: true,
           completedAt: true,
+          collectedCents: true,
           customer: {
             select: {
               hasKey: true,
@@ -275,6 +301,7 @@ async function touchedTours(
       status: s.status,
       problemReason: s.problemReason,
       completedAt: s.completedAt?.toISOString() ?? null,
+      collectedCents: s.collectedCents,
       hasKey: s.customer.hasKey,
       keyNumber: s.customer.keyNumber,
       abbreviation: s.customer.abbreviation,

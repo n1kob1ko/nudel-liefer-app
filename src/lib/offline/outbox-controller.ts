@@ -66,6 +66,8 @@ export type NewMutation = {
   /** Type "parking" only (NUD-144). */
   lat?: number;
   lng?: number;
+  /** Type "payment" only (D33, NUD-196): the cash collected at the stop, in euro cents. */
+  collectedCents?: number;
   customerName: string;
 };
 
@@ -190,7 +192,8 @@ export function createOutboxController(deps: OutboxControllerDeps) {
             (last.keyNumber ?? "") === (mutation.keyNumber ?? ""))) &&
         (mutation.type !== "abbreviation" ||
           (last.abbreviation ?? "") === (mutation.abbreviation ?? "")) &&
-        (mutation.type !== "parking" || (last.lat === mutation.lat && last.lng === mutation.lng))
+        (mutation.type !== "parking" || (last.lat === mutation.lat && last.lng === mutation.lng)) &&
+        (mutation.type !== "payment" || last.collectedCents === mutation.collectedCents)
       ) {
         return last;
       }
@@ -210,6 +213,9 @@ export function createOutboxController(deps: OutboxControllerDeps) {
           : {}),
         ...(mutation.type === "parking" && mutation.lat !== undefined && mutation.lng !== undefined
           ? { lat: mutation.lat, lng: mutation.lng }
+          : {}),
+        ...(mutation.type === "payment" && mutation.collectedCents !== undefined
+          ? { collectedCents: mutation.collectedCents }
           : {}),
         createdAt: deps.now().toISOString(),
         seq: nextSeq(queued),

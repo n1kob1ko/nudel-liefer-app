@@ -32,7 +32,7 @@ describe("admin nav groups", () => {
   it("puts the operations sections in the Betrieb group", () => {
     expect(ADMIN_NAV_GROUPS[0]).toEqual({
       id: "operations",
-      sections: ["dashboard", "orders", "tours"],
+      sections: ["dashboard", "planning", "orders", "tours", "payments"],
     });
   });
 });

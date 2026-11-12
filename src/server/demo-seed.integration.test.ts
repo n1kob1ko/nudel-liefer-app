@@ -79,6 +79,7 @@ describe.skipIf(!process.env.DATABASE_URL)("seedDemo", { timeout: 120_000 }, () 
       customersCreated: 20,
       photosCreated: 40,
       ordersCreated: 20,
+      standingToursCreated: 2,
     });
 
     const settings = await t.prisma.settings.findUniqueOrThrow({ where: { id: 1 } });
@@ -117,11 +118,22 @@ describe.skipIf(!process.env.DATABASE_URL)("seedDemo", { timeout: 120_000 }, () 
       customersCreated: 0,
       photosCreated: 0,
       ordersCreated: 0,
+      standingToursCreated: 0,
     });
     expect(await t.prisma.customer.count()).toBe(20);
     expect(await t.prisma.photo.count()).toBe(40);
     expect(await t.prisma.order.count()).toBe(20);
     expect(await t.prisma.product.count()).toBe(3);
+    // NUD-194: two fixed groups of 8 and 6 customers; the rest stays off-route.
+    const groups = await t.prisma.standingTour.findMany({
+      include: { customers: true, driver: { select: { username: true } } },
+      orderBy: { sortOrder: "asc" },
+    });
+    expect(groups.map((g) => [g.name, g.customers.length, g.driver?.username])).toEqual([
+      ["Stammtour 1", 8, "fahrer-de"],
+      ["Stammtour 2", 6, "driver-en"],
+    ]);
+    expect(await t.prisma.standingTourCustomer.count()).toBe(14);
   });
 
   it("can create the orders for today, and a rerun adds nothing while they are current", async () => {

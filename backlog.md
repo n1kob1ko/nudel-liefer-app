@@ -16,6 +16,8 @@
 6. Tickets marked **👤 HUMAN** need a person (accounts, API keys, client feedback). Prepare everything you can, write precise instructions under the ticket, set `blocked`, move on to the next ticket.
 7. Never commit secrets. All config goes through env vars documented in `.env.example`.
 
+> **⚠️ RETIRED HOST (2026-11-04): `87.106.60.131` is gone.** That vServer hosted the production app until 2026-11-04; it was decommissioned and its data (203 customers, 412 orders, 148 photos, 9 users) migrated to the dedicated server **`65.109.100.79`**, which serves the app at the **root** of <https://nudel.stragas.com> — no `/delivery-app/` prefix, own nginx vhost `/etc/nginx/sites-available/nudel-stragas`, with PostgreSQL, MinIO, ORS and Photon all on that one host. **Never deploy to, tunnel into, or write a fresh setup for the old IP.** `deploy/deploy.ps1`, `deploy/server-setup.sh` and `deploy/local-services/tunnel.ps1` all refuse it — and `server-setup.sh` also refuses the new host, because it builds the obsolete `/delivery-app/` sub-path layout and would overwrite `/etc/delivery-app.env` on the live server. The `87.106.60.131` mentions further down this file are historical records of past deployments: they describe what was true then, not what to do now.
+
 Status values: `todo` · `in-progress` · `blocked` · `done` · `superseded` (replaced by another ticket — never implement; follow the pointer)
 
 ---
@@ -67,6 +69,8 @@ A pasta factory delivers to business customers (mostly restaurants). The office 
 | D29 | Tour editing (2026-10-26) | "Bearbeiten" may change driver, vehicle, stop order and move stops between tours of the same date — also on released tours (via the "tour was updated" path). Not the date. Completed stops are locked. |
 | D30 | Navigation (2026-10-26) | One "Navigation starten" button. With a Parkplatz: Google Maps link with the Parkplatz as `waypoints` and the Lieferadresse as `destination`, `travelmode=driving`; without: the address point. Apple Maps link: Parkplatz only (one destination supported). |
 | D31 | Drivers before reloads (2026-10-27) | There are at most as many tours as available drivers. When there are fewer drivers than loaded vehicles, a driver who is back at the depot **switches into the next vehicle that was loaded in the morning** (5 min) instead of waiting for a reload (20 min); a vehicle is never shared by two drivers. Reload trips remain for what still does not fit. A day with more stops than one planning run can route (50) is planned anyway: the compact cluster around the depot is planned, the rest is shown as "not planned today". |
+| D32 | Standing tours & the day plan (2026-11-02) | The office plans a delivery day in **standing tours** ("Stammtour"): fixed, named customer groups with a default driver, each customer in exactly one active group. A standing tour is a planning aid, **not** a `Tour` — tours are still built per delivery day. `/admin/planning` shows one table per group with one column per active product and the quantities of that day, editable in place; the bottom lists the active customers of no group with "add for this delivery day" (a one-off order; membership never changes there). Saving writes normal CONFIRMED orders, so tour planning, the driver app and the packing list are unchanged. A quantity of **0 means "nothing ordered"**: an existing order is kept (without positions) instead of being cancelled, and such an order never becomes a stop; a customer without an order gets none. Prefill comes from the weekday's `RecurringOrder` (a suggestion, stored only on save). The view is read-only once a tour of that day is released, and for past days; several confirmed orders of one customer are merged into the first one on save (the rest are cancelled, audited). |
+| D33 | Payments (2026-11-02) | Amends D7/D19 (no prices, payments out of scope). Each **order** has a payment term: `MONTHLY` (accumulated monthly bill, the default) or `ON_DELIVERY` (cash at the stop). There are **no catalog prices**: the office types one amount per order (`Order.amountCents`, optional). On a cash delivery the driver records what he actually collected (`Stop.collectedCents`, prefilled from the stop's cash amounts, editable, offline via the outbox, audited). The office has a **Zahlungen** page: open cash (nothing or too little collected) and open months, plus one **month page per customer** listing the month's orders and total, printable, with a "paid" marker (`MonthlyPayment`, snapshot of total and count, audited, take-back keeps the row with `voidedAt`). A month can only be marked paid once it is over. Amounts are whole euro cents everywhere. |
 
 ---
 
@@ -348,6 +352,9 @@ Read rule: `pick(text, locale)` returns the requested locale; if empty, the clos
 | NUD-190 | Kundenstatus-Link (nach NUD-172) | M2.7 | 172 | todo |
 | NUD-192 | Layout-Refresh des Designers (Büro-Formulare, Tabellen, Login, Auslastung) | M2.7 | – | done |
 | NUD-193 | ORS und Photon vom Entwickler-PC lösen (vor dem Hand-over) | M3 | – | todo |
+| NUD-194 | Tagesplanung: Stammtouren mit festen Kunden, Mengen direkt bearbeiten | M2.7 | 149 | done |
+| NUD-195 | Fahrer: „Geliefert" direkt auf der Karte des nächsten Stopps | M2.7 | – | done |
+| NUD-196 | Zahlungen: Bar bei Lieferung oder Monatsrechnung, kassierter Betrag, Monatsrechnung mit Bezahlt-Vermerk | M2.7 | 033 | done |
 | NUD-100 | AI screenshot extraction (review required) | M3 | 031 | superseded → NUD-150 |
 | NUD-101 | Recurring / standing orders | M3 | 032 | superseded → NUD-149 |
 | NUD-102 | Multiple drivers / tours per day | M3 | 043 | superseded → NUD-147 |
@@ -3772,6 +3779,82 @@ Alle Entscheidungen: Product Owner, 2026-10-29 (§9).
 
 ---
 
+#### NUD-194 · Tagesplanung: Stammtouren mit festen Kunden, Mengen direkt bearbeiten
+**Status:** done · **depends_on:** 149 · Quelle: Auftraggeber 2026-11-02 (Wunsch für den Büroalltag).
+
+**Goal:** Das Büro plant den nächsten Liefertag nicht mehr Bestellung für Bestellung, sondern in **Stammtouren**: feste Kundengruppen („Route 1", „Route 2"), die jeden Liefertag dieselben Kunden enthalten und einen festen Fahrer haben (änderbar, wenn er krank ist oder ersetzt wird). Eine neue Seite `/admin/planning` zeigt je Stammtour eine Tabelle mit einer Spalte pro Produkt und den Mengen des Liefertags; die Mengen werden direkt in dieser Ansicht geändert (mehr, weniger, oder 0 = nichts). Unten stehen die Kunden ohne Stammtour, mit „Hinzufügen" für eine Bestellung genau dieses Liefertags.
+
+**Acceptance criteria**
+- [x] Neue Modelle `StandingTour` (Name, Standardfahrer, `active`, `sortOrder`) und `StandingTourCustomer` (Reihenfolge = Lieferreihenfolge); Migration `20261102140252_standing_tours`.
+- [x] `/admin/planning?date=YYYY-MM-DD` (Standard: nächster Liefertag) zeigt je Stammtour die Kunden des Tages, Produktspalten, Zeilengewicht, Zwischensumme und Gesamtgewicht.
+- [x] Mengen sind editierbar; leere/0-Zeilen werden als 0 gespeichert. Ein Kunde mit Bestellung, der nichts will, **behält** seine Bestellung (ohne Positionen) und erscheint als „nichts bestellt"; ohne Bestellung wird nichts angelegt.
+- [x] Ein Speichern schreibt normale CONFIRMED-Bestellungen (Lieferzeitraum = ganzer Tag) über die bestehende Order-Tabelle; offene Touren des Tages werden als veraltet markiert.
+- [x] Vorbelegung aus der Dauerbestellung des Wochentags, wenn für den Tag noch keine Bestellung existiert (nur Vorschlag, gespeichert wird erst beim Speichern); stornierte Bestellungen schlagen nichts vor.
+- [x] Mehrere bestätigte Bestellungen eines Kunden am Tag werden auf die erste zusammengeführt, die übrigen storniert (jeweils auditiert).
+- [x] Ab einer freigegebenen Tour des Tages ist die Ansicht schreibgeschützt (Hinweis + Link zur Tourenseite); vergangene Tage ebenso.
+- [x] Stammtouren lassen sich anlegen, umbenennen, Fahrer wechseln, Kunden zuordnen und archivieren; ein Kunde gehört zu genau einer aktiven Stammtour. Alle Änderungen auditiert (`standing_tour.*`).
+- [x] Bestellungen ohne Position (`buildStops`) werden nie zu Stopps — die Tour fährt niemanden ohne Ware an.
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test` (2733 + 17 neue), `pnpm i18n:check` grün; Texte in `de`, `en`, `zh-Hans`.
+
+**Implementation notes (NUD-194)**
+- Die Stammtour ist **keine** `Tour` (Glossar §3): sie entscheidet nur, welche Zeilen die Planung zeigt. Die Touren baut weiterhin „Touren planen" aus allen bestätigten Bestellungen (D24/D31) — die Stammtour bindet also keine Fahrer an Touren, sondern dokumentiert „wer kennt diese Kunden" (Wunsch des Auftraggebers).
+- 0 heißt „nichts bestellt", nicht „storniert": die Bestellung bleibt sichtbar (D32). Eine Bestellung ganz ohne Position entsteht nur so; `buildStops` überspringt sie, damit kein Stopp ohne Ware auf die Tour kommt.
+- Der Speicherpfad (`saveStandingDay`) nimmt denselben Advisory-Lock wie `planDay` (`tour:<datum>`), prüft den Touren-Status, die Kunden und die Produkte serverseitig erneut und schreibt nur Zeilen, die sich wirklich geändert haben (kein Audit-Rauschen bei unverändertem Speichern).
+- Produktspalten sind alle aktiven Produkte (Katalogreihenfolge); Positionen für deaktivierte Produkte fallen beim Speichern weg.
+- Ein Kunde ohne Bestellung und ohne Eingabe wird nicht gespeichert (keine leeren Bestellungen für alle Stammkunden).
+- Geprüft im Browser (Playwright, 1280 px, angemeldet): Seite rendert ohne Konsolenfehler und ohne horizontalen Überlauf; Screenshot `docs/screenshots/nud-194-tagesplanung.png`. `pnpm test:e2e` wurde nicht erweitert (die Bildschirmprüfung lief einmalig manuell); abgedeckt sind 6 Komponenten-Tests, 17 Integrationstests und 10 Domain-Tests.
+- Offen (Folge-Tickets, nicht Teil dieses Tickets): Wiederherstellen einer archivierten Stammtour in der Oberfläche (die Aktion `setStandingTourActiveAction(id, true)` gibt es schon), und ein Feld `Settings` für „Anzahl der Stammtouren" fehlt bewusst (Obergrenze 12, `MAX_STANDING_TOURS`).
+
+---
+
+#### NUD-195 · Fahrer: „Geliefert" direkt auf der Karte des nächsten Stopps
+**Status:** done · **depends_on:** – · Quelle: Auftraggeber 2026-11-02 (Fahrer, die den Weg kennen, sollen nicht erst in die Stopp-Details).
+
+**Goal:** Auf der Startseite des Fahrers steht neben „Navigation starten" ein Knopf **Geliefert**. Ein Tipp meldet den Stopp geliefert, die Karte springt sofort zum nächsten Stopp — ohne Detailseite, ohne Scrollen. Wer navigieren will, tippt wie bisher „Navigation starten"; der Knopf ist auch da, wenn ein Kunde keinen Parkplatz/Adresspunkt hat (dann steht dort „Parkplatz fehlt" und daneben „Geliefert").
+
+**Acceptance criteria**
+- [x] `QuickDeliveredButton` in der Karte „Nächster Stopp", in derselben Zeile wie „Navigation starten" (48 px+, `size="xl"`, grün/success mit Häkchen).
+- [x] Derselbe Weg wie im Stopp-Screen: `enqueueMutation` in die Offline-Outbox (IndexedDB), eigener `clientMutationId`, idempotent, Nachsenden bei Verbindung; die Karte arbeitet auf der Overlay-Kopie und springt sofort weiter.
+- [x] Toast mit **Rückgängig** (10 s, 48-px-Aktionsknopf); nach dem letzten Stopp ohne Rückgängig, weil dieser Tipp die Tour abschließt (NUD-053).
+- [x] Doppeltipp löst nur einen Auftrag aus; fehlender Handy-Speicher zeigt eine Fehlermeldung statt eines stillen Verlusts.
+- [x] Bei 375 px passen beide Knöpfe nebeneinander („Navigation starten" bricht auf zwei Zeilen um), kein horizontaler Überlauf; 56–69 px hoch.
+- [x] Texte aus dem vorhandenen Namespace `driver.status` (5 Sprachen), keine neuen Schlüssel.
+
+**Implementation notes (NUD-195)**
+- Bewusst keine Rückfrage vor dem Tipp: der Auftraggeber will einen Tipp; die Rückgängig-Aktion im Toast ist der Schutz. Ein versehentlicher Tipp auf dem Weg zum nächsten Stopp ist damit in 10 s korrigierbar.
+- Der Knopf liegt über dem gestreckten Detail-Link der Karte (`relative z-10`), damit ein Tipp dort nicht die Detailseite öffnet.
+- Im Browser geprüft (375 px, angemeldet als Demo-Fahrer): Tipp → Karte springt von „Beisl Zum Grünen Baum" auf „Bistro Zur Alten Mühle", Toast „Geliefert: … / Rückgängig", Server-Status des Stopps danach `DELIVERED`; Screenshot `docs/screenshots/nud-195-quick-delivered.png`.
+- Tests: 8 Komponenten-Tests (alle 5 Sprachen, Doppeltipp, letzter Stopp, Speicherfehler) plus ein Verdrahtungstest in `today-tour.test.tsx`.
+
+---
+
+#### NUD-196 · Zahlungen: Bar bei Lieferung oder Monatsrechnung
+**Status:** done · **depends_on:** 033 · Quelle: Auftraggeber 2026-11-02.
+
+**Goal:** Jede Bestellung sagt, wie sie bezahlt wird: **Monatsrechnung** (Standard, am Monatsende als Sammelrechnung je Kunde) oder **Bar bei Lieferung**. Der Fahrer erfasst beim Stopp, was er tatsächlich kassiert hat; das Büro sieht offene Barzahlungen und offene Monatsrechnungen und kann eine Monatsrechnung als bezahlt vermerken.
+
+**Acceptance criteria**
+- [x] `Order.paymentTerm` (`MONTHLY` Standard / `ON_DELIVERY`) und `Order.amountCents` (optional, ganze Cent); im Bestellformular wählbar, in der Bestellansicht sichtbar, im Audit-Diff.
+- [x] Keine Katalogpreise (D33): das Formular nimmt einen Betrag wie `42,50`; ungültige Beträge werden abgelehnt, nicht gerundet.
+- [x] Offline-fähige Fahrer-Erfassung: Karte „Barzahlung" auf dem Stopp mit „zu kassieren" (Summe der Bar-Bestellungen des Stopps), vorbelegtem Betrag, änderbar; speichert als Outbox-Mutation (`payment`), idempotent, wird beim nächsten Kontakt gesendet, erscheint sofort über das Overlay. Erfassung erst auf einem gelieferten Stopp.
+- [x] `/admin/payments`: Übersicht offener Beträge, Liste offener Barzahlungen je Stopp (mit Link zur Tour) und offener Monate je Kunde; oben „Zahlungen" in der Navigation.
+- [x] Monatsseite je Kunde (`/admin/payments/<kunde>?month=YYYY-MM`): alle Bestellungen des Monats mit Betrag, Summe, Hinweis auf Bestellungen ohne Betrag, Druckknopf, „Als bezahlt markieren" + „Bezahlt-Markierung zurücknehmen".
+- [x] `MonthlyPayment` speichert Summe und Anzahl als Snapshot beim Markieren (Bestellungen können später geändert werden); Zurücknehmen setzt `voidedAt` statt zu löschen; alles auditiert (`monthly.pay`, `monthly.unpay`, `stop.payment`).
+- [x] Ein Monat lässt sich erst nach seinem Ende markieren; ein laufender Monat steht als „laufender Monat" da.
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm i18n:check` grün; Texte in `de`, `en`, `zh-Hans` und die Fahrer-Karte in allen fünf Sprachen.
+
+**Implementation notes (NUD-196)**
+- Beträge sind überall ganze Euro-Cent (`Int`); `src/domain/money.ts` parst `42`, `42,50`, `42.5` und lehnt Tausenderpunkte, Minus und mehr als zwei Nachkommastellen ab.
+- Die Bar-Karte erscheint nur, wenn der Stopp Bar-Bestellungen hat — Monatsbestellungen zeigen dem Fahrer keine Beträge. Das war Absicht (D7: der Fahrer braucht keine Preise).
+- Die Monatsauswertung aggregiert in SQL (`date_trunc('month', "deliveryDate")`), nicht in JS; die Monatsseite lädt nur die Bestellungen genau eines Monats.
+- Der „offene" Barfall ist bewusst nur „nichts kassiert" oder „zu wenig": Überzahlung ist kein offener Posten, sie steht im Audit-Verlauf und im Betrag der Monatsseite.
+- Zwei beim Browser-Test gefundene Fallen, die jetzt Tests bewachen: der In-Outbox-Eintrag muss `collectedCents` mitkopieren (sonst lehnt der strenge Sync-Vertrag den Eintrag mit 400 ab), und ein `payment`-Eintrag darf auf einer **abgeschlossenen** Tour erfasst werden — der letzte Stopp schließt die Tour, und genau dort wird kassiert (`payments.integration.test.ts`, Fall „last stop").
+- Geprüft im Browser (Playwright, 1280 px Büro / 375 px Fahrer, angemeldet): Zahlungsseite (eine offene Barzahlung 42,50 €, 20 offene Monate), Monatsseite (3 Bestellungen, „Als bezahlt markieren", Drucken), Bestellformular (Zahlungsart + Betrag 42,50), Fahrer-Stopp: „Bei Lieferung zu kassieren: 18,90 €" → nach „Geliefert" Betrag änderbar → „Kassiert: 15,00 €, 3,90 € fehlen noch"; Server danach `Stop.collectedCents = 1500`. Screenshots `docs/screenshots/nud-196-zahlungen.png`, `nud-196-monatsrechnung.png`, `nud-196-fahrer-barzahlung.png`.
+- Ein bekannter, nicht von diesem Ticket stammender Dev-Hinweis bleibt: die Stopp-Seite meldet in der Konsole `Next.js encountered URL data during prerendering` (Route ohne `<Suspense>` um `params`); Verhalten unverändert, kein Fehler im Betrieb.
+- Offen (Folge-Tickets): manuelle Korrekturposition auf der Monatsrechnung (Rabatt/Gutschrift), Export/PDF-Datei für die Buchhaltung, und eine Bezahlt-Liste als eigene Seite (aktuell die letzten 20 auf der Zahlungsseite).
+
+---
+
 #### Ein-Zeilen-Eintrag (aus F13, nicht umgesetzt)
 **NUD-191 · Checklisten-Zeilen brauchen explizite Accessible Names** — Status: todo · Quelle: Blackbox-QA 2026-10-29, F13. Die Zeilen sind bereits `<button role="checkbox" aria-checked>` (e2e klickt sie per Rolle); offen ist nur der vorlesbare Name (bisher der zusammengesetzte Kindtext). Aufwand S, ein e2e-Locator per Name. Kein Ticket im QA-Block, weil der Befund als solcher nicht reproduzierbar war.
 
@@ -4213,6 +4296,16 @@ Alle Entscheidungen: Product Owner, 2026-10-29 (§9).
 | 2026-10-29 | NUD-104 | Foto-Nachweis: NUD-104 wird erweitert und nach dem Defekt-Block umgesetzt (Option A) | Die Lücke in der Beweiskette ist unabhängig von Mengen und braucht eigene ACs |
 | 2026-10-31 | NUD-192 | Das Designer-Archiv wird als ein Commit übernommen (kein Rebase auf fremde Zwischenstände), Herkunft nur im Ticket vermerkt | Der Import ist ein UI-Diff gegen `main`; ein Zwischenstand hätte keinen eigenen Prüfwert |
 | 2026-10-31 | NUD-156/157 | ORS und Photon bleiben vorerst auf dem Entwickler-PC (Docker + Reverse-Tunnel); die Ablösung ist als geordnete Checkliste in `deploy/local-services/README.md` festgehalten und in `AGENTS.md`, `docs/runbook.md` §14 und `docs/deploy.md` §13 verlinkt | Der 2-GB-vServer kann beide nicht tragen, aber ein Deploy startet sie nicht mit — ohne Notiz geht das beim Übergang auf den Kundenserver verloren |
+| 2026-11-02 | NUD-194 | Die „feste Route" des Auftraggebers wird als `StandingTour` (Stammtour) modelliert: feste Kundengruppe + Standardfahrer, **kein** `Tour`-Datensatz und keine Bindung an Fahrten | Das Glossar (§3) verbietet „Route" für eine Tour; die Gruppe ist eine Planungshilfe, die Touren baut weiterhin „Touren planen" |
+| 2026-11-02 | NUD-194 | Menge 0 heißt „nichts bestellt" und **behält** die Bestellung (ohne Positionen) statt sie zu stornieren; eine 0-Zeile ohne vorhandene Bestellung legt keine an; `buildStops` überspringt Bestellungen ohne Position | Auswahl des Auftraggebers: „nichts" soll in der Bestellliste sichtbar bleiben; ein Stopp ohne Ware darf nicht auf die Tour |
+| 2026-11-02 | NUD-194 | Vorbelegung kommt aus der Dauerbestellung des Wochentags, gespeichert wird sie erst beim Speichern; stornierte Bestellungen schlagen nichts vor | Wunsch des Auftraggebers (Dauerbestellung ist die Voreinstellung), und ein Blick auf die Seite darf keine Bestellungen erzeugen |
+| 2026-11-02 | NUD-194 | Ein Kunde gehört zu genau einer aktiven Stammtour (serverseitig geprüft); die Mengenansicht ist ab der ersten freigegebenen Tour des Tages schreibgeschützt | Sonst stünde derselbe Kunde in zwei Tabellen und ein Speichern würde sich selbst überschreiben; freigegebene Mengen gehören dem Fahrer (D10) |
+| 2026-11-02 | NUD-194 | Mehrere bestätigte Bestellungen eines Kunden am Tag werden auf die erste zusammengeführt, die übrigen storniert (auditiert) | Eine Tabellenzeile pro Kunde: sonst zeigte die Zeile die Summe, das Speichern aber nur einen Teil |
+| 2026-11-02 | NUD-195 | „Geliefert" auf der Karte des nächsten Stopps nutzt denselben Outbox-Weg wie der Stopp-Screen (kein zweiter Serverpfad), ohne Rückfrage, dafür mit 10-s-Rückgängig im Toast | Ein-Tipp-Bedienung war der Wunsch; ein zweiter Pfad wäre die Stelle, an der Offline und Idempotenz auseinanderlaufen |
+| 2026-11-02 | NUD-196 | Keine Katalogpreise: der Betrag ist ein Feld der Bestellung (`amountCents`, optional, ganze Cent), nicht des Produkts | Entscheidung des Auftraggebers; passt zu D7 (keine Preise) und lässt alte Rechnungen unverändert, weil der Betrag an der Bestellung steht |
+| 2026-11-02 | NUD-196 | Bar bei Lieferung ist die Ausnahme, Monatsrechnung der Standard (Feld auf der Bestellung, kein Kundenstammfeld) | Wunsch des Auftraggebers; ein Kundenstandard hätte jede neue Bestellung vorbelegen müssen, ohne dass jemand ihn pflegt |
+| 2026-11-02 | NUD-196 | Der Fahrer erfasst den kassierten Betrag als eigene Offline-Mutation (`payment`, `StopMutation.kind = PAYMENT`, idempotent je `clientMutationId`) und nur auf einem bereits gelieferten Stopp | Geld wechselt mit der Ware; der Weg ist derselbe wie bei Schlüssel/Parkplatz, damit es im Keller funktioniert und nicht doppelt gebucht wird |
+| 2026-11-02 | NUD-196 | „Bezahlt" einer Monatsrechnung ist ein Snapshot (Summe + Anzahl Bestellungen) mit `voidedAt` statt Löschen; ein Monat ist erst nach seinem Ende markierbar | Bestellungen können später noch geändert werden; die Historie bleibt im Audit-Log, und der laufende Monat ist noch nicht abzurechnen |
 
 ## 10. Open questions for the client (do not block on these – use placeholders)
 

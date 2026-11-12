@@ -22,7 +22,7 @@ export function todayInTimezone(now: Date, timeZone: string): string {
   return dayInTimezone(now, timeZone);
 }
 
-type Db = Pick<PrismaClient, "tour" | "product" | "customer" | "photo" | "settings">;
+type Db = Pick<PrismaClient, "tour" | "product" | "customer" | "photo" | "settings" | "stop">;
 
 /**
  * The driver's day as the home screen needs it (NUD-163): the active tour (`primary`, "Tour 2 of 2")

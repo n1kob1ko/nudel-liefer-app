@@ -32,11 +32,20 @@ export function effectiveMutationTime(createdAt: Date, now: Date): Date {
 /**
  * `key`: the driver set or corrected the customer's key (NUD-142); `abbreviation`: set, corrected
  * or cleared the customer's Abkürzung (NUD-164); `parking`: a new Parkplatz
- * (NUD-144); `loading` / `depart`: the departure checklist was opened / the driver left (NUD-151,
- * they name any stop of the tour and write the tour's timestamps); the others change the stop status.
+ * (NUD-144); `payment`: the cash he collected at the stop (D33, NUD-196); `loading` / `depart`: the
+ * departure checklist was opened / the driver left (NUD-151, they name any stop of the tour and
+ * write the tour's timestamps); the others change the stop status.
  */
 export type SyncMutationType =
-  "delivered" | "problem" | "undo" | "key" | "abbreviation" | "parking" | "loading" | "depart";
+  | "delivered"
+  | "problem"
+  | "undo"
+  | "key"
+  | "abbreviation"
+  | "parking"
+  | "payment"
+  | "loading"
+  | "depart";
 
 /** One queued mutation as sent to the server. */
 export type SyncEntry = {
@@ -54,6 +63,8 @@ export type SyncEntry = {
   /** Type "parking" only (NUD-144): the Parkplatz the driver set, 6 decimals. */
   lat?: number;
   lng?: number;
+  /** Type "payment" only (D33): the cash collected at the stop, in euro cents. */
+  collectedCents?: number;
   /** ISO time of the driver's tap on the device. */
   createdAt: string;
 };
@@ -91,6 +102,8 @@ export type SyncStopState = {
   abbreviation?: string | null;
   /** The customer's active Parkplätze in display order (NUD-144); absent in older answers. */
   parkingSpots?: SyncParkingSpot[];
+  /** Cash the server has recorded for the stop (D33); absent in answers of older servers. */
+  collectedCents?: number | null;
 };
 
 export type SyncParkingSpot = {
@@ -168,6 +181,9 @@ export function parseSyncResponse(raw: unknown): SyncResponse | null {
         (s.hasKey !== undefined && s.hasKey !== null && typeof s.hasKey !== "boolean") ||
         (s.keyNumber !== undefined && !isNullableString(s.keyNumber)) ||
         (s.abbreviation !== undefined && !isNullableString(s.abbreviation)) ||
+        (s.collectedCents !== undefined &&
+          s.collectedCents !== null &&
+          typeof s.collectedCents !== "number") ||
         (s.parkingSpots !== undefined && parseParkingSpots(s.parkingSpots) === null)
       ) {
         return null;
@@ -180,6 +196,9 @@ export function parseSyncResponse(raw: unknown): SyncResponse | null {
         ...(s.hasKey !== undefined ? { hasKey: s.hasKey as boolean | null } : {}),
         ...(s.keyNumber !== undefined ? { keyNumber: s.keyNumber as string | null } : {}),
         ...(s.abbreviation !== undefined ? { abbreviation: s.abbreviation as string | null } : {}),
+        ...(s.collectedCents !== undefined
+          ? { collectedCents: s.collectedCents as number | null }
+          : {}),
         ...(s.parkingSpots !== undefined
           ? { parkingSpots: parseParkingSpots(s.parkingSpots)! }
           : {}),

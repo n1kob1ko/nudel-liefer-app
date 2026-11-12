@@ -51,6 +51,8 @@ const row = (
   status: "CONFIRMED",
   source: "MANUAL",
   fromRecurring: false,
+  paymentTerm: "MONTHLY",
+  amountCents: null,
   customer: { id: `c-${id}`, customerNumber: `K-${id}`, name: `Kunde ${id}` },
   items: [
     {

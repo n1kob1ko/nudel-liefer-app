@@ -230,6 +230,13 @@ The code is verified locally with substitutes; these need your accounts:
 
 ## 14. Self-hosted ORS and Photon (dev PC + tunnel)
 
+> **⛔ OBSOLETE since 2026-11-04 — read as history, not as instructions.**
+> openrouteservice and Photon now run **on the dedicated server `65.109.100.79`** itself
+> (containers `nudel-ors`, `photon-austria`, plus `nominatim` as Photon's data source), reached as
+> `127.0.0.1:8082` / `127.0.0.1:2322`. There is **no reverse SSH tunnel any more**, and the old
+> vServer `87.106.60.131` (and its 2 GB RAM constraint) is retired. `tunnel.ps1` now exits with an
+> explanation instead of forwarding. To operate the services, work on the server, not on the dev PC.
+
 Routing and geocoding run on the **development PC** (`deploy/local-services/README.md`), not on the
 vServer. Everything below is on that PC unless it says otherwise.
 

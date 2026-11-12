@@ -42,6 +42,7 @@ import { driverTime } from "./driver-time";
 import { ParkingSetButton } from "./parking-setter";
 import { RefreshOnFocus } from "./refresh-on-focus";
 import { stopText } from "./stop-i18n-fallback";
+import { StopPayment } from "./stop-payment";
 import { StopPhotos } from "./stop-photos";
 import { StopStatusActions } from "./stop-status-actions";
 
@@ -268,6 +269,8 @@ export function StopDetail({
       <ParkingSpotsCard spots={stop.parkingSpots ?? []} stop={stop} tiles={tiles} />
 
       <DeliveryCard items={stop.items} fmt={fmt} locale={locale} />
+
+      <StopPayment stop={stop} />
 
       <StopPhotos
         photos={photos}

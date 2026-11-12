@@ -250,6 +250,7 @@
     },
     "nav": {
       "dashboard": "Übersicht",
+      "planning": "Tagesplanung",
       "orders": "Bestellungen",
       "tours": "Touren",
       "customers": "Kunden",
@@ -262,7 +263,101 @@
         "masterData": "Stammdaten",
         "system": "System"
       },
-      "vehicles": "Fahrzeuge"
+      "vehicles": "Fahrzeuge",
+      "payments": "Zahlungen"
+    },
+    "planning": {
+      "title": "Tagesplanung",
+      "description": "Die Stammtouren für einen Liefertag: dieselben Kunden wie immer, Mengen hier direkt anpassen oder einen Kunden für diesen Tag hinzufügen.",
+      "save": "Mengen speichern",
+      "saving": "Speichern …",
+      "saved": "{count, plural, one {# Bestellung gespeichert.} other {# Bestellungen gespeichert.}}",
+      "savedMerged": "{count, plural, one {# doppelte Bestellung zusammengeführt.} other {# doppelte Bestellungen zusammengeführt.}}",
+      "savedNothing": "Keine Änderung: Es wurde nichts gespeichert.",
+      "readOnly": {
+        "released": {
+          "title": "Touren dieses Tages sind freigegeben",
+          "body": "Sobald eine Tour freigegeben ist, arbeitet der Fahrer mit den freigegebenen Mengen. Mengen ändern Sie über „Bearbeiten“ auf der Tourenseite."
+        },
+        "past": {
+          "title": "Vergangener Liefertag",
+          "body": "Die Bestellungen dieses Tages sind Geschichte und können hier nicht mehr geändert werden."
+        },
+        "toTours": "Zur Tourenplanung"
+      },
+      "noRoutes": {
+        "title": "Noch keine Stammtour",
+        "body": "Stammtouren sind feste Kundengruppen mit einem festen Fahrer. Mit „Stammtouren bearbeiten“ legen Sie die erste an."
+      },
+      "columns": {
+        "customer": "Kunde",
+        "weight": "Gewicht",
+        "state": "Status",
+        "total": "Gesamt"
+      },
+      "state": {
+        "nothing": "nichts bestellt",
+        "fromRule": "aus Dauerbestellung",
+        "cancelled": "storniert",
+        "merged": "mehrere Bestellungen"
+      },
+      "route": {
+        "summary": "{count, plural, one {# Kunde} other {# Kunden}} · {weight} kg",
+        "driver": "Fahrer (Stammtour)",
+        "noDriver": "Kein Fahrer",
+        "driverSaved": "Fahrer der Stammtour geändert.",
+        "empty": "Diese Stammtour hat noch keine Kunden.",
+        "ruleHint": "Mit „aus Dauerbestellung“ gefüllte Zeilen werden erst mit „Mengen speichern“ zu Bestellungen."
+      },
+      "offRoute": {
+        "title": "Nicht in einer Stammtour",
+        "body": "Kunden ohne Stammtour mit Bestellung für diesen Tag. „Hinzufügen“ legt eine Bestellung nur für diesen Liefertag an – die Stammtouren bleiben unverändert.",
+        "search": "Kunde suchen (Name, Nummer, Ort)",
+        "onlyWithOrder": "Nur mit Bestellung",
+        "empty": "Kein Kunde gefunden.",
+        "add": "Hinzufügen"
+      },
+      "errors": {
+        "generic": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
+        "invalid": "Ungültige Eingabe.",
+        "date_in_past": "Für vergangene Tage können keine Mengen geändert werden.",
+        "tour_released": "Eine Tour dieses Tages ist schon freigegeben. Bitte die Mengen auf der Tourenseite über „Bearbeiten“ ändern.",
+        "customer_not_found": "Ein Kunde wurde nicht gefunden. Bitte die Seite neu laden.",
+        "customer_inactive": "Ein Kunde ist inaktiv. Bitte die Seite neu laden.",
+        "product_not_found": "Ein Produkt wurde nicht gefunden. Bitte die Seite neu laden.",
+        "product_inactive": "Ein Produkt ist nicht mehr aktiv. Bitte die Seite neu laden."
+      },
+      "manage": {
+        "open": "Stammtouren bearbeiten",
+        "title": "Stammtouren",
+        "description": "Feste Kundengruppen mit festem Fahrer. Jeder Kunde gehört zu genau einer Stammtour; sie erscheint an jedem Liefertag mit denselben Kunden.",
+        "new": "+ Stammtour",
+        "name": "Name",
+        "namePlaceholder": "z. B. Stammtour 1",
+        "driver": "Fahrer",
+        "customers": "Kunden",
+        "selected": "{count} ausgewählt",
+        "search": "Kunde suchen",
+        "noMatch": "Kein Kunde gefunden.",
+        "inOther": "in einer anderen Stammtour",
+        "archive": "Stammtour archivieren",
+        "created": "Stammtour angelegt.",
+        "saved": "Stammtour gespeichert.",
+        "archived": "Stammtour archiviert. Die Kunden stehen jetzt unten in der Liste.",
+        "cancel": "Schließen",
+        "save": "Speichern",
+        "saving": "Speichern …",
+        "errors": {
+          "invalid": "Bitte einen Namen angeben.",
+          "not_found": "Die Stammtour wurde nicht gefunden.",
+          "name_taken": "Diesen Namen hat schon eine andere Stammtour.",
+          "too_many": "Es gibt zu viele Stammtouren.",
+          "driver_invalid": "Dieser Fahrer ist nicht aktiv.",
+          "customer_not_found": "Ein Kunde wurde nicht gefunden.",
+          "customer_inactive": "Ein Kunde ist inaktiv.",
+          "customer_in_other": "Ein Kunde gehört schon zu einer anderen Stammtour."
+        }
+      }
     },
     "drivers": {
       "title": "Fahrer",
@@ -1220,7 +1315,14 @@
         "import": {
           "toggle": "Nachricht oder Screenshot",
           "optional": "Optional: Die KI füllt daraus einen Entwurf."
-        }
+        },
+        "paymentTerm": "Zahlungsart",
+        "paymentTermHint": "Monatsrechnung ist der Standard; „Bar bei Lieferung“ nimmt der Fahrer am Stopp ein.",
+        "paymentMonthly": "Monatsrechnung (Sammelrechnung)",
+        "paymentCash": "Bar bei Lieferung",
+        "amount": "Betrag",
+        "amountHint": "Betrag dieser Bestellung in Euro, z. B. 42,50. Leer = noch kein Betrag (erscheint auf der Monatsrechnung als „ohne Betrag“).",
+        "amountInvalid": "Bitte einen Betrag wie 42 oder 42,50 eingeben (höchstens zwei Nachkommastellen)."
       },
       "detail": {
         "title": "Bestellung",
@@ -1333,7 +1435,11 @@
         "label": "Lieferzeitraum"
       },
       "fromRecurring": "aus Dauerbestellung",
-      "newDescription": "Kunde und Produkte wählen, Lieferung prüfen, speichern."
+      "newDescription": "Kunde und Produkte wählen, Lieferung prüfen, speichern.",
+      "paymentTerm": "Zahlung",
+      "paymentMonthly": "Monatsrechnung",
+      "paymentCash": "Bar bei Lieferung",
+      "amountNone": "Kein Betrag eingetragen"
     },
     "tours": {
       "title": "Touren",
@@ -1727,7 +1833,11 @@
           "driver": "vom Fahrer aufgenommen"
         }
       },
-      "unknownActor": "Unbekannter Benutzer"
+      "unknownActor": "Unbekannter Benutzer",
+      "money": {
+        "collected": "Kassiert",
+        "due": "fällig {amount}"
+      }
     },
     "utilization": {
       "title": "Auslastung",
@@ -1832,6 +1942,84 @@
       },
       "errors": {
         "generic": "Etwas ist schiefgelaufen. Bitte erneut versuchen."
+      }
+    },
+    "payments": {
+      "title": "Zahlungen",
+      "description": "Offene Bareinnahmen und offene Monatsrechnungen. Bar kassiert der Fahrer am Stopp, Monatsrechnungen markiert das Büro als bezahlt.",
+      "summary": "Übersicht offener Beträge",
+      "backToPayments": "Zurück zu den Zahlungen",
+      "monthLabel": "{month}",
+      "columns": {
+        "date": "Liefertag",
+        "customer": "Kunde",
+        "driver": "Fahrer",
+        "due": "Fällig",
+        "collected": "Kassiert",
+        "open": "Offen",
+        "month": "Monat",
+        "orders": "Bestellungen",
+        "total": "Summe",
+        "amount": "Betrag",
+        "items": "Produkte",
+        "noDriver": "Kein Fahrer"
+      },
+      "cash": {
+        "title": "Offene Barzahlungen",
+        "body": "Stopps mit „Bar bei Lieferung“, bei denen der Fahrer noch nichts oder weniger als den Betrag eingenommen hat.",
+        "openTotal": "Offen in bar ({count})",
+        "emptyTitle": "Keine offenen Barzahlungen",
+        "emptyBody": "Alle Bar-Bestellungen sind kassiert oder noch nicht geliefert.",
+        "toTour": "Zur Tour"
+      },
+      "monthly": {
+        "title": "Offene Monatsrechnungen",
+        "body": "Abgelaufene Monate mit Bestellungen auf Monatsrechnung, die noch nicht als bezahlt markiert sind.",
+        "openTotal": "Offen auf Monatsrechnung ({count})",
+        "emptyTitle": "Keine offenen Monatsrechnungen",
+        "emptyBody": "Für alle abgelaufenen Monate ist „bezahlt“ vermerkt.",
+        "open": "Rechnung öffnen",
+        "noAmount": "{count} ohne Betrag"
+      },
+      "paid": {
+        "title": "Bezahlt vermerkt",
+        "body": "Die letzten Monate, die das Büro als bezahlt markiert hat.",
+        "badge": "Bezahlt"
+      },
+      "state": {
+        "open": "Offen",
+        "paid": "Bezahlt",
+        "current": "Laufender Monat"
+      },
+      "bill": {
+        "title": "Monatsrechnung {customer}",
+        "description": "Sammelrechnung für {month}.",
+        "totalHeading": "Summe des Monats",
+        "customerLine": "{number} · {city}",
+        "paidOn": "Bezahlt am {date} über {amount}",
+        "ordersHeading": "Bestellungen des Monats",
+        "ordersCount": "{count} Bestellungen auf Monatsrechnung",
+        "emptyTitle": "Keine Bestellungen in diesem Monat",
+        "emptyBody": "Für diesen Monat gibt es keine bestätigten Bestellungen auf Monatsrechnung.",
+        "currentMonth": "Der Monat läuft noch; als bezahlt markieren geht ab dem 1. des Folgemonats.",
+        "noAmount": "ohne Betrag"
+      },
+      "note": "Notiz (freiwillig)",
+      "notePlaceholder": "z. B. bar beglichen oder Überweisung am 3.",
+      "mark": "Als bezahlt markieren",
+      "marking": "Wird gespeichert …",
+      "unmark": "Bezahlt-Markierung zurücknehmen",
+      "print": "Drucken",
+      "toast": {
+        "marked": "Monat als bezahlt vermerkt.",
+        "unmarked": "Bezahlt-Markierung zurückgenommen."
+      },
+      "errors": {
+        "generic": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
+        "invalid": "Ungültige Eingabe.",
+        "not_found": "Der Eintrag wurde nicht gefunden.",
+        "nothing_to_pay": "Für diesen Monat gibt es nothing zu bezahlen (keine Bestellungen oder der Monat läuft noch).",
+        "conflict": "Der Eintrag wurde gleichzeitig geändert. Bitte neu laden."
       }
     }
   },
@@ -2087,7 +2275,8 @@
       "mutationLoading": "Checkliste geöffnet",
       "mutationDepart": "Abfahrt",
       "outboxWaitingForConnection": "{count, plural, one {# Eingabe wartet auf Verbindung – es wird gerade nichts gesendet.} other {# Eingaben warten auf Verbindung – es wird gerade nichts gesendet.}}",
-      "outboxUnreachable": "Der Server ist gerade nicht erreichbar. Die Eingaben bleiben auf dem Gerät und werden automatisch erneut gesendet."
+      "outboxUnreachable": "Der Server ist gerade nicht erreichbar. Die Eingaben bleiben auf dem Gerät und werden automatisch erneut gesendet.",
+      "mutationPayment": "Barzahlung"
     },
     "unitsTotal": {
       "KG": "kg",
@@ -2177,6 +2366,24 @@
       "empty": "Nichts zu prüfen. Du kannst losfahren.",
       "emptyTrip": "Nichts zu prüfen.",
       "storageError": "Speichern auf dem Gerät nicht möglich. Bitte erneut versuchen."
+    },
+    "payment": {
+      "title": "Barzahlung",
+      "due": "Bei Lieferung zu kassieren: {amount}",
+      "collectedBadge": "{amount} kassiert",
+      "collected": "Kassiert: {amount}",
+      "short": "{amount} fehlen noch",
+      "over": "{amount} mehr als fällig",
+      "change": "Betrag ändern",
+      "amountLabel": "Kassierter Betrag",
+      "save": "Kassiert",
+      "saved": "Kassiert bei {name}",
+      "needDelivery": "Erst „Geliefert“ antippen, dann den Betrag eintragen.",
+      "cancel": "Abbrechen",
+      "errors": {
+        "storage": "Speichern auf dem Handy nicht möglich. Bitte erneut versuchen.",
+        "amount": "Bitte einen Betrag wie 42 oder 42,50 eingeben."
+      }
     }
   },
   "pwa": {
