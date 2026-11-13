@@ -120,8 +120,9 @@ The database of the old server listens on `127.0.0.1` only, so the copy has to b
 3. Database (replaces whatever the Railway database holds):
 
    ```bash
+   set -a; . /etc/delivery-app.env; set +a
    read -rs -p "Railway DATABASE_PUBLIC_URL: " TARGET; echo
-   sudo -u postgres pg_dump -Fc --no-owner --no-acl nudel > /root/nudel-move.dump
+   pg_dump -Fc --no-owner --no-acl "$DATABASE_URL" > /root/nudel-move.dump
    pg_restore --clean --if-exists --no-owner --no-acl -d "$TARGET" /root/nudel-move.dump
    rm /root/nudel-move.dump
    ```
