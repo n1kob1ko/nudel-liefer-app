@@ -155,8 +155,9 @@ async function Guarded({
             key={entry}
             href={hrefFor(entry, day)}
             aria-current={entry === period ? "page" : undefined}
+            // The shown period is a selection, not the next action: pale yolk, never the yolk fill.
             className={cn(
-              buttonVariants({ variant: entry === period ? "default" : "outline" }),
+              buttonVariants({ variant: entry === period ? "secondary" : "outline" }),
               "min-w-24",
             )}
             data-testid={`utilization-period-${entry}`}
@@ -166,26 +167,27 @@ async function Guarded({
         ))}
       </nav>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="gap-1 p-4">
-          <p className="text-sm text-muted-foreground">{t("actual")}</p>
-          <p className="text-2xl font-semibold tabular-nums" data-testid="utilization-actual">
+      {/* One strip with hairlines, like the figures of the overview. */}
+      <dl className="grid gap-px overflow-hidden rounded-xl border border-border bg-border shadow-xs sm:grid-cols-3">
+        <div className="flex flex-col gap-1 bg-card px-5 py-4">
+          <dt className="text-sm text-muted-foreground">{t("actual")}</dt>
+          <dd className="text-2xl font-semibold tabular-nums" data-testid="utilization-actual">
             {minutes(report.totals.actualMinutes)}
-          </p>
-        </Card>
-        <Card className="gap-1 p-4">
-          <p className="text-sm text-muted-foreground">{t("contract")}</p>
-          <p className="text-2xl font-semibold tabular-nums" data-testid="utilization-contract">
+          </dd>
+        </div>
+        <div className="flex flex-col gap-1 bg-card px-5 py-4">
+          <dt className="text-sm text-muted-foreground">{t("contract")}</dt>
+          <dd className="text-2xl font-semibold tabular-nums" data-testid="utilization-contract">
             {minutes(report.totals.contractMinutes)}
-          </p>
-        </Card>
-        <Card className="gap-1 p-4">
-          <p className="text-sm text-muted-foreground">{t("percent")}</p>
-          <p className="text-2xl font-semibold tabular-nums" data-testid="utilization-percent">
+          </dd>
+        </div>
+        <div className="flex flex-col gap-1 bg-card px-5 py-4">
+          <dt className="text-sm text-muted-foreground">{t("percent")}</dt>
+          <dd className="text-2xl font-semibold tabular-nums" data-testid="utilization-percent">
             {totalPercent === null ? "—" : percent(totalPercent)}
-          </p>
-        </Card>
-      </div>
+          </dd>
+        </div>
+      </dl>
 
       <Card>
         <CardHeader>
