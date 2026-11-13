@@ -1,4 +1,4 @@
-import { getTranslations, setRequestLocale } from "next-intl/server";
+import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense } from "react";
 
 import { PageHeader } from "@/components/admin/page-header";
@@ -6,7 +6,7 @@ import { StandingPlan } from "@/components/admin/standing-plan";
 import { StandingToursDialog } from "@/components/admin/standing-tours-dialog";
 import { TourDateField } from "@/components/admin/tour-date-field";
 import { LoadingSkeleton } from "@/components/shared/states";
-import { formatCalendarDate } from "@/domain/order";
+import { formatCalendarDate, parseCalendarDate } from "@/domain/order";
 import { requirePageActor } from "@/server/auth/page-guards";
 import { getDb } from "@/server/db";
 import { todayIn } from "@/server/orders";
@@ -35,12 +35,22 @@ async function Guarded({
   const fallback = formatCalendarDate(await getDefaultDeliveryDate());
   const plan = await standingDayQuery(getDb(), requested ?? fallback, today);
   const drivers = await listActiveDrivers(getDb());
+  // The weekday in words: "Montag, 16. November" says more to the office than a date field.
+  const day = parseCalendarDate(plan.date);
+  const dayText = day
+    ? (await getFormatter()).dateTime(day, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        timeZone: "UTC",
+      })
+    : plan.date;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title={t("title")}
-        description={t("description")}
+        description={<span data-testid="planning-day">{t("day", { date: dayText })}</span>}
         titleTestId="planning-title"
         actions={
           <>

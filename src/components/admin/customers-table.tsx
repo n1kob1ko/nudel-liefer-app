@@ -47,23 +47,6 @@ type Filters = {
   parkingMissing: boolean;
 };
 
-/** Initials avatars use the soft tone pairs of the design system (never a hard-coded colour). */
-const AVATAR_TONES = [
-  "bg-primary-soft text-primary-soft-foreground",
-  "bg-success-soft text-success-soft-foreground",
-  "bg-warning-soft text-warning-soft-foreground",
-  "bg-info-soft text-info-soft-foreground",
-  "bg-destructive-soft text-destructive-soft-foreground",
-  "bg-muted text-foreground",
-] as const;
-
-/** Deterministic tone from the customer number, so a customer always keeps the same colour. */
-function avatarTone(customerNumber: string): string {
-  let hash = 0;
-  for (const char of customerNumber) hash = (hash * 31 + char.charCodeAt(0)) % 997;
-  return AVATAR_TONES[hash % AVATAR_TONES.length]!;
-}
-
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);
   return parts
@@ -120,7 +103,7 @@ export function CustomersTable({
   return (
     <div className="flex flex-col gap-3">
       <Table data-testid="customers-table" aria-label={t("title")}>
-        <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur-sm [&_th]:bg-muted/95">
+        <TableHeader className="sticky top-0 z-10 bg-muted [&_th]:bg-muted">
           <TableRow>
             <TableHead className="max-md:w-full">{t("columns.customer")}</TableHead>
             <TableHead className="max-md:hidden">{t("columns.number")}</TableHead>
@@ -189,7 +172,8 @@ function CustomerRow({ customer }: { customer: CustomerListRow }) {
         <div className="flex min-w-0 items-center gap-3">
           <span
             aria-hidden
-            className={`flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${avatarTone(customer.customerNumber)}`}
+            // Neutral on purpose: a colour per customer would read as a status (DESIGN.md, rule 3).
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground"
           >
             {initials(customer.name)}
           </span>

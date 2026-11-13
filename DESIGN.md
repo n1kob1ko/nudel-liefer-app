@@ -121,6 +121,37 @@ More rules that apply everywhere:
   card. Nothing animates when the screen is merely opened again.
 - One 12 px gap between the blocks of a screen, one radius (`rounded-xl`) for its cards.
 
+## Office
+
+- **The menu highlight travels.** The active entry of the sidebar and of the bottom bar is one pale
+  yolk pill that moves to the new section (rule 20). Entries scale to 0.98 while pressed.
+- **The overview is built for two or three drivers at once** (`DayBoard`):
+  - one strip of figures for the day: stops done, drivers on the road, problems, when the last
+    driver is back, the next delivery day. One card with hairlines, not five cards;
+  - every reported problem is a red row above everything else, with customer, reason, driver, time
+    and a way to the tour. No problem, no row;
+  - one lane per driver: who, vehicle, state, "7 von 20", expected end, a bead per stop (green
+    delivered, red square problem, yolk the next one), the next stop, "pünktlich" or "12 Min.
+    später" (orange from five minutes), the last ticked stop. The whole lane opens the tour;
+  - the map shows each driver at the stop he ticked off last. There is no live GPS and the card
+    says so. The same is listed in words below the map.
+- **One yolk button on the overview:** "Neue Bestellung".
+- **Motion:** lanes arrive 30 ms apart; a delivery that comes in while the page is open is
+  confirmed by one ring around that driver's count. The page re-reads itself every 30 s.
+- A finished tour reads "Abgeschlossen" everywhere, the same word as on the tour page.
+- **Figures are one strip,** not a row of cards: one bordered surface with hairlines between the
+  cells (overview, tour, payments, utilization).
+- **Lists are calm.** Initials are grey, "Aktiv" is grey: a colour in a list row is a status.
+  A selection (period, tour tab) is pale yolk, never the yolk fill.
+- **Day planning is a sheet.** A zero recedes, a quantity is bold, Enter and the arrow keys walk a
+  column, and the bar at the bottom sums the day while typing.
+- **Ctrl+K / ⌘K opens the command menu** from every office page: every section plus "Neue
+  Bestellung" and "Neuer Kunde". It opens without motion because it is used all day.
+- Sticky bars are solid surfaces. No blur.
+- **A page change is a short cross-fade of the content** (120 ms out, 150 ms in, opacity only,
+  `ViewTransition` in `AdminShell`). Menu and top bar do not take part; a new filter or date on
+  the same page does not fade. The driver app has no page transition.
+
 ## Do and don't
 
 - Do put the important action in yolk and leave the others white.

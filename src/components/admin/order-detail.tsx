@@ -143,7 +143,7 @@ export function OrderDetailView({
                   <>
                     <Link
                       href={`/admin/tours?date=${order.tour.date}&tour=${order.tour.tourId}`}
-                      className="underline underline-offset-4"
+                      className="link"
                       data-testid="detail-tour-link"
                     >
                       {order.status === "CANCELLED" ? td("wasInTour") : td("inTourLink")}

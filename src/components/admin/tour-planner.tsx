@@ -5,14 +5,13 @@ import {
   ArrowUpIcon,
   CheckIcon,
   ChevronRightIcon,
-  CircleDashedIcon,
+  CircleAlertIcon,
   ClockIcon,
   GripVerticalIcon,
   ImageOffIcon,
   InfoIcon,
   LockIcon,
   LockOpenIcon,
-  MapPinIcon,
   MapPinOffIcon,
   PencilIcon,
   PrinterIcon,
@@ -20,11 +19,10 @@ import {
   RocketIcon,
   RouteIcon,
   TriangleAlertIcon,
-  UserIcon,
   WarehouseIcon,
 } from "lucide-react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
-import { Fragment, useEffect, useRef, useState, useTransition } from "react";
+import { Fragment, type ReactNode, useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { TourMapLazy } from "@/components/maps/lazy";
@@ -52,7 +50,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { StatTile } from "@/components/ui/stat-tile";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { canEditTour } from "@/domain/tour-edit";
 import { durationParts, isTourEditable, moveItem, releaseBlocker } from "@/domain/tour-plan";
@@ -85,14 +83,6 @@ import { TourLoad } from "./tour-load";
 
 const selectClass = "h-10 min-w-56 field rounded-md border border-input bg-card px-3 text-base";
 
-/**
- * One compact KPI row at ≥ 1280 px (round-3 review: two rows of full-height tiles filled the whole
- * 1280×800 viewport, so the map and the stop list started below the fold). `StatTile` is a shared
- * kit component and has no density prop, so the strip scales its internals down from the outside —
- * the arbitrary variants win on specificity, not on class order.
- */
-const KPI_TILE = "xl:[&_span.text-3xl]:text-lg xl:[&_.size-10]:size-8 xl:[&_svg]:size-4";
-
 /** The four office steps (re-design.md §8.4); a released tour is on step 3 of 4. */
 const TOUR_STEPS = [
   { id: "DRAFT", label: "draft" },
@@ -107,16 +97,6 @@ function stepIndex(status: string): number {
   if (status === "RELEASED" || status === "IN_PROGRESS") return 2;
   if (status === "COMPLETED") return 3;
   return 0;
-}
-
-/** Up to two initials for a name ("Anna Berger" -> "AB"); empty string for an empty name. */
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.slice(0, 1).toUpperCase())
-    .join("");
 }
 
 /**
@@ -517,8 +497,8 @@ export function TourPlanner({
         ) : null}
 
         {/* Header block (§8.4): state, stepper, the state's primary action and the tool row. */}
-        <section className="flex flex-col gap-4" aria-label={t("title")}>
-          <div className="flex flex-wrap items-center gap-3">
+        <section className="flex flex-col gap-3" aria-label={t("title")}>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <StatusBadge tone={tourTone(tour.status)} icon={tourIcon(tour.status)} size="lg">
               <span data-testid="tour-status">{tc(`statuses.tour.${tour.status}`)}</span>
             </StatusBadge>
@@ -541,9 +521,11 @@ export function TourPlanner({
                 })}
               </span>
             ) : null}
+            {/* The stepper shares the status row from `xl` on: one line instead of two blocks. */}
+            <div className="basis-full xl:ms-auto xl:basis-auto">
+              <StatusStepper current={currentStep} />
+            </div>
           </div>
-
-          <StatusStepper current={currentStep} />
 
           <div className="flex flex-wrap items-center gap-2">
             {!editable ? (
@@ -590,17 +572,14 @@ export function TourPlanner({
           </div>
 
           {!editable ? (
-            <Alert variant="info" data-testid="tour-readonly">
-              <InfoIcon aria-hidden />
-              <AlertTitle>{t("releasedNotice")}</AlertTitle>
-              {driver || vehicle ? (
-                <AlertDescription>
-                  {driver ? `${t("driver")}: ${driver.displayName}` : null}
-                  {driver && vehicle ? " · " : null}
-                  {vehicle ? `${t("vehicle")}: ${vehicle.name}` : null}
-                </AlertDescription>
-              ) : null}
-            </Alert>
+            // One quiet line, not a box: driver and vehicle are in the summary below.
+            <p
+              className="flex items-center gap-2 text-sm text-muted-foreground"
+              data-testid="tour-readonly"
+            >
+              <InfoIcon className="size-4 shrink-0" aria-hidden />
+              {t("releasedNotice")}
+            </p>
           ) : (
             <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
               <PlanDayDialog plan={plan} disabled={busy || locked} />
@@ -672,42 +651,49 @@ export function TourPlanner({
           )}
         </section>
 
-        <TourLoad
-          loadKg={tour.loadKg}
-          tripLoadsKg={tour.tripLoadsKg}
-          capacityKg={vehicle?.capacityKg ?? null}
-          vehicleName={vehicle?.name ?? null}
-          tripVehicles={tripVehicles.map((v) =>
-            v ? { name: v.name, capacityKg: v.capacityKg } : null,
-          )}
-        />
-
-        {/* KPI strip (§8.4): one row from 1280 px on so the map and the stop list stay above the
-            fold (round-3 review); the "Näherungswerte" hint lives in a tooltip on Dauer / Strecke. */}
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" data-testid="tour-kpis">
-          <StatTile
-            label={t("stopsHeading")}
-            value={tour.stops.length}
-            icon={MapPinIcon}
-            className={KPI_TILE}
-          />
-          <StatTile
-            label={t("summary.duration")}
-            value={durationText}
-            sub={
-              tour.approximate ? (
-                <ApproximateHint
-                  label={t("approximate")}
-                  hint={t("approximateHint")}
-                  testId="tour-approximate"
-                />
-              ) : undefined
-            }
-            icon={ClockIcon}
-            tone="info"
-            className={KPI_TILE}
-          />
-          <StatTile
+        {/* Summary (redesign RD2): what used to be the load card, five tiles and the progress block
+            is one card with hairlines, so the stop list and the map start right below it. */}
+        <dl
+          className="grid gap-px overflow-hidden rounded-xl border border-border bg-border shadow-xs sm:grid-cols-2 xl:grid-cols-[minmax(0,1.5fr)_repeat(3,minmax(0,1fr))_minmax(0,1.7fr)]"
+          data-testid="tour-kpis"
+        >
+          <Fact
+            label={results ? t("progress.shortLabel") : t("stopsHeading")}
+            value={results ? `${progress.done} / ${progress.total}` : tour.stops.length}
+            tone={results && progress.problems > 0 ? "destructive" : undefined}
+          >
+            {hasStops ? (
+              <>
+                {results ? (
+                  <ProgressBar
+                    delivered={progress.delivered}
+                    problems={progress.problems}
+                    total={progress.total}
+                    label={t("progress.label")}
+                    valueText={t("progress.summary", {
+                      done: progress.done,
+                      total: progress.total,
+                    })}
+                  />
+                ) : null}
+                <span data-testid="tour-progress-text">
+                  {t("progress.summary", { done: progress.done, total: progress.total })}
+                  {" · "}
+                  {t("progress.problems", { count: progress.problems })}
+                </span>
+              </>
+            ) : null}
+          </Fact>
+          <Fact label={t("summary.duration")} value={durationText}>
+            {tour.approximate ? (
+              <ApproximateHint
+                label={t("approximate")}
+                hint={t("approximateHint")}
+                testId="tour-approximate"
+              />
+            ) : null}
+          </Fact>
+          <Fact
             label={t("summary.distance")}
             value={
               tour.totalDistanceM !== null
@@ -716,67 +702,31 @@ export function TourPlanner({
                   })
                 : "–"
             }
-            sub={
-              tour.approximate ? (
-                // NUD-145: the same words as under "Gesamtdauer" instead of a bare warning icon —
-                // an icon alone never explained what is approximate.
-                <ApproximateHint
-                  label={t("approximate")}
-                  hint={t("approximateHint")}
-                  testId="tour-approximate-distance"
-                />
-              ) : undefined
-            }
-            icon={RouteIcon}
-            className={KPI_TILE}
-          />
-          <StatTile
-            label={t("driver")}
-            value={driver ? driver.displayName : t("driverNone")}
-            sub={
-              driver ? (
-                <span
-                  aria-hidden
-                  className={cn(
-                    "inline-flex size-7 items-center justify-center rounded-full text-xs font-semibold",
-                    toneClasses.primary,
-                  )}
-                >
-                  {initials(driver.displayName)}
-                </span>
-              ) : undefined
-            }
-            icon={UserIcon}
-            className={KPI_TILE}
-          />
-          <StatTile
-            label={t("progress.shortLabel")}
-            value={`${progress.done}/${progress.total}`}
-            sub={t("progress.problems", { count: progress.problems })}
-            icon={CircleDashedIcon}
-            tone={progress.problems > 0 ? "destructive" : "neutral"}
-            className={KPI_TILE}
-          />
-        </div>
-
-        {hasStops ? (
-          <div className="flex flex-col gap-2">
-            {results ? (
-              <ProgressBar
-                delivered={progress.delivered}
-                problems={progress.problems}
-                total={progress.total}
-                label={t("progress.label")}
-                valueText={t("progress.summary", { done: progress.done, total: progress.total })}
+          >
+            {tour.approximate ? (
+              // NUD-145: the same words as under "Gesamtdauer" instead of a bare warning icon.
+              <ApproximateHint
+                label={t("approximate")}
+                hint={t("approximateHint")}
+                testId="tour-approximate-distance"
               />
             ) : null}
-            <p className="text-base font-medium" data-testid="tour-progress-text">
-              {t("progress.summary", { done: progress.done, total: progress.total })}
-              {" · "}
-              {t("progress.problems", { count: progress.problems })}
-            </p>
+          </Fact>
+          <Fact label={t("driver")} value={driver ? driver.displayName : t("driverNone")}>
+            {vehicle ? vehicle.name : t("vehicleNone")}
+          </Fact>
+          <div className="bg-card sm:col-span-2 xl:col-span-1">
+            <TourLoad
+              loadKg={tour.loadKg}
+              tripLoadsKg={tour.tripLoadsKg}
+              capacityKg={vehicle?.capacityKg ?? null}
+              vehicleName={vehicle?.name ?? null}
+              tripVehicles={tripVehicles.map((v) =>
+                v ? { name: v.name, capacityKg: v.capacityKg } : null,
+              )}
+            />
           </div>
-        ) : null}
+        </dl>
 
         {/* Two-pane body (§8.4): sticky map on the left, compact stop list on the right. */}
         <div className="grid gap-6 xl:grid-cols-[minmax(0,45fr)_minmax(0,55fr)]">
@@ -945,15 +895,32 @@ export function TourPlanner({
                           <span className="shrink-0 tabular-nums" data-testid="stop-items">
                             {t("stop.items", { count: stop.itemCount })}
                           </span>
-                          {stop.parkingMissing ? (
-                            <span
-                              className="inline-flex shrink-0 items-center gap-1 text-warning-soft-foreground"
-                              data-testid="stop-missing-parking-spot"
-                            >
-                              <MapPinOffIcon className="size-4" aria-hidden />
-                              {t("stop.noParkingSpot")}
-                            </span>
-                          ) : null}
+                          <MissingHints
+                            hints={[
+                              stop.parkingMissing
+                                ? {
+                                    testId: "stop-missing-parking-spot",
+                                    icon: MapPinOffIcon,
+                                    label: t("stop.noParkingSpot"),
+                                  }
+                                : null,
+                              !stop.hasStorePhoto
+                                ? {
+                                    testId: "stop-missing-store",
+                                    icon: ImageOffIcon,
+                                    label: t("stop.missingStore"),
+                                  }
+                                : null,
+                              !stop.hasParkingPhoto
+                                ? {
+                                    testId: "stop-missing-parking",
+                                    icon: ImageOffIcon,
+                                    label: t("stop.missingParking"),
+                                  }
+                                : null,
+                            ]}
+                            countLabel={(count) => t("stop.missingCount", { count })}
+                          />
                           {stop.timeWindow ? (
                             <span
                               className={
@@ -973,24 +940,6 @@ export function TourPlanner({
                                     from: stop.timeWindow.from,
                                     to: stop.timeWindow.to,
                                   })}
-                            </span>
-                          ) : null}
-                          {!stop.hasStorePhoto ? (
-                            <span
-                              className="inline-flex shrink-0 items-center gap-1 text-warning-soft-foreground"
-                              data-testid="stop-missing-store"
-                            >
-                              <ImageOffIcon className="size-4" aria-hidden />
-                              {t("stop.missingStore")}
-                            </span>
-                          ) : null}
-                          {!stop.hasParkingPhoto ? (
-                            <span
-                              className="inline-flex shrink-0 items-center gap-1 text-warning-soft-foreground"
-                              data-testid="stop-missing-parking"
-                            >
-                              <ImageOffIcon className="size-4" aria-hidden />
-                              {t("stop.missingParking")}
                             </span>
                           ) : null}
                           {stop.changeKind ? (
@@ -1206,6 +1155,106 @@ export function TourPlanner({
         </Dialog>
       </div>
     </TooltipProvider>
+  );
+}
+
+type MissingHint = { testId: string; icon: typeof ImageOffIcon; label: string };
+
+/**
+ * What a stop's master data still lacks (parking spot, shop photo, parking photo). One gap is
+ * written out; two or three become one chip ("3 fehlen") that opens the list, so a row carries one
+ * hint instead of three (redesign RD2). The chip's accessible name is the full list.
+ */
+function MissingHints({
+  hints,
+  countLabel,
+}: {
+  hints: ReadonlyArray<MissingHint | null>;
+  countLabel: (count: number) => string;
+}) {
+  const missing = hints.filter((hint): hint is MissingHint => hint !== null);
+  const [only] = missing;
+  if (!only) return null;
+  if (missing.length === 1) {
+    const Icon = only.icon;
+    return (
+      <span
+        className="inline-flex shrink-0 items-center gap-1 text-warning-soft-foreground"
+        data-testid={only.testId}
+      >
+        <Icon className="size-4" aria-hidden />
+        {only.label}
+      </span>
+    );
+  }
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          data-testid="stop-missing"
+          data-count={missing.length}
+          // The row is clickable and draggable: the chip only opens its own list.
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+          className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-full bg-warning-soft px-2 py-0.5 text-sm font-medium text-warning-soft-foreground outline-none transition-transform duration-[140ms] ease-out focus-visible:ring-2 focus-visible:ring-ring active:scale-[.97]"
+        >
+          <CircleAlertIcon className="size-4 shrink-0" aria-hidden />
+          <span aria-hidden>{countLabel(missing.length)}</span>
+          <span className="sr-only">
+            {missing.map((hint, index) => (
+              <span key={hint.testId} data-testid={hint.testId}>
+                {index > 0 ? ", " : ""}
+                {hint.label}
+              </span>
+            ))}
+          </span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-auto min-w-48 p-3">
+        <ul className="flex flex-col gap-1.5 text-sm">
+          {missing.map((hint) => {
+            const Icon = hint.icon;
+            return (
+              <li key={hint.testId} className="flex items-center gap-2">
+                <Icon className="size-4 shrink-0 text-warning" aria-hidden />
+                {hint.label}
+              </li>
+            );
+          })}
+        </ul>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** One figure of the tour summary: a label, a value and an optional line below it. */
+function Fact({
+  label,
+  value,
+  tone,
+  children,
+}: {
+  label: string;
+  value: ReactNode;
+  tone?: "destructive";
+  children?: ReactNode;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1 bg-card px-4 py-3">
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd
+        className={cn(
+          "truncate text-lg font-semibold tabular-nums",
+          tone === "destructive" && "text-destructive",
+        )}
+      >
+        {value}
+      </dd>
+      {children ? (
+        <dd className="flex flex-col gap-1.5 text-sm text-muted-foreground">{children}</dd>
+      ) : null}
+    </div>
   );
 }
 

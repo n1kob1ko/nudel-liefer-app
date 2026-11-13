@@ -68,7 +68,9 @@ export function ScheduleSummary({ schedule }: { schedule: readonly ScheduleDay[]
   const locale = useLocale();
   const names = weekdayNames(locale);
   const runs = summariseSchedule(schedule);
-  if (runs.length === 0) return <span className="text-muted-foreground">{t("none")}</span>;
+  if (runs.length === 0) {
+    return <span className="text-sm text-balance text-muted-foreground">{t("none")}</span>;
+  }
   return (
     <span className="text-sm" data-testid="driver-schedule">
       {formatScheduleRuns(runs, (weekday) => names[weekday] ?? String(weekday))}

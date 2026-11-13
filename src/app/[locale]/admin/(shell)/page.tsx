@@ -1,36 +1,32 @@
 import { addDays, format as formatDate, startOfWeek } from "date-fns";
 import {
-  CalendarDaysIcon,
   CheckCircle2Icon,
-  CircleAlertIcon,
-  CircleCheckIcon,
   ClipboardListIcon,
   ImageOffIcon,
   MapPinOffIcon,
-  RouteIcon,
-  TriangleAlertIcon,
+  PlusIcon,
 } from "lucide-react";
 import type { createFormatter } from "next-intl";
 import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense } from "react";
 
+import { DayBoard } from "@/components/admin/day-board";
+import { FleetMap } from "@/components/admin/fleet-map";
 import { PageHeader } from "@/components/admin/page-header";
-import { TodayCard } from "@/components/admin/today-card";
-import { TourGauge } from "@/components/admin/tour-gauge";
 import { WeekOrdersChart, type WeekOrdersDay } from "@/components/admin/week-orders-chart";
 import { EmptyState, LoadingSkeleton } from "@/components/shared/states";
-import { tourTone } from "@/components/shared/status";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
-import { StatTile } from "@/components/ui/stat-tile";
 import { formatCalendarDate, parseCalendarDate } from "@/domain/order";
-import { showsStopResults } from "@/domain/tour-progress";
 import { Link } from "@/i18n/navigation";
 import { type AppFormatters, createAppFormatters } from "@/lib/format";
+import { getMapTileConfig } from "@/lib/map-config";
 import { tourHistoryQuery } from "@/server/audit-queries";
 import { requirePageActor } from "@/server/auth/page-guards";
 import { listCustomersQuery } from "@/server/customer-queries";
+import { dayOverviewQuery } from "@/server/day-overview";
 import { orderOverviewQuery } from "@/server/order-queries";
-import { getDefaultDeliveryDate, getFactoryTimezone } from "@/server/settings";
+import { getDefaultDeliveryDate, getFactoryTimezone, getSettings } from "@/server/settings";
 import {
   getLivePollIntervalMs,
   type TodayProgress,
@@ -38,19 +34,15 @@ import {
 } from "@/server/tour-progress";
 
 /**
- * Dashboard "Übersicht" (re-design.md §8.2): an operations cockpit built from the data this page
- * already reads (`todayProgressQuery`) plus the audit history of today's tour. Stat tiles, today's
- * tour, what needs attention and the latest changes.
+ * Dashboard "Übersicht" (redesign RD2, step 3): today at a glance for an office with two or three
+ * drivers out at once. `DayBoard` shows the day's figures, every reported problem and one lane per
+ * driver (`dayOverviewQuery`); below it the week's confirmed orders, what is still to do in the
+ * master data and the latest changes.
  *
- * The "Zu erledigen" groups of §8.2.3 additionally reuse two existing read queries unchanged —
- * `orderOverviewQuery` (drafts of the next delivery day) and `listCustomersQuery` (customers whose
- * photos or Parkplatz are missing) — passed with filter inputs and read for their counts only
- * (`pageSize: 1`). No new aggregate and no new SQL: the same queries the Bestellungen and Kunden
- * pages use.
- *
- * Colour refresh 2026-10: a hero tile, a tile for the next delivery day, the week's confirmed orders
- * per day (`getDateTotals` through `orderOverviewQuery`, read for its `totals` only) and a
- * half-circle gauge of today's tour. Still no new aggregate and no new SQL.
+ * Besides the overview the page reuses existing read queries unchanged and reads them for their
+ * counts only: `orderOverviewQuery` (drafts of the next delivery day, the week's totals),
+ * `listCustomersQuery` (customers without photos or Parkplatz) and `todayProgressQuery` (orders
+ * that came after the tours were finished, the tour whose history is shown).
  */
 async function Dashboard({ locale }: { locale: string }) {
   await requirePageActor("admin", locale);
@@ -59,7 +51,11 @@ async function Dashboard({ locale }: { locale: string }) {
   const fmt = createAppFormatters(formatter, await getFactoryTimezone());
   const nextDeliveryDate = await getDefaultDeliveryDate();
   const nextDeliveryDay = formatCalendarDate(nextDeliveryDate);
-  const today = await todayProgressQuery();
+  const [today, overview, settings] = await Promise.all([
+    todayProgressQuery(),
+    dayOverviewQuery(),
+    getSettings(),
+  ]);
   const week = weekOf(today.date);
   const [missingPhotos, parkingMissing, drafts, weekOrders] = await Promise.all([
     listCustomersQuery({ status: "active", photosMissing: true, pageSize: 1 }),
@@ -71,8 +67,11 @@ async function Dashboard({ locale }: { locale: string }) {
     }),
     orderOverviewQuery({ from: week[0], to: week[week.length - 1] }),
   ]);
-  // Newest first, capped to the five shown. Only today's tour: a cross-tour feed has no query yet.
-  const activity = today.tour ? (await tourHistoryQuery(today.tour.id)).slice(0, 5) : [];
+  // The five latest changes of all of today's tours, newest first (ISO times sort as text).
+  const activity = (await Promise.all(overview.rows.map((row) => tourHistoryQuery(row.tourId))))
+    .flat()
+    .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0))
+    .slice(0, 5);
   const attention = {
     missingPhotos: missingPhotos.total,
     parkingMissing: parkingMissing.total,
@@ -90,10 +89,41 @@ async function Dashboard({ locale }: { locale: string }) {
     <div className="flex flex-col gap-6">
       <PageHeader
         title={t("admin.dashboard.title")}
-        description={t("admin.dashboard.description")}
+        description={fmt.dateLong(new Date(`${overview.date}T12:00:00Z`))}
         titleTestId="admin-title"
+        actions={
+          // The one yolk button of this page: taking an order is what the office does most.
+          <Link
+            href="/admin/orders/new"
+            className={buttonVariants()}
+            data-testid="dashboard-new-order"
+          >
+            <PlusIcon aria-hidden />
+            {t("admin.orders.new")}
+          </Link>
+        }
       />
-      <StatTiles today={today} nextDay={nextDay} fmt={fmt} t={t} />
+      <DayBoard
+        overview={overview}
+        nextDay={nextDay}
+        lateOrderCount={today.lateOrderCount}
+        pollIntervalMs={getLivePollIntervalMs()}
+        aside={
+          // Only once a tour was handed to a driver: a plan has no "where".
+          overview.rows.some((row) => row.phase !== "planning") ? (
+            <FleetMap
+              rows={overview.rows}
+              timezone={overview.timezone}
+              depot={
+                settings
+                  ? { lat: settings.depotLat, lng: settings.depotLng, label: settings.depotName }
+                  : null
+              }
+              tiles={getMapTileConfig()}
+            />
+          ) : undefined
+        }
+      />
       <div className="grid items-stretch gap-6 xl:grid-cols-3">
         <Card className="min-w-0 xl:col-span-2" data-testid="week-card">
           <CardHeader>
@@ -116,12 +146,6 @@ async function Dashboard({ locale }: { locale: string }) {
             />
           </CardContent>
         </Card>
-        <GaugePanel today={today} t={t} />
-      </div>
-      <div className="grid items-stretch gap-6 xl:grid-cols-3">
-        <div className="min-w-0 xl:col-span-2">
-          <TodayCard today={today} pollIntervalMs={getLivePollIntervalMs()} />
-        </div>
         <AttentionPanel today={today} attention={attention} fmt={fmt} t={t} />
       </div>
       <ActivityPanel entries={activity} fmt={fmt} t={t} />
@@ -165,135 +189,10 @@ function weekChartDays(
 }
 
 /**
- * The four KPI tiles (re-design.md §8.2, colour refresh 2026-10): today's progress as the hero tile,
- * problems, the next delivery day and today's tour status. All but the next-day tile link to today's
- * tour.
+ * "Zu erledigen": drafts of the next delivery day, late orders and gaps in the master data, all
+ * from existing read queries. Reported problems are not repeated here: they are the red rows at
+ * the top of the page.
  */
-function StatTiles({
-  today,
-  nextDay,
-  fmt,
-  t,
-}: {
-  today: TodayProgress;
-  nextDay: { date: string; confirmed: number; drafts: number };
-  fmt: AppFormatters;
-  t: Translate;
-}) {
-  const { tour } = today;
-  const tourHref = `/admin/tours?date=${today.date}`;
-  const progress = tour?.progress;
-  const problems = progress?.problems ?? 0;
-  const statusLabel = tour
-    ? t(`common.statuses.tour.${tour.status}`)
-    : t("admin.dashboard.tiles.noTour");
-
-  return (
-    <section
-      aria-label={t("admin.dashboard.tiles.title")}
-      // Four tiles: 2 × 2 up to 1279 px (incl. the 1024 px tablet width), one row from `xl`. On a
-      // phone the hero tile takes the full width and the other three share two columns below it.
-      className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4"
-    >
-      {/* "erledigt" (delivered + problems) is the numerator of the percentage the card below shows
-          as well — "geliefert" used to leave the tile at "2 / 6 (50 %)" while the card said
-          "3 von 6 Stopps erledigt (50 %)" (round-3 review). NUD-183: a quotient without a base
-          ("0 / 0") is not a number — without a tour (or with a tour of no stops) the tile says so. */}
-      <StatTile
-        data-testid="stat-delivered"
-        variant="hero"
-        className="col-span-2 sm:col-span-1"
-        label={t("admin.dashboard.tiles.done")}
-        value={progress && progress.total > 0 ? `${progress.done} / ${progress.total}` : "—"}
-        sub={
-          progress && progress.total > 0
-            ? t("admin.dashboard.today.percent", { percent: progress.percent })
-            : t("admin.dashboard.tiles.noTour")
-        }
-        icon={CircleCheckIcon}
-        href={tourHref}
-      />
-      <StatTile
-        data-testid="stat-problems"
-        label={t("admin.dashboard.tiles.problems")}
-        value={problems}
-        sub={t("admin.dashboard.tiles.problemsSub")}
-        icon={problems > 0 ? TriangleAlertIcon : CircleAlertIcon}
-        tone={problems > 0 ? "destructive" : "neutral"}
-        href={tourHref}
-      />
-      <StatTile
-        data-testid="stat-next-day"
-        label={t("admin.dashboard.tiles.nextDay")}
-        value={nextDay.confirmed}
-        sub={t("admin.dashboard.tiles.nextDaySub", {
-          date: fmt.calendarDate(parseCalendarDate(nextDay.date) ?? new Date(nextDay.date)),
-          drafts: nextDay.drafts,
-        })}
-        icon={CalendarDaysIcon}
-        tone="primary"
-        href={`/admin/orders?from=${nextDay.date}&to=${nextDay.date}`}
-      />
-      <StatTile
-        data-testid="stat-tour"
-        className="col-span-2 sm:col-span-1"
-        label={t("admin.dashboard.tiles.tour")}
-        value={<span className="text-2xl">{statusLabel}</span>}
-        sub={tour ? undefined : t("admin.dashboard.tiles.tourSub")}
-        icon={RouteIcon}
-        tone={tour ? tourTone(tour.status) : "neutral"}
-        href={tourHref}
-      />
-    </section>
-  );
-}
-
-/** Half-circle progress of today's tour; before the release there is nothing to show yet. */
-function GaugePanel({ today, t }: { today: TodayProgress; t: Translate }) {
-  const progress = today.tour && showsStopResults(today.tour.status) ? today.tour.progress : null;
-  return (
-    <Card className="h-full" data-testid="gauge-card">
-      <CardHeader>
-        <h2 className="text-lg font-semibold tracking-tight">{t("admin.dashboard.gauge.title")}</h2>
-      </CardHeader>
-      <CardContent className="flex flex-1 flex-col justify-center">
-        {progress && progress.total > 0 ? (
-          <TourGauge
-            delivered={progress.delivered}
-            problems={progress.problems}
-            total={progress.total}
-            percent={progress.percent}
-            labels={{
-              summary: t("admin.dashboard.gauge.summary", {
-                done: progress.done,
-                total: progress.total,
-                delivered: progress.delivered,
-                problems: progress.problems,
-                open: progress.pending,
-              }),
-              center: t("admin.dashboard.gauge.center", {
-                done: progress.done,
-                total: progress.total,
-              }),
-              delivered: t("admin.dashboard.gauge.delivered", { count: progress.delivered }),
-              problems: t("admin.dashboard.gauge.problems", { count: progress.problems }),
-              open: t("admin.dashboard.gauge.open", { count: progress.pending }),
-            }}
-          />
-        ) : (
-          <EmptyState
-            icon={RouteIcon}
-            title={t("admin.dashboard.tiles.noTour")}
-            description={t("admin.dashboard.gauge.empty")}
-            className="border-0 p-0"
-          />
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-/** "Zu erledigen" — the three groups §8.2.3 asks for, all from existing read queries. */
 function AttentionPanel({
   today,
   attention,
@@ -309,16 +208,10 @@ function AttentionPanel({
   fmt: AppFormatters;
   t: Translate;
 }) {
-  const problems = today.tour?.problemStops ?? [];
   const late = today.lateOrderCount;
   const tourHref = `/admin/tours?date=${today.date}`;
   const { missingPhotos, parkingMissing, drafts } = attention;
-  const empty =
-    problems.length === 0 &&
-    late === 0 &&
-    missingPhotos === 0 &&
-    parkingMissing === 0 &&
-    drafts.count === 0;
+  const empty = late === 0 && missingPhotos === 0 && parkingMissing === 0 && drafts.count === 0;
 
   return (
     <Card className="h-full" data-testid="attention-card">
@@ -338,28 +231,6 @@ function AttentionPanel({
           />
         ) : (
           <ul className="flex flex-col">
-            {problems.map((problem) => (
-              <li
-                key={problem.id}
-                data-testid="attention-problem"
-                className="flex items-start gap-3 border-b border-border py-3 last:border-b-0"
-              >
-                <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden />
-                <div className="flex min-w-0 flex-col">
-                  <Link
-                    href={tourHref}
-                    className="truncate rounded-sm font-medium outline-none underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    {problem.name}
-                  </Link>
-                  <span className="text-sm text-muted-foreground">
-                    {problem.reason
-                      ? t(`common.problemReasons.${problem.reason}`)
-                      : t("admin.dashboard.attention.reasonUnknown")}
-                  </span>
-                </div>
-              </li>
-            ))}
             {drafts.count > 0 ? (
               <AttentionItem
                 testId="attention-draft-orders"
@@ -420,7 +291,7 @@ function AttentionItem({
   hint,
 }: {
   testId: string;
-  icon: typeof TriangleAlertIcon;
+  icon: typeof ClipboardListIcon;
   href: React.ComponentProps<typeof Link>["href"];
   label: string;
   hint: string;
