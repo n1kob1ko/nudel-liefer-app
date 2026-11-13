@@ -51,7 +51,7 @@ async function main(): Promise<number> {
   const client = new S3Client({
     region: config.region,
     endpoint: config.endpoint,
-    forcePathStyle: Boolean(config.endpoint),
+    forcePathStyle: config.pathStyle,
     credentials: { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey },
   });
 

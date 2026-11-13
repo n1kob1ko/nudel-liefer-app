@@ -360,6 +360,7 @@ Read rule: `pick(text, locale)` returns the requested locale; if empty, the clos
 | NUD-199 | Zahlungen: Bezahlt-Historie als eigene Seite | M2.8 | 196 | done |
 | NUD-200 | Nightly backup of the master data on the server (no orders, tours or payments; nothing off-site) | M2.7 | 094 | done |
 | NUD-201 | Bezahlte Bestellungen, Touren und Monatsrechnungen automatisch löschen | M2.8 | 196 | done |
+| NUD-202 | Hosting on Railway instead of the dedicated server | M2.8 | 200 | in-progress |
 | NUD-100 | AI screenshot extraction (review required) | M3 | 031 | superseded → NUD-150 |
 | NUD-101 | Recurring / standing orders | M3 | 032 | superseded → NUD-149 |
 | NUD-102 | Multiple drivers / tours per day | M3 | 043 | superseded → NUD-147 |
@@ -3984,6 +3985,29 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 - Doku: `docs/audit-and-retention.md` (Regeln), `docs/privacy.md` Abschnitt 6, `docs/runbook.md` Abschnitt 10 (Einschalten), `docs/deploy.md` (Cron-Zeile), `AGENTS.md`, Hilfeseite (`content/hand-off`).
 - Tests: `order-retention.test.ts` in `src/domain` (Auswahlregel) und `src/server` (Schalter, Route), `order-retention.integration.test.ts` (35 Fälle auf echter Datenbank), `recurring-order-patterns.integration.test.ts` (Kontingent nach dem Löschen), `product-actions.integration.test.ts` (Einheiten-Sperre), `deletion-notice.test.tsx`.
 
+---
+
+#### NUD-202 · Hosting on Railway instead of the dedicated server
+**Status:** in-progress · **depends_on:** 200 · Source: owner 2026-11-13 ("spiel alles auf railway rauf"; `nudel.stragas.com` is not used any more).
+
+**Goal:** The app runs in the owner's own Railway account with everything the dedicated server gave it: database, photo storage, the seven scheduled jobs, the master-data backup, routing and geocoding. A push deploys; nobody needs SSH.
+
+**Acceptance criteria**
+- [x] A virtual-hosted bucket works: `S3_URL_STYLE=virtual` (`BACKUP_S3_URL_STYLE` for the backup) makes the storage clients sign `https://<bucket>.<endpoint host>/<key>` and the CSP allow that host. Unset keeps path style, so MinIO, R2 and the dedicated server behave as before.
+- [x] `pnpm bucket:cors [--apply]` puts the CORS rule a bucket on another host needs for the browser upload (origins from `--origin` or `S3_CORS_ORIGINS`, dry run by default).
+- [x] `pnpm bucket:check` proves the browser upload path against the real bucket (preflight, PUT to a presigned URL, read, each with the app's `Origin`); it is the last pre-deploy step on Railway, so a broken upload path stops the deploy.
+- [x] `pnpm build:railway` checks the environment first (`checkDeployEnv` knows Railway: `CRON_SECRET` required, no R2 warning, unknown `S3_URL_STYLE` refused).
+- [x] `deploy/railway/cron`: one dispatcher run every 5 minutes calls the due `/api/cron/*` routes; its list is asserted against `vercel.json`; a failed job ends the run with exit code 1.
+- [x] `deploy/railway/backup`, `deploy/railway/ors`, `deploy/railway/photon`: images for the nightly master-data dump, openrouteservice and Photon; map data is fetched onto a volume on the first start.
+- [x] `docs/deploy-railway.md` holds every service setting and variable (there is no `railway.json`); `docs/env.md`, `.env.example`, `AGENTS.md` updated.
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm i18n:check` green.
+- [ ] 👤 HUMAN: the data of the old server (database, photos, the provider keys in `/etc/delivery-app.env`) is moved (`docs/deploy-railway.md` section 9).
+
+**Implementation notes (NUD-202)**
+- No migration, no UI change, no new dependency. The app code changes are the URL style (`src/lib/s3-url-style.ts`, used by `src/server/storage/s3.ts`, `src/lib/security-headers.ts`, `scripts/lib/backup.ts`) and the deploy check.
+- `app` is built by Railpack, not by a Dockerfile: the CSP is assembled at build time from service variables, and a Railpack build sees all of them. `next start` already listens on every interface; the systemd unit's `HOSTNAME=127.0.0.1` never restricted it (checked: `next start` ignores `HOSTNAME`).
+- Checked locally before the first deploy: a production build without a reachable database; the built app against PostgreSQL 18 with the dispatcher calling all seven routes (wrong secret → 401 → exit 1); the `ors` image with the image's own test extract (download, graph build, health `ready`, a route, a restart that neither downloads nor rebuilds). The Photon and backup images could only be built on Railway (this sandbox cannot reach the map data hosts).
+
 ## 9. Decision log (append-only, one line per decision taken during implementation)
 
 | Date | Ticket | Decision | Reason |
@@ -4457,6 +4481,13 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 | 2026-11-13 | NUD-201 | Ein unbrauchbarer Wert in `ORDER_RETENTION_DAYS` stoppt den Lauf, statt auf 30 zurückzufallen | Bei den anderen Aufräum-Jobs ist der Rückfall die vorsichtige Richtung, hier wäre er die kürzeste Frist |
 | 2026-11-13 | NUD-201 | `maxDeliveries` eines Dauerauftrags wird gegen einen eigenen Zähler geprüft, nicht gegen die vorhandenen Bestellungen | Gelöschte Bestellungen hätten einem aufgebrauchten Dauerauftrag sein Kontingent zurückgegeben; der Kunde bekäme Lieferungen, die er nicht bestellt hat |
 | 2026-11-13 | NUD-201 | Das Änderungsprotokoll wird nicht mitgelöscht | Es ist append-only (Trigger) und hat seine eigene Frist (NUD-111). Wer die Spuren früher loswerden will, senkt `AUDIT_RETENTION_DAYS` (mindestens 90) |
+| 2026-11-13 | NUD-202 | Railway instead of an own Hetzner server | Owner's choice after a comparison: the cheap Hetzner cloud line could not be ordered, the orderable ones cost about the same as Railway, and on Railway a push deploys and nobody has to administer a server |
+| 2026-11-13 | NUD-202 | Settings live in `docs/deploy-railway.md`, not in a `railway.json` | Railway deprecated Config as Code; new services cannot opt in and existing files stop being read on 2026-12-01 |
+| 2026-11-13 | NUD-202 | One cron service with a dispatcher instead of seven cron services | A Railway cron service has one schedule; seven services would be seven images and seven places to forget. The price is a second copy of the job list, guarded by a test |
+| 2026-11-13 | NUD-202 | The backup on Railway is still the master-data dump; Railway's volume backups stay off | Owner (NUD-200/201): orders and payments are not to be kept. A volume backup would hold them for its whole retention |
+| 2026-11-13 | NUD-202 | Photos in a Railway bucket instead of MinIO in a container | No volume to size and back up, no service to keep running; costs USD 0.015 per GB. It needs virtual-hosted URLs and a CORS rule, both now supported |
+| 2026-11-13 | NUD-202 | Photon reads a prebuilt Austria index instead of an own Nominatim import | Nominatim needs a PostGIS database of its own and hours of import for the same search result; the prebuilt index is one download |
+| 2026-11-13 | NUD-202 | `OSM_URL` of the routing service takes several addresses; the default adds the openstreetmap.fr extract | `download.geofabrik.de` refuses connections from Railway's outbound addresses, so the first start could never fetch the map. A second source keeps the service self-starting instead of needing a hand-carried file |
 
 ## 10. Open questions for the client (do not block on these – use placeholders)
 

@@ -52,6 +52,19 @@ describe("storageSources", () => {
       "http://localhost:9000",
     ]);
   });
+  it("uses the bucket sub-domain of the endpoint for a virtual-hosted bucket (Railway)", () => {
+    expect(
+      storageSources({
+        S3_ENDPOINT: "https://t3.storageapi.dev",
+        S3_BUCKET: "photos-abc",
+        S3_URL_STYLE: "virtual",
+      }),
+    ).toEqual(["https://photos-abc.t3.storageapi.dev"]);
+    // Without a bucket name there is no host to allow: nothing rather than the bare endpoint.
+    expect(
+      storageSources({ S3_ENDPOINT: "https://t3.storageapi.dev", S3_URL_STYLE: "virtual" }),
+    ).toEqual([]);
+  });
   it("derives AWS S3 hosts without an endpoint", () => {
     expect(storageSources({ S3_BUCKET: "b", S3_REGION: "eu-central-1" })).toEqual([
       "https://b.s3.eu-central-1.amazonaws.com",

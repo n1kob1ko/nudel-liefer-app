@@ -36,6 +36,15 @@ describe("readBackupConfig", () => {
     expect(parsed.config.retentionWeeks).toBe(8);
     expect(parsed.config.keepNewest).toBe(4);
     expect(parsed.config.s3?.region).toBe("auto");
+    expect(parsed.config.s3?.pathStyle).toBe(true);
+  });
+  it("signs bucket sub-domain URLs when BACKUP_S3_URL_STYLE is virtual (Railway bucket)", () => {
+    const parsed = readBackupConfig({ ...env, BACKUP_S3_URL_STYLE: "virtual" });
+    expect(parsed.ok && parsed.config.s3?.pathStyle).toBe(false);
+    const unknown = readBackupConfig({ ...env, BACKUP_S3_URL_STYLE: "vhost" });
+    expect(unknown.ok ? [] : unknown.errors).toEqual([
+      "BACKUP_S3_URL_STYLE must be path or virtual",
+    ]);
   });
   it("names missing variables but never prints a value", () => {
     const parsed = readBackupConfig({

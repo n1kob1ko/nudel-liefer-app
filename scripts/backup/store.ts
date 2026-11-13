@@ -94,7 +94,7 @@ export function createS3BackupStore(s3: NonNullable<BackupConfig["s3"]>): Backup
   const client = new S3Client({
     region: s3.region,
     endpoint: s3.endpoint,
-    forcePathStyle: Boolean(s3.endpoint),
+    forcePathStyle: s3.pathStyle,
     credentials: { accessKeyId: s3.accessKeyId, secretAccessKey: s3.secretAccessKey },
     requestChecksumCalculation: "WHEN_REQUIRED",
     responseChecksumValidation: "WHEN_REQUIRED",
