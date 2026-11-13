@@ -4,7 +4,10 @@ on:
   pull_request:
 jobs:
   check:
-    runs-on: ubuntu-latest
+    # Pinned, not `ubuntu-latest`: that label moved to Ubuntu 26.04, whose package index has no
+    # `postgresql-client-16` (the step below then fails with "Unable to locate package"). The client
+    # must match the PostgreSQL 16 service, so all jobs stay on 24.04 until both are raised together.
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16
@@ -34,7 +37,7 @@ jobs:
   e2e:
     if: github.event_name == 'pull_request'
     needs: check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16
@@ -94,7 +97,7 @@ jobs:
   lighthouse:
     if: github.event_name == 'pull_request'
     needs: check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16
