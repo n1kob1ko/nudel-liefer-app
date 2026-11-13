@@ -10,7 +10,7 @@ import { getTranslator } from "../src/server/translator";
  *   pnpm backfill:serbian             # dry run: counts only
  *   pnpm backfill:serbian -- --apply  # writes
  *
- * Needs `OPENROUTER_API_KEY` (or a DeepL key plus the OpenRouter key for the Serbian slot): with the
+ * Needs `ANTHROPIC_API_KEY` (or a DeepL key plus the Claude key for the Serbian slot): with the
  * `FakeTranslator` the command refuses to run, because it would store "[sr-Latn] ..." placeholders.
  */
 async function main() {
@@ -18,7 +18,7 @@ async function main() {
   const translator = getTranslator();
   if (translator.kind === "fake") {
     console.error(
-      "No real translation provider is configured (OPENROUTER_API_KEY missing) - refusing to write placeholder texts. Set the key in the environment and try again.",
+      "No real translation provider is configured (ANTHROPIC_API_KEY missing) - refusing to write placeholder texts. Set the key in the environment and try again.",
     );
     process.exitCode = 1;
     return;

@@ -120,10 +120,12 @@ nothing is saved by the extraction itself.
   the label → catalog matcher (`matchProduct`, unit words decide between the two "Nudeln" products),
   `assembleDraft` (catalog ids only, ambiguous/unknown products are reported in `unmatched`, never
   guessed) and the prompt (`buildExtractionPrompt`).
-- `src/server/order-extractor/`: the `OrderExtractor` interface, `OpenRouterOrderExtractor` (vision
-  capable, `OPENROUTER_API_KEY`/`OPENROUTER_MODEL`) and `FakeOrderExtractor` (offline stand-in used by
-  the tests and the evaluation script). A missing key disables the button; the fake never reaches an
-  office user.
+- `src/server/order-extractor/`: the `OrderExtractor` interface, `ClaudeOrderExtractor` (the Claude
+  API through Anthropic's SDK, `ANTHROPIC_API_KEY`/`ANTHROPIC_MODEL`, NUD-207; the photo goes along
+  as a base64 image block, the answer comes back as structured output in the contract's JSON schema)
+  and `FakeOrderExtractor` (offline stand-in used by the tests and the evaluation script). A missing
+  key disables the button; the fake never reaches an office user. Claude reads JPEG, PNG, WebP and
+  GIF; the browser already turns every upload into a JPEG of at most 1600 px.
 - `src/server/order-extraction.ts`: loads the active catalog and the screenshot (signed URL → bytes),
   calls the extractor and returns `{ draft, extraction, model }`. Read-only.
 - `extractOrderDraftAction` (ADMIN) is the only entry point; a draft's raw answer travels back with
@@ -132,7 +134,8 @@ nothing is saved by the extraction itself.
 - Evaluation: `pnpm eval:order-extraction` (`--fake`, `--min 0.8`, `--today YYYY-MM-DD`) runs the 16
   anonymised messages in `tests/fixtures/order-extraction/samples.json` and reports the line accuracy;
   `src/server/order-extractor-eval.test.ts` keeps fixture and matcher in sync.
-- The same OpenRouter client is the Serbian slot of the translation chain (DeepL has no Serbian).
+- The same Claude client (`src/server/claude/`) is the Serbian slot of the translation chain (DeepL
+  has no Serbian).
 
 ## Late orders
 

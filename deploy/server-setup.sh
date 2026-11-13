@@ -157,7 +157,7 @@ chown -R deliveryapp:deliveryapp "$APP_DIR" "$DATA_DIR"
 
 log "7. Env file $ENV_FILE"
 # Snapshot first: the block below is the complete list of keys this script manages. Operator-added
-# keys (OPENROUTER_API_KEY, ORS_API_KEY, DEEPL_API_KEY, MAP_TILE_URL, SENTRY_DSN, PHOTON_URL, ...)
+# keys (ANTHROPIC_API_KEY, ORS_API_KEY, DEEPL_API_KEY, MAP_TILE_URL, SENTRY_DSN, PHOTON_URL, ...)
 # are NOT in it, and until 2026-10-28 the plain overwrite silently dropped them on every deploy -
 # which would turn the AI order draft, real routing and the tile provider off without a word.
 if [ -f "$ENV_FILE" ]; then cp -a "$ENV_FILE" "${ENV_FILE}.prev"; fi

@@ -18,7 +18,7 @@ import { CATALOG_PRODUCTS } from "@/server/product-catalog";
  * reports the line accuracy (does the draft contain exactly the products and quantities the office
  * would have typed?).
  *
- *   pnpm eval:order-extraction                 # configured provider (OpenRouter when the key is set)
+ *   pnpm eval:order-extraction                 # configured provider (Claude when ANTHROPIC_API_KEY is set)
  *   pnpm eval:order-extraction -- --fake       # offline stand-in, no key and no cost
  *   pnpm eval:order-extraction -- --min 0.8    # exit 1 when the accuracy is below 80 %
  *

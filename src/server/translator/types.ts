@@ -2,16 +2,16 @@ import type { AppLocale } from "@/lib/localized-text";
 
 /**
  * Machine translation of user-generated text (D15, D21). Implementations: DeepL (`DeepLTranslator`,
- * German, English, Czech, Simplified Chinese), OpenRouter (`OpenRouterTranslator`, any of the five
+ * German, English, Czech, Simplified Chinese), Claude (`ClaudeTranslator`, any of the five
  * locales - it is the Serbian slot of `RoutedTranslator`, NUD-150) and a `FakeTranslator` for tests
  * and for a missing API key.
  */
 export interface Translator {
   /**
-   * `"deepl"` / `"openrouter"` for a real provider, `"fake"` for the stand-in (output is NOT a real
+   * `"deepl"` / `"claude"` for a real provider, `"fake"` for the stand-in (output is NOT a real
    * translation). Jobs skip the retry work when the translator is a fake.
    */
-  readonly kind: "deepl" | "openrouter" | "fake";
+  readonly kind: "deepl" | "claude" | "fake";
   /** Translates `text` between two locales. Same locale returns the text unchanged. */
   translate(text: string, from: AppLocale, to: AppLocale): Promise<string>;
 }

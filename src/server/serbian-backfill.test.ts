@@ -42,7 +42,7 @@ function fakeDb(rows: Record<"customer" | "stop" | "product", LocalizedText[]>) 
 
 /** Translator that answers "[sr-Latn] <text>" for the Serbian target only. */
 const translator: Translator = {
-  kind: "openrouter",
+  kind: "claude",
   translate: async (text, from, to) => (to === "sr-Latn" ? `SR:${text}` : text),
 };
 
@@ -89,7 +89,7 @@ describe("backfillSerbian", () => {
 
   it("counts a text the provider cannot translate as failed and keeps going", async () => {
     const failing: Translator = {
-      kind: "openrouter",
+      kind: "claude",
       translate: async () => {
         throw new Error("boom");
       },

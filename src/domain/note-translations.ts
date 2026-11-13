@@ -16,7 +16,7 @@ export const TRANSLATED_LOCALES = ["en", "sr-Latn", "cs", "zh-Hans"] as const;
 export type TranslatedLocale = (typeof TRANSLATED_LOCALES)[number];
 /**
  * Machine translation of the (new) German source per locale. A locale the provider could not
- * translate (for example Serbian before the OpenRouter client is configured) is simply absent.
+ * translate (for example Serbian while no Claude key is configured) is simply absent.
  */
 export type FreshTranslations = Partial<Record<TranslatedLocale, string>>;
 

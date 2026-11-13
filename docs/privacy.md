@@ -126,16 +126,17 @@ run), optionally `SCREENSHOT_RETENTION_DAYS`, `AUDIT_RETENTION_DAYS`, `DRIVER_TE
   according to DeepL's terms Pro does not store or train on submitted text, whereas the free API may
   (to confirm against the current terms and conclude DeepL's data processing agreement). Without
   `DEEPL_API_KEY` nothing is sent.
-- **OpenRouter** (NUD-150, optional, `OPENROUTER_API_KEY`): receives the **pasted customer message**
-  and, when one is attached, the **order screenshot** (as an inline image) whenever the office presses
-  "Mit KI auslesen", plus the customer note / driver text when a Serbian translation is needed. This
-  is raw message content: names, phone numbers, addresses and whatever else the customer wrote. A
-  model provider processes it; OpenRouter routes the request and, depending on the chosen model and
-  its settings, the provider may log or train on it - choose a model with a no-training policy,
-  conclude the data processing agreement, and cap the spend. The request is pinned to one provider
-  (`OPENROUTER_PROVIDER`, default Together), so the receiving processor does not change per call.
-  Without the key no request is made and the button stays disabled. Log lines never contain the
-  message (`[order-extraction] extraction failed (<code>)`).
+- **Anthropic (Claude API)** (NUD-150, NUD-207, optional, `ANTHROPIC_API_KEY`): receives the **pasted
+  customer message** and, when one is attached, the **order photo** (as an inline image) whenever the
+  office presses "Mit KI auslesen", plus the customer note / driver text when a translation is needed
+  that DeepL does not do (Serbian; every language when no DeepL key is set). This is raw message
+  content: names, phone numbers, addresses and whatever else the customer wrote. The request goes
+  from the server straight to Anthropic, no router or third model host in between. Under Anthropic's
+  commercial terms API content is not used to train models; check the current retention period,
+  conclude the data processing agreement and set a spend limit in the Console. When Claude declines
+  a request, Anthropic answers it with another of its own models (same processor). Without the key
+  no request is made and the button stays disabled. Log lines never contain the message
+  (`[order-extraction] extraction failed (<code>)`, `[claude] request failed: HTTP <status> <type>`).
 - **OpenRouteService** receives customer and depot addresses (geocoding) and stop coordinates
   (routing) with the API key in a header. Business addresses, no driver positions.
 - **Map tile provider**: the browser of every user who opens a map requests tiles from it and

@@ -63,7 +63,7 @@ A pasta factory delivers to business customers (mostly restaurants). The office 
 | D23 | Catalog & quantities (2026-10-26) | Three products: Nudeln (Sackerl, 3 kg), Nudeln (Kiste, 10 kg), Wantan-Teig (`PIECE`, 5 kg, shown "N ×"). Every product has an admin-editable `weightKgPerUnit`. Quantities are whole numbers (`Int`). Unit labels: `PACK` = Sackerl, `CRATE` = Kiste (German; other locales keep their own words). **Amended 2026-10-27 (NUD-159).** |
 | D24 | Fleet & multiple tours (2026-10-26) | Several drivers and tours per day. `Vehicle` with capacity in **kg**; driver and vehicle are assigned per tour per day. When the load does not fit: use all available vehicles first, then reload trips at the depot. **Amended by D31 (2026-10-27).** |
 | D25 | Delivery window & recurring orders (2026-10-26) | Orders carry a requested delivery window (hours to days); the planned day is the earliest day inside the window with capacity, movable by the office. Recurring orders are in scope now: a rule is confirmed once, then generates CONFIRMED orders 14 days ahead (configurable). Setting a customer inactive pauses his rules and cancels his future open orders. |
-| D26 | AI order entry (2026-10-26) | Pasted customer message text and/or screenshot are turned into a DRAFT order by an LLM via **OpenRouter** behind `OrderExtractor`; the office always reviews and confirms. No WhatsApp/WeChat bots. |
+| D26 | AI order entry (2026-10-26) | Pasted customer message text and/or screenshot are turned into a DRAFT order by an LLM behind `OrderExtractor` (the **Claude API** of Anthropic since NUD-207, 2026-11-13; OpenRouter before that); the office always reviews and confirms. No WhatsApp/WeChat bots. |
 | D27 | Driver-maintained data (2026-10-26) | Drivers may set and correct customer key numbers and Parkplatz coordinates and add photos (camera or gallery). Saved directly with author, timestamp and audit history — no office approval. Drivers' field knowledge outranks the system data. |
 | D28 | Working time (2026-10-26) | Each driver has working days/hours. Utilization = tour time incl. loading/checking before departure (from checklist timestamps or a default loading time) vs. planned time and vs. contracted hours. Measured from app events only — no GPS tracking (D19 unchanged). |
 | D29 | Tour editing (2026-10-26) | "Bearbeiten" may change driver, vehicle, stop order and move stops between tours of the same date — also on released tours (via the "tour was updated" path). Not the date. Completed stops are locked. |
@@ -365,6 +365,7 @@ Read rule: `pick(text, locale)` returns the requested locale; if empty, the clos
 | NUD-204 | "PIN drucken" printed an empty page | M2.8 | 008 | done |
 | NUD-205 | The driver sees the tours released for the coming days | M2.8 | 051 | done |
 | NUD-206 | Delete a user account for good (not only deactivate) | M2.8 | 008 | done |
+| NUD-207 | Order photos and translations are read by the Claude API instead of OpenRouter | M2.8 | 150 | in-progress |
 | NUD-100 | AI screenshot extraction (review required) | M3 | 031 | superseded → NUD-150 |
 | NUD-101 | Recurring / standing orders | M3 | 032 | superseded → NUD-149 |
 | NUD-102 | Multiple drivers / tours per day | M3 | 043 | superseded → NUD-147 |
@@ -4084,6 +4085,24 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 - Found while testing by hand and fixed in the same change: twelve audit actions had no label in the timeline (a missing-message error after a cash payment; `audit-coverage.test.ts` now checks every action in de, en, zh-Hans); the totals bar of the day planning was hidden behind the phone's bottom navigation; the amount field showed "45.50" in German (`amountInputValue(cents, locale)`); two products with the same name in one order read "3 × Nudeln · 4 × Nudeln" in the order list (those chips keep the unit).
 - Tests: `user-delete.test.ts`, `user-delete.integration.test.ts`, `tests/e2e/drivers.spec.ts`.
 
+#### NUD-207 · Order photos and translations are read by the Claude API instead of OpenRouter
+**Status:** in-progress · **depends_on:** 150 · Source: owner 2026-11-13 ("daweil ist die erkennung von bestellungen per foto mit openrouter verbunden aber ich will das ändern auf claude api").
+
+**Goal:** "Mit KI auslesen" and the translation of notes talk to Anthropic's Claude API directly. OpenRouter is gone from the code and the configuration.
+
+**Acceptance criteria**
+- [x] `ANTHROPIC_API_KEY` switches the order draft on; without it the button stays disabled as before. An `OPENROUTER_API_KEY` that is still set does nothing.
+- [x] The request goes through Anthropic's SDK (`@anthropic-ai/sdk`): the photo as a base64 image block, the answer as structured output in the JSON schema of the order contract, validated again with `extractionAnswerSchema`.
+- [x] A declined or cut-off answer, an answer outside the contract and an image type Claude cannot read never become a draft.
+- [x] The translator's language-model slot (Serbian; every language without a DeepL key) uses the same client.
+- [x] No OpenRouter code, variable or test is left; `.env.example`, `docs/env.md`, `docs/privacy.md`, `docs/orders.md`, `docs/i18n.md`, `docs/deploy-railway.md` describe Claude.
+- [ ] A real photo is read on Railway. Open until the owner has entered the key: the build environment has none, so the request was only checked against the SDK's types and a recorded HTTP exchange.
+
+**Implementation notes (NUD-207)**
+- `src/server/claude/client.ts` (`ClaudeClient.complete`, error mapping, one log line per failed request without prompt, photo or key), `src/server/order-extractor/claude.ts`, `src/server/translator/claude.ts`. Removed: `src/server/openrouter/`, both `openrouter.ts` providers, the six `OPENROUTER_*` variables.
+- Variables: `ANTHROPIC_API_KEY`, optional `ANTHROPIC_MODEL` (default `claude-opus-5-5`) and `ANTHROPIC_EFFORT` (default `low`). Railway had no OpenRouter key, so nothing has to be removed there.
+- Tests: `src/server/order-extractor.test.ts` (request shape, headers, every error path, provider selection).
+
 ## 9. Decision log (append-only, one line per decision taken during implementation)
 
 | Date | Ticket | Decision | Reason |
@@ -4575,6 +4594,11 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 | 2026-11-13 | NUD-206 | Records that must name a user (photos, parking spots, orders, standing orders, paid marks) go to the admin who deletes; tours only lose the driver | The alternative was to delete them with the account, which would take customer photos and bills with a driver who leaves |
 | 2026-11-13 | NUD-206 | A released tour from today on stops the delete instead of being unassigned | A released tour without a driver is a delivery nobody sees; the office must choose the new driver itself |
 | 2026-11-13 | NUD-205 | The coming tours are a preview (14 days, read online), not a second working screen | Ticking off, photos and the offline copy belong to the day of the tour; a stop ticked off a day early would be a wrong delivery record |
+| 2026-11-13 | NUD-207 | The language model is called through Anthropic's SDK, not through a hand-written HTTP client | The SDK carries the request types, the retries and the typed errors; the old client existed only because OpenRouter has no SDK of that kind. |
+| 2026-11-13 | NUD-207 | Default model `claude-opus-5-5` at effort `low`; `ANTHROPIC_MODEL` / `ANTHROPIC_EFFORT` change both without a deploy of code | A misread quantity is the one thing that must not happen (§1) and the office reads a handful of photos a day, so accuracy beats roughly 3 cents a photo. The owner was asked to choose between Opus, Sonnet and Haiku; this is the recommendation until the answer. |
+| 2026-11-13 | NUD-207 | The answer is structured output in a hand-written JSON schema; the `window`-as-a-string tolerance of NUD-150 stays in `extractionAnswerSchema` but is no longer needed on the wire | With a schema the API guarantees the shape, so the "first `{` to last `}`" parsing is gone. The domain schema still checks what a JSON schema cannot (quantity >= 1, 0..1, lengths). |
+| 2026-11-13 | NUD-207 | Requests opt into Anthropic's server-side fallback (`fallbacks: "default"`) | A request the model declines for policy reasons is answered by another Claude model instead of failing; an order message should never be declined, the opt-in only covers a false alarm. A declined answer is never read. |
+| 2026-11-13 | NUD-207 | No thinking switch and no sampling parameters are sent | The current models reject `temperature` and a disabled thinking mode; `effort` is the one control. |
 
 ## 10. Open questions for the client (do not block on these – use placeholders)
 

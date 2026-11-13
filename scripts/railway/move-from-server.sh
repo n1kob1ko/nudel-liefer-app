@@ -327,8 +327,10 @@ fi
 # ---------------------------------------------------------------------------------------------
 say "Schlüssel der Anbieter"
 # What only this server knows and Railway needs. Everything else in the file (database, bucket,
-# AUTH_SECRET, CRON_SECRET, ORS_*, PHOTON_*) has its own value on Railway and is not copied.
-WANTED="MAP_TILE_URL MAP_TILE_ATTRIBUTION MAP_TILE_CACHE DEEPL_API_KEY DEEPL_API_PLAN OPENROUTER_API_KEY OPENROUTER_MODEL OPENROUTER_REASONING OPENROUTER_PROVIDER OPENROUTER_BASE_URL OPENROUTER_REFERER SENTRY_DSN SENTRY_ENVIRONMENT"
+# AUTH_SECRET, CRON_SECRET, ORS_*, PHOTON_*) has its own value on Railway and is not copied. The
+# OpenRouter key is not carried over either: the language model is Claude now (ANTHROPIC_API_KEY,
+# NUD-207), with a key of its own that is entered on Railway directly.
+WANTED="MAP_TILE_URL MAP_TILE_ATTRIBUTION MAP_TILE_CACHE DEEPL_API_KEY DEEPL_API_PLAN SENTRY_DSN SENTRY_ENVIRONMENT"
 lines=""
 for name in $WANTED; do
   value=${!name:-}
@@ -350,7 +352,7 @@ if [ -n "$lines" ]; then
   printf '%s' "$lines"
   echo "-----8<-----"
 else
-  echo "In $ENV_FILE steht keiner der Anbieter-Schlüssel (Karte, DeepL, OpenRouter, Sentry)."
+  echo "In $ENV_FILE steht keiner der Anbieter-Schlüssel (Karte, DeepL, Sentry)."
 fi
 
 say "Fertig"

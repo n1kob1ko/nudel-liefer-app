@@ -112,7 +112,7 @@ describe("extractOrderDraft (NUD-150)", () => {
 
   it("reports any other provider failure as extraction_failed", async () => {
     const extractor = {
-      kind: "openrouter",
+      kind: "claude",
       extract: async () => {
         throw new OrderExtractorError("boom", "HTTP");
       },

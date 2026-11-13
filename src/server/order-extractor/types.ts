@@ -31,8 +31,8 @@ export type OrderExtractionResult = {
 };
 
 export interface OrderExtractor {
-  /** `"openrouter"` for the real model, `"fake"` for the offline stand-in. */
-  readonly kind: "openrouter" | "fake";
+  /** `"claude"` for the real model, `"fake"` for the offline stand-in. */
+  readonly kind: "claude" | "fake";
   extract(
     input: OrderExtractionInput,
     context: OrderExtractionContext,
@@ -40,7 +40,14 @@ export interface OrderExtractor {
 }
 
 export type OrderExtractorErrorCode =
-  "NOT_CONFIGURED" | "TIMEOUT" | "NETWORK" | "QUOTA" | "HTTP" | "BAD_RESPONSE" | "EMPTY_INPUT";
+  | "NOT_CONFIGURED"
+  | "TIMEOUT"
+  | "NETWORK"
+  | "QUOTA"
+  | "HTTP"
+  | "BAD_RESPONSE"
+  | "EMPTY_INPUT"
+  | "UNSUPPORTED_IMAGE";
 
 export class OrderExtractorError extends Error {
   constructor(
