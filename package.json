@@ -36,6 +36,7 @@
     "pwa:icons": "tsx scripts/generate-pwa-icons.ts",
     "bucket:cors": "tsx scripts/set-bucket-cors.ts",
     "bucket:check": "tsx scripts/check-bucket-upload.ts",
+    "maps:check": "tsx scripts/check-google-maps.ts",
     "backup:db": "tsx scripts/backup/pg-backup.ts",
     "backup:verify": "tsx scripts/backup/restore-verify.ts",
     "admin:reset-password": "tsx scripts/admin-reset-password.ts",

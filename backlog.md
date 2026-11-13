@@ -4022,12 +4022,14 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 - [x] `GET /api/health` reports `google` for routing and geocoding; a production build warns when no map service is configured at all; every map names Google Maps in its attribution while the key is set.
 - [x] `docs/deploy-railway.md` (section 7: key, switch, terms, costs, limits), `docs/env.md`, `.env.example`, `AGENTS.md` updated.
 - [x] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm i18n:check` green.
-- [ ] 👤 HUMAN: create the key in Google Cloud (Geocoding API + Routes API, restricted to those two) and enter it on Railway as `GOOGLE_MAPS_SERVER_KEY` of `app`.
-- [ ] After that: `/api/health` says `google`, an address and a tour work; then `ors`, `photon`, their volumes and `ORS_BASE_URL` / `PHOTON_URL` / `PHOTON_LANG` are removed on Railway and `deploy/railway/ors`, `deploy/railway/photon` deleted.
+- [x] 👤 HUMAN: create the key in Google Cloud (Geocoding API + Routes API, restricted to those two) and enter it on Railway as `GOOGLE_MAPS_SERVER_KEY` of `app`. Done 2026-11-13; `/api/health` on Railway reports `google` for both.
+- [x] `pnpm maps:check` asks Google for one fixed public address and one fixed route with the app's own provider classes and prints `ok` / `FAIL` with the reason, never the key or a text Google sent; it runs with `--warn-only` as the last pre-deploy step of `app`, so every deploy log shows whether Google really answers.
+- [ ] After that: the deploy log shows both `maps:check` lines as `ok`, an address and a tour work in the app; then `ors`, `photon`, their volumes and `ORS_BASE_URL` / `PHOTON_URL` / `PHOTON_LANG` are removed on Railway and `deploy/railway/ors`, `deploy/railway/photon` deleted.
 
 **Implementation notes (NUD-203)**
 - No migration, no UI change, no new dependency, no key in the browser. New: `src/server/geocoder/google.ts`, `src/server/routing/google.ts`; wiring in the two `index.ts`, `src/server/health.ts`, `src/lib/map-config.ts`, `scripts/lib/deploy-env.ts`. Plan: `docs/superpowers/plans/2026-11-13-google-maps-providers.md`.
 - The test fixtures are hand-written from Google's documented response shapes; nothing was recorded live, because there is no key outside the owner's account. The first real request happens on Railway (acceptance criterion above).
+- `scripts/check-google-maps.ts` / `scripts/lib/maps-check.ts` exist because the Railway database was still empty when the key arrived (no login to try the UI with) and nobody but the app may hold the key: the pre-deploy step is the only place where a real answer can be seen without either.
 - `GoogleGeocoder.reverse()` answers `null` without a request: the app does not call it, and its only answer would be address text.
 - A route cache for standing tours was built first (local branch `route-cache`) and dropped: Google allows no such cache, and the owner prefers the template.
 
