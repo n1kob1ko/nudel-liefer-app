@@ -169,7 +169,7 @@ curl -fsSL https://raw.githubusercontent.com/n1kob1ko/nudel-liefer-app/main/scri
 
 The script reads `/etc/delivery-app.env`, asks for the Railway line (hidden input), shows the row counts of both databases and asks before it replaces the Railway one. Then:
 
-- **Database:** `pg_dump` of the old database into a temporary file, the `public` schema on Railway dropped and restored from it, the file removed. It compares the row count of every table on both sides and stops when one differs.
+- **Database:** `pg_dump` of the old database into a temporary file, the `public` schema on Railway dropped and restored from it, the file removed. It compares the row count of every table on both sides and stops when one differs. A table the app's database user may not read (a manual copy made by another role, on the old server `StandingTourCustomer_backup_20261105`) is named and left behind: the app does not know it.
 - **Photos:** every object of the old bucket is copied under the same key (the database refers to the keys), with its content type; at the end the listing of both buckets is compared. `--skip-db` runs only this part again.
 - **Provider variables:** it prints the lines of `MAP_TILE_URL`, `MAP_TILE_ATTRIBUTION`, `MAP_TILE_CACHE`, `DEEPL_API_KEY`, `DEEPL_API_PLAN`, `OPENROUTER_*`, `SENTRY_DSN`, `SENTRY_ENVIRONMENT` as far as the old server has them. They go into the dashboard → `app` → Variables → Raw Editor. `DATABASE_URL`, `AUTH_SECRET`, `S3_*`, `CRON_SECRET`, `ORS_*`, `PHOTON_*` are **not** copied: Railway has its own.
 

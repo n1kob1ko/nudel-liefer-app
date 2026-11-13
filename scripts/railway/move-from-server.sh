@@ -59,7 +59,15 @@ table_counts() {
     select c.relname,
            (xpath('/row/n/text()', query_to_xml(format('select count(*) as n from public.%I', c.relname), false, true, '')))[1]::text
     from pg_class c join pg_namespace s on s.oid = c.relnamespace
-    where s.nspname = 'public' and c.relkind = 'r'
+    where s.nspname = 'public' and c.relkind = 'r' and has_table_privilege(c.oid, 'SELECT')
+    order by c.relname" </dev/null
+}
+# Tables the app's own database user may not read: left-over manual copies made by another role
+# (seen: "StandingTourCustomer_backup_20261105"). The app does not know them; they stay behind.
+unreadable_tables() {
+  psql "$1" -X -At -v ON_ERROR_STOP=1 -c "
+    select c.relname from pg_class c join pg_namespace s on s.oid = c.relnamespace
+    where s.nspname = 'public' and c.relkind = 'r' and not has_table_privilege(c.oid, 'SELECT')
     order by c.relname" </dev/null
 }
 sum_rows() { awk '{ n += $2 } END { print n + 0 }'; }
@@ -128,6 +136,13 @@ trap 'rm -rf "$WORK"' EXIT
 if [ "$SKIP_DB" = 0 ]; then
   say "Datenbank"
   table_counts "$SOURCE_DB" >"$WORK/source.counts"
+  unreadable_tables "$SOURCE_DB" >"$WORK/source.skipped"
+  exclude=()
+  while IFS= read -r table; do
+    [ -n "$table" ] || continue
+    echo "Bleibt zurück (gehört nicht zur App, für sie nicht lesbar): $table"
+    exclude+=("--exclude-table=public.\"$table\"")
+  done <"$WORK/source.skipped"
   table_counts "$TARGET_DB" >"$WORK/target-before.counts"
   echo "Alter Server:  $(wc -l <"$WORK/source.counts") Tabellen, $(sum_rows <"$WORK/source.counts") Zeilen"
   echo "Railway jetzt: $(wc -l <"$WORK/target-before.counts") Tabellen, $(sum_rows <"$WORK/target-before.counts") Zeilen (wird ersetzt)"
@@ -138,7 +153,7 @@ if [ "$SKIP_DB" = 0 ]; then
   fi
 
   echo "Lese die alte Datenbank ..."
-  pg_dump -Fc --no-owner --no-acl -d "$SOURCE_DB" -f "$WORK/nudel.dump" </dev/null
+  pg_dump -Fc --no-owner --no-acl "${exclude[@]}" -d "$SOURCE_DB" -f "$WORK/nudel.dump" </dev/null
   echo "Schreibe nach Railway ..."
   psql "$TARGET_DB" -X -q -v ON_ERROR_STOP=1 -c 'drop schema if exists public cascade; create schema public;' </dev/null 2>/dev/null
   restore_status=0
