@@ -157,6 +157,32 @@ test("customer: create (address point looked up by itself), find it, duplicate n
   }
 });
 
+test("a customer name without a space does not widen the page", async ({ page }) => {
+  // The headline used to keep one long word on one line. A name such as an imported customer number
+  // then made the page scroll sideways on a phone, by a few pixels or not at all depending on which
+  // digits it held (customer-photos.spec.ts failed that way now and then).
+  const number = `e2ew${Date.now()}${Math.floor(Math.random() * 1e4)}`;
+  const id = `c${number}`;
+  const client = new Client({ connectionString: process.env.DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(
+      `INSERT INTO "Customer" ("id","customerNumber","name","street","postalCode","city","updatedAt")
+       VALUES ($1,$2,$3,'Teststraße 1','1010','Wien',now())`,
+      [id, number, `Import${"08".repeat(20)}`],
+    );
+    await loginAdmin(page);
+    await page.goto(`/de/admin/customers/${id}`);
+    // Visible, not only present: the page streams in, and a headline that is still hidden has no width.
+    const title = page.getByTestId("section-title").filter({ hasText: "Import0808" });
+    await expect(title).toBeVisible();
+    expect(await noHorizontalScroll(page)).toBe(true);
+  } finally {
+    await client.query(`DELETE FROM "Customer" WHERE "id" = $1`, [id]);
+    await client.end();
+  }
+});
+
 test("customer pages are not available to anonymous visitors", async ({ page }) => {
   await page.goto("/de/admin/customers/new");
   await expect(page).toHaveURL(/\/de\/login/);

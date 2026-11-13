@@ -47,7 +47,7 @@ export function PageHeader({
         <div className="flex min-w-0 flex-col gap-1">
           <h1
             data-testid={titleTestId}
-            className="hyphens-auto text-2xl font-semibold text-balance"
+            className="text-2xl font-semibold text-balance wrap-anywhere hyphens-auto"
           >
             {title}
           </h1>
