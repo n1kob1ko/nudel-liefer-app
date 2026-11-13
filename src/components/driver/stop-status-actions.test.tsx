@@ -280,3 +280,48 @@ describe.each(Object.keys(LOCALES))("StopStatusActions in %s", (locale) => {
     vi.useRealTimers();
   });
 });
+
+describe("StopStatusActions, look (redesign RD2)", () => {
+  const delivered: StopProps = {
+    ...pendingStop,
+    status: "DELIVERED",
+    completedAt: "2099-07-02T08:00:00Z",
+  };
+
+  it("keeps Geliefert green and Problem soft red, so the two are never confused", () => {
+    renderIn("de");
+    expect(screen.getByTestId("btn-delivered")).toHaveClass("bg-success");
+    expect(screen.getByTestId("btn-problem")).toHaveClass(
+      "bg-destructive-soft",
+      "text-destructive-soft-foreground",
+    );
+  });
+
+  it("shows a reported problem in red and a delivery in green, from the design tokens", () => {
+    const view = renderIn("de", { ...delivered, status: "PROBLEM", problemReason: "CLOSED" });
+    expect(screen.getByTestId("stop-result")).toHaveClass("bg-destructive-soft");
+    view.unmount();
+    renderIn("de", delivered);
+    expect(screen.getByTestId("stop-result")).toHaveClass("bg-success-soft");
+  });
+
+  it("confirms a delivery tapped here with one ring, and stays still on a later visit", async () => {
+    const ring = () => screen.getByTestId("stop-result").querySelector('[data-slot="pulse-ring"]');
+    // A stop that was already delivered when the screen opened: no ring.
+    const before = renderIn("de", delivered);
+    expect(ring()).toBeNull();
+    before.unmount();
+
+    // The driver taps "Geliefert"; the screen remounts the actions with the new status.
+    const pending = renderIn("de");
+    fireEvent.click(screen.getByTestId("btn-delivered"));
+    await waitFor(() => expect(mocks.toast).toHaveBeenCalled());
+    pending.unmount();
+    const after = renderIn("de", delivered);
+    expect(ring()).not.toBeNull();
+    after.unmount();
+
+    renderIn("de", delivered);
+    expect(ring()).toBeNull();
+  });
+});

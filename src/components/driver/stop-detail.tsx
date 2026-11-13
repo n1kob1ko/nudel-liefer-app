@@ -96,7 +96,8 @@ export function StopDetail({
 
   return (
     <div
-      className="pb-[max(2rem,env(safe-area-inset-bottom))]"
+      // One rhythm for the whole screen: every block is 12 px from the next (redesign RD2).
+      className="flex flex-col gap-3 pb-[max(2rem,env(safe-area-inset-bottom))]"
       data-testid="stop-detail"
       data-stop-id={stop.id}
     >
@@ -105,7 +106,7 @@ export function StopDetail({
       {/* Sticky top bar variant (§7.3): back, position, previous/next. The "Weiter"/"Zurück" names
           stay on the chevrons the e2e specs click, and the texts also appear in the bottom bar. */}
       <header
-        className="sticky top-14 z-20 -mx-4 mb-2 flex min-h-14 items-center gap-1 border-b bg-background px-2 py-1"
+        className="sticky top-14 z-20 -mx-4 flex min-h-14 items-center gap-1 border-b bg-background px-2 py-1"
         data-testid="stop-topbar"
       >
         <Button
@@ -215,19 +216,24 @@ export function StopDetail({
       {/* The note callout is the first card under the header and comes *before* the navigation
           button (re-design.md §7.3: "this is the thing drivers must not miss"). */}
       {detail.notes ? (
-        <div className="mt-3">
-          <NoteCallout
-            text={detail.notes.text}
-            lang={detail.notes.lang}
-            showLangBadge={detail.notes.lang === "de" && detail.locale !== "de"}
-          />
-        </div>
+        <NoteCallout
+          text={detail.notes.text}
+          lang={detail.notes.lang}
+          showLangBadge={detail.notes.lang === "de" && detail.locale !== "de"}
+        />
       ) : null}
 
-      <div className="mt-3 grid gap-2" data-testid="navigation">
+      <div className="grid gap-2" data-testid="navigation">
         {hasPin ? (
           <>
-            <Button asChild size="xl" className="w-full">
+            {/* Yolk marks the next thing to do: driving here while the stop is open. Once the stop
+                is done the yolk button is "Weiter zu Stopp n" below, and this one steps back. */}
+            <Button
+              asChild
+              size="xl"
+              variant={stop.status === "PENDING" ? "primary" : "outline"}
+              className="w-full"
+            >
               <a
                 href={stopGoogleNavigationUrl(stop)!}
                 target="_blank"
@@ -285,7 +291,7 @@ export function StopDetail({
         {hours ? <span>{hours}</span> : null}
       </section>
 
-      <div data-testid="status-actions-slot">
+      <div className="flex flex-col gap-3" data-testid="status-actions-slot">
         <StopStatusActions
           key={`${stop.id}:${stop.status}`}
           stop={stop}
@@ -315,7 +321,7 @@ function ParkingSpotsCard({
   const t = useTranslations("driver.stop");
   if (spots.length === 0) {
     return (
-      <section className="mt-3 rounded-xl border bg-card p-4" data-testid="parking-empty">
+      <section className="rounded-xl border bg-card p-4" data-testid="parking-empty">
         <h2 className="flex items-center gap-2 text-base font-semibold">
           <CircleParkingIcon className="size-5 shrink-0" aria-hidden />
           {t("parkingTitle")}
@@ -326,7 +332,7 @@ function ParkingSpotsCard({
     );
   }
   return (
-    <section className="mt-3 rounded-xl border bg-card p-4" data-testid="parking-spots">
+    <section className="rounded-xl border bg-card p-4" data-testid="parking-spots">
       <h2 className="flex items-center gap-2 text-base font-semibold">
         <CircleParkingIcon className="size-5 shrink-0" aria-hidden />
         {t("parkingTitle")}
@@ -447,7 +453,7 @@ function DeliveryCard({
   const unitLabel = (unit: string, count: number) => t(`units.${unit as UnitKey}`, { count });
   const { totals } = summarizeItems(items);
   return (
-    <section className="overflow-hidden rounded-lg border bg-card" data-testid="stop-items">
+    <section className="overflow-hidden rounded-xl border bg-card" data-testid="stop-items">
       <h2 className="flex items-center gap-2 border-b bg-muted/40 px-4 py-2.5 text-base font-semibold">
         <PackageIcon className="size-5 shrink-0" aria-hidden />
         {tStop("items")}
@@ -484,7 +490,7 @@ function DeliveryCard({
   );
 }
 
-/** The amber note callout: the one thing a driver must not miss, directly under the header. */
+/** The orange note callout: the one thing a driver must not miss, directly under the header. */
 function NoteCallout({
   text,
   lang,
@@ -497,7 +503,7 @@ function NoteCallout({
   const t = useTranslations("driver.stop");
   return (
     <section
-      className="space-y-1.5 rounded-lg border border-warning bg-warning-soft px-4 py-3 text-warning-soft-foreground"
+      className="space-y-1.5 rounded-xl border border-warning/50 bg-warning-soft px-4 py-3 text-warning-soft-foreground"
       data-testid="stop-notes"
     >
       <h2 className="flex items-center gap-2 text-base font-semibold">

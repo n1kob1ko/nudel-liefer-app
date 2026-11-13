@@ -32,7 +32,7 @@ describe("status map", () => {
   it("maps every stored stop status", () => {
     expect(stopTone("PENDING")).toBe("neutral");
     expect(stopTone("DELIVERED")).toBe("success");
-    expect(stopTone("PROBLEM")).toBe("warning");
+    expect(stopTone("PROBLEM")).toBe("destructive");
     // UI-derived values that are not stored on the stop.
     expect(stopTone("FAILED")).toBe("destructive");
     expect(stopTone("CANCELLED")).toBe("warning");
@@ -66,7 +66,7 @@ describe("status map", () => {
     expect(stopToneWithNext("PENDING", true)).toBe("primary");
     expect(stopToneWithNext("DELIVERED", true)).toBe("primary");
     expect(stopToneWithNext("PENDING", false)).toBe("neutral");
-    expect(stopToneWithNext("PROBLEM", false)).toBe("warning");
+    expect(stopToneWithNext("PROBLEM", false)).toBe("destructive");
   });
 
   it("accepts lower-case enum values", () => {

@@ -219,7 +219,7 @@ function StatTiles({
         value={problems}
         sub={t("admin.dashboard.tiles.problemsSub")}
         icon={problems > 0 ? TriangleAlertIcon : CircleAlertIcon}
-        tone={problems > 0 ? "warning" : "neutral"}
+        tone={problems > 0 ? "destructive" : "neutral"}
         href={tourHref}
       />
       <StatTile
@@ -344,7 +344,7 @@ function AttentionPanel({
                 data-testid="attention-problem"
                 className="flex items-start gap-3 border-b border-border py-3 last:border-b-0"
               >
-                <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
+                <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden />
                 <div className="flex min-w-0 flex-col">
                   <Link
                     href={tourHref}

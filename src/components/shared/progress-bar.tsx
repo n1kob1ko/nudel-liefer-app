@@ -20,7 +20,7 @@ type ProgressBarBaseProps = {
 type ProgressBarProps = ProgressBarBaseProps &
   (
     | {
-        /** Shows delivered (success) + problems (warning) + open (muted/primary) in one bar. */
+        /** Shows delivered (success) + problems (destructive) + open (muted/primary) in one bar. */
         segments: ProgressSegment[];
         delivered?: never;
         problems?: never;
@@ -50,7 +50,7 @@ export function ProgressBar(props: ProgressBarProps) {
   const { segments } = props;
   const resolved: ProgressSegment[] = segments ?? [
     { value: props.delivered, tone: "success" },
-    { value: props.problems, tone: "warning" },
+    { value: props.problems, tone: "destructive" },
   ];
   const done = resolved.reduce((sum, segment) => sum + segment.value, 0);
   const pct = (n: number) => (total === 0 ? 0 : (n / total) * 100);

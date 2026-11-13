@@ -1,7 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { ChevronLeftIcon, ChevronRightIcon, XIcon } from "lucide-react";
+import { CameraIcon, ChevronLeftIcon, ChevronRightIcon, XIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -70,9 +70,13 @@ export function StopPhotos({
   };
 
   return (
-    <Card data-testid="stop-photos">
-      <CardHeader>
-        <CardTitle>{stopText(t, locale, "photos")}</CardTitle>
+    // Same inset and title size as the parking and delivery cards of the stop screen.
+    <Card className="gap-3 py-4" data-testid="stop-photos">
+      <CardHeader className="px-4">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <CameraIcon className="size-5 shrink-0" aria-hidden />
+          {stopText(t, locale, "photos")}
+        </CardTitle>
       </CardHeader>
       <CardContent className="px-4">
         <div className="grid grid-cols-2 gap-3">

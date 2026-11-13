@@ -57,6 +57,13 @@ const REASON_ICONS: Record<ProblemReasonName, LucideIcon> = {
 
 const TOAST_MS = 10_000;
 
+/**
+ * Stops the driver completed with a tap on this device a moment ago. The result card of such a stop
+ * shows the success ring once (motion rule 8); a stop that was already done when the screen opened
+ * stays still. Module state on purpose: the actions remount when the status changes (their `key`).
+ */
+const justDelivered = new Set<string>();
+
 type StopForStatus = {
   id: string;
   customerName: string;
@@ -118,6 +125,11 @@ export function StopStatusActions({
   const [reason, setReason] = useState<ProblemReasonName | null>(null);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // Read once when the result card mounts; cleared afterwards so a later visit stays still.
+  const [celebrate] = useState(() => stop.status === "DELIVERED" && justDelivered.has(stop.id));
+  useEffect(() => {
+    if (stop.status !== "PENDING") justDelivered.delete(stop.id);
+  }, [stop.id, stop.status]);
 
   /** Runs `task` once at a time (a double tap is one tap); shows a message if the device cannot store. */
   async function guarded<T>(task: () => Promise<T>): Promise<T | null> {
@@ -152,6 +164,7 @@ export function StopStatusActions({
       enqueueMutation({ type, stopId: stop.id, customerName: stop.customerName, ...extra }),
     );
     if (!entry) return;
+    if (type === "delivered") justDelivered.add(stop.id);
     setSheetOpen(false);
     setReason(null);
     setNote("");
@@ -204,15 +217,19 @@ export function StopStatusActions({
       <>
         <section
           className={cn(
-            "space-y-3 rounded-xl border-2 p-4",
+            "relative space-y-3 rounded-xl border p-4",
             delivered
-              ? "border-green-600 bg-green-50 text-green-950 dark:bg-green-950/40 dark:text-green-50"
-              : "border-amber-500 bg-amber-50 text-amber-950 dark:bg-amber-950/40 dark:text-amber-50",
+              ? "border-success/45 bg-success-soft text-success-soft-foreground"
+              : "border-destructive/40 bg-destructive-soft text-destructive-soft-foreground",
           )}
           data-testid="stop-result"
           data-status={stop.status}
           aria-label={t("actionsLabel")}
         >
+          {celebrate ? (
+            // 3 % is enough on a card this wide, and it stays inside the page padding.
+            <span aria-hidden data-slot="pulse-ring" className="pulse-ring [--pulse-scale:1.03]" />
+          ) : null}
           <p className="flex items-center gap-3 text-2xl font-bold" data-testid="stop-result-text">
             {delivered ? (
               <CheckCircle2Icon className="size-8 shrink-0" aria-hidden />
@@ -267,7 +284,7 @@ export function StopStatusActions({
         <div
           // In the page flow, after the stop's details (review 2026-10-31: the fixed bar read as a
           // misplaced band over the content). Same card look as the sections above it.
-          className="mt-3 space-y-2 rounded-xl border bg-card p-4"
+          className="space-y-2 rounded-xl border bg-card p-4"
           data-testid="stop-action-bar"
         >
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-base font-semibold">
@@ -278,7 +295,7 @@ export function StopStatusActions({
               />
             ) : (
               <AlertTriangleIcon
-                className="size-5 shrink-0 text-warning-soft-foreground"
+                className="size-5 shrink-0 text-destructive-soft-foreground"
                 aria-hidden
               />
             )}
@@ -330,10 +347,15 @@ export function StopStatusActions({
 
   return (
     <>
-      <section className="space-y-3" data-testid="stop-actions" aria-label={t("actionsLabel")}>
+      <section
+        // Empty unless there is an offline hint or an error: then it takes no room in the column.
+        className="space-y-3 empty:hidden"
+        data-testid="stop-actions"
+        aria-label={t("actionsLabel")}
+      >
         {offline ? (
           <p
-            className="flex items-center gap-2 rounded-lg border-2 border-amber-500 bg-amber-50 p-3 text-base font-semibold text-amber-950 dark:bg-amber-950/40 dark:text-amber-50"
+            className="flex items-center gap-2 rounded-lg border border-warning/50 bg-warning-soft p-3 text-base font-semibold text-warning-soft-foreground"
             data-testid="status-offline-notice"
           >
             <WifiOffIcon className="size-5 shrink-0" aria-hidden />
@@ -354,7 +376,7 @@ export function StopStatusActions({
       {/* Action card (re-design.md §7.1/§7.3): two rows on purpose — "Problem" must never be hit
           by accident. It sits at the end of the stop in the page flow, as a card like the sections
           above it (review 2026-10-31: the fixed bar read as a misplaced band over the content). */}
-      <div className="mt-3 space-y-2 rounded-xl border bg-card p-4" data-testid="stop-action-bar">
+      <div className="space-y-2 rounded-xl border bg-card p-4" data-testid="stop-action-bar">
         <Button
           type="button"
           variant="success"
@@ -369,9 +391,9 @@ export function StopStatusActions({
         </Button>
         <Button
           type="button"
-          variant="outline"
+          variant="warning"
           size="lg"
-          className="min-h-14 w-full border-2 border-warning bg-warning-soft text-lg font-bold text-warning-soft-foreground hover:bg-warning-soft/70 disabled:border-muted-foreground disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
+          className="min-h-14 w-full text-lg font-bold disabled:border-muted-foreground disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
           disabled={busy}
           onClick={() => {
             setError(null);
@@ -417,11 +439,11 @@ export function StopStatusActions({
                       aria-pressed={selected}
                       onClick={() => setReason(value)}
                       className={cn(
-                        "flex min-h-16 items-center gap-3 rounded-lg border-2 p-3 text-start text-base font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        "flex min-h-16 items-center gap-3 rounded-lg border p-3 text-start text-base font-semibold outline-none transition-[background-color,border-color,transform] duration-[140ms] ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card active:scale-[.97]",
                         value === "OTHER" && "col-span-full",
                         selected
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-card hover:bg-muted",
+                          ? "border-foreground bg-primary text-primary-foreground"
+                          : "border-input/60 bg-card hover:border-input hover:bg-muted/60",
                       )}
                       data-testid={`reason-${value}`}
                     >
@@ -444,7 +466,7 @@ export function StopStatusActions({
                   maxLength={PROBLEM_NOTE_MAX}
                   rows={3}
                   placeholder={t("notePlaceholder")}
-                  className="block w-full resize-none rounded-lg border-2 bg-background p-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="field block w-full resize-none rounded-lg border border-input bg-card p-3 text-base outline-none"
                   data-testid="problem-note"
                 />
               </label>
@@ -464,10 +486,10 @@ export function StopStatusActions({
             <Button
               type="button"
               size="xl"
-              variant="outline"
-              // Disabled is not grey-on-amber any more (design review point 8): a token-based
-              // boundary and icon at >= 3:1, readable muted text, no extra opacity on top.
-              className="border-2 border-warning bg-warning-soft text-lg font-bold text-warning-soft-foreground hover:bg-warning-soft/70 disabled:border-muted-foreground disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
+              variant="destructive"
+              // Disabled stays readable (design review point 8): a token-based boundary and icon at
+              // >= 3:1, muted text on the muted fill, no extra opacity on top and no tactile edge.
+              className="text-lg font-bold disabled:border disabled:border-muted-foreground disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none"
               disabled={busy || reason === null}
               onClick={() => {
                 if (!reason) return;

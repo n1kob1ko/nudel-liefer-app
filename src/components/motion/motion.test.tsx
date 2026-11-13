@@ -91,6 +91,30 @@ describe("SuccessPulse", () => {
     // A new element (keyed by the count), so the animation restarts.
     expect(container.querySelector('[data-slot="pulse-ring"]')).not.toBe(first);
   });
+
+  it("pulses when a counter grows, and stays still when it shrinks (undo)", () => {
+    const ring = () => container.querySelector('[data-slot="pulse-ring"]');
+    const { container, rerender } = render(
+      <SuccessPulse count={3}>
+        <span>3 / 20</span>
+      </SuccessPulse>,
+    );
+    expect(ring()).toBeNull();
+    rerender(
+      <SuccessPulse count={4}>
+        <span>4 / 20</span>
+      </SuccessPulse>,
+    );
+    const first = ring();
+    expect(first).not.toBeNull();
+    rerender(
+      <SuccessPulse count={3}>
+        <span>3 / 20</span>
+      </SuccessPulse>,
+    );
+    // Taking a delivery back is not a success: no new ring.
+    expect(ring()).toBe(first);
+  });
 });
 
 describe("IconSwap", () => {

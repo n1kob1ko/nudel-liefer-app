@@ -72,7 +72,7 @@ export function StopPayment({
 
   return (
     <section
-      className="mt-3 space-y-3 rounded-xl border bg-card p-4"
+      className="space-y-3 rounded-xl border bg-card p-4"
       aria-labelledby={`${inputId}-heading`}
       data-testid="stop-payment"
       data-state={state}
@@ -142,7 +142,7 @@ export function StopPayment({
               inputMode="decimal"
               autoComplete="off"
               enterKeyHint="done"
-              className="block min-h-14 w-32 rounded-lg border-2 bg-background px-3 text-xl font-semibold tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="block min-h-14 w-32 field rounded-lg border border-input bg-card px-3 text-xl font-semibold tabular-nums outline-none"
               data-testid="payment-amount"
             />
             <span className="text-xl font-semibold" aria-hidden>

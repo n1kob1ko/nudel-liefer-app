@@ -96,9 +96,12 @@ export function DepartureCard({
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
+        {/* Voluntary, so neither is yolk: the one yolk button of this screen is "Navigation
+            starten" on the next-stop card (redesign RD2). */}
         <Button
           type="button"
           size="lg"
+          variant="outline"
           disabled={busy}
           onClick={onOpen}
           data-testid="departure-open"
@@ -108,7 +111,7 @@ export function DepartureCard({
         <Button
           type="button"
           size="lg"
-          variant="outline"
+          variant="ghost"
           disabled={busy}
           onClick={onSkip}
           data-testid="departure-skip"
@@ -141,15 +144,18 @@ function TickRow({
         data-testid={testId}
         data-checked={checked}
         className={cn(
-          "flex min-h-16 w-full items-center gap-3 rounded-xl border-2 px-3 py-2 text-start outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          checked ? "border-success bg-success-soft text-success-soft-foreground" : "bg-card",
+          "flex min-h-16 w-full items-center gap-3 rounded-xl border px-3 py-2 text-start outline-none transition-[background-color,border-color,transform] duration-[140ms] ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card active:scale-[.97]",
+          checked
+            ? "border-success/45 bg-success-soft text-success-soft-foreground"
+            : "border-input/60 bg-card",
         )}
       >
         <span
           aria-hidden
           className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-md border-2",
-            checked ? "border-success bg-success text-success-foreground" : "border-border",
+            "flex size-9 shrink-0 items-center justify-center rounded-md border-2 transition-colors duration-[140ms] ease-out",
+            // The empty box is a control boundary: `input` keeps it at 3:1 against the card.
+            checked ? "border-success bg-success text-success-foreground" : "border-input",
           )}
         >
           {checked ? <CheckIcon className="size-6" /> : null}

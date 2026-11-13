@@ -62,8 +62,8 @@ export function AbbreviationChip({
     </>
   );
   const tone = value
-    ? "border-border bg-card text-foreground"
-    : "border-dashed border-muted-foreground bg-background text-muted-foreground";
+    ? "border-input/50 bg-card text-foreground"
+    : "border-input/50 bg-transparent text-muted-foreground";
 
   if (!interactive) {
     return (
@@ -87,7 +87,7 @@ export function AbbreviationChip({
         onClick={() => setOpen(true)}
         className={cn(
           // 48 px touch target; the visible chip is as small as the display-only one.
-          "inline-flex min-h-12 min-w-12 max-w-full items-center justify-center gap-1.5 rounded-lg border-2 px-3 text-base leading-tight outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "inline-flex min-h-12 min-w-12 max-w-full items-center justify-center gap-1.5 rounded-lg border px-3 text-base leading-tight outline-none transition-[background-color,border-color,transform] duration-[140ms] ease-out hover:border-input focus-visible:ring-2 focus-visible:ring-ring active:scale-[.97]",
           tone,
           className,
         )}
@@ -155,7 +155,7 @@ function AbbreviationSheet({ stop, onClose }: { stop: AbbreviationStop; onClose:
               maxLength={ABBREVIATION_MAX}
               autoComplete="off"
               enterKeyHint="done"
-              className="block min-h-14 w-full rounded-lg border-2 bg-background px-3 text-xl font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="block min-h-14 w-full field rounded-lg border border-input bg-card px-3 text-xl font-semibold outline-none"
               data-testid="abbreviation-input"
             />
             <p className="text-sm text-muted-foreground">{t("hint")}</p>

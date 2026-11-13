@@ -264,6 +264,9 @@ test.describe("offline shell, generic offline page, error page, install overlay"
           const axe = [];
           const layout = [];
           await expect(page.getByTestId("install-hint")).toBeVisible();
+          // The hint belongs to the frame of the page and is there first; the tour streams in after
+          // it. The audit is about the whole screen, so it waits for the tour as well.
+          await expect(page.locator('[data-testid="today-tour"]:visible')).toBeVisible();
           axe.push(...(await axeAudit(page, `install-hint-${locale}-${scheme}`, info)));
           layout.push(...(await layoutAudit(page, `install-hint-${locale}-${scheme}`)));
           await page.getByTestId("install-how").click();

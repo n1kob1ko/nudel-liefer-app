@@ -7,7 +7,7 @@ const GAP = 1.2;
 
 /**
  * Half-circle progress of today's tour (colour refresh 2026-10): delivered (success), problems
- * (warning) and open (hatched track) in tour order. The numbers sit in the middle and in the legend,
+ * (destructive) and open (hatched track) in tour order. The numbers sit in the middle and in the legend,
  * so the colours are never the only carrier of meaning; the SVG itself is `role="img"` with the
  * same sentence as its name.
  */
@@ -29,7 +29,7 @@ export function TourGauge({
   const problemLen = share(problems);
   const segments = [
     { key: "delivered", start: 0, length: deliveredLen, className: "stroke-success" },
-    { key: "problems", start: deliveredLen, length: problemLen, className: "stroke-warning" },
+    { key: "problems", start: deliveredLen, length: problemLen, className: "stroke-destructive" },
   ].filter((segment) => segment.length > 0);
 
   return (
@@ -85,7 +85,7 @@ export function TourGauge({
           {labels.delivered}
         </li>
         <li className="flex items-center gap-1.5">
-          <span aria-hidden className="size-2.5 rounded-full bg-warning" />
+          <span aria-hidden className="size-2.5 rounded-full bg-destructive" />
           {labels.problems}
         </li>
         <li className="flex items-center gap-1.5">

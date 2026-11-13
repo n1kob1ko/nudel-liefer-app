@@ -210,9 +210,11 @@ export function DriverPhotoSlot({
 
       {!photo && phase.name === "idle" ? (
         <div className="grid gap-2" data-testid="photo-actions">
-          {/* One line each, 16 px: "Foto aufnehmen" is the longest label and must not wrap. */}
+          {/* One line each, 16 px: "Foto aufnehmen" is the longest label and must not wrap. Neither
+              is yolk: a photo is optional, the yolk button of the stop is the navigation. */}
           <Button
             type="button"
+            variant="outline"
             size="lg"
             className="min-h-12 w-full px-1 text-base whitespace-nowrap"
             onClick={take}

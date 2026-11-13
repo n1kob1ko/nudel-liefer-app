@@ -754,7 +754,7 @@ export function TourPlanner({
             value={`${progress.done}/${progress.total}`}
             sub={t("progress.problems", { count: progress.problems })}
             icon={CircleDashedIcon}
-            tone={progress.problems > 0 ? "warning" : "neutral"}
+            tone={progress.problems > 0 ? "destructive" : "neutral"}
             className={KPI_TILE}
           />
         </div>

@@ -106,6 +106,21 @@ More rules that apply everywhere:
 - **Sheets can be swiped away** by their handle: far enough or a quick flick closes, anything else
   settles back. Esc and the close button always work.
 
+## Driver app
+
+- **One yolk button per screen:** "Navigation starten" while a stop is open, "Weiter zu Stopp n"
+  once it is done. The departure checklist and the photo buttons are white.
+- **One coloured card:** the next stop, pale yolk with a yolk edge all round. No side stripes.
+- **Green is "Geliefert", red is "Problem"** in the badge, the list row, the ring, the bar and the
+  result card. Orange is only for hints: the customer note, offline, "waiting to be sent".
+- **The status buttons stay in the page flow,** after the quantities (`docs/driver-usability.md`):
+  a sticky "Geliefert" invites a tap before the delivery was read.
+- **Empty extras are quiet:** an unknown key or a missing Abkürzung is a thin grey chip.
+- **Motion:** stop rows arrive 30 ms apart; the next-stop card rises in when it takes over after a
+  delivery on the same screen; a delivery is confirmed by one ring around the count or the result
+  card. Nothing animates when the screen is merely opened again.
+- One 12 px gap between the blocks of a screen, one radius (`rounded-xl`) for its cards.
+
 ## Do and don't
 
 - Do put the important action in yolk and leave the others white.
