@@ -355,6 +355,9 @@ Read rule: `pick(text, locale)` returns the requested locale; if empty, the clos
 | NUD-194 | Tagesplanung: Stammtouren mit festen Kunden, Mengen direkt bearbeiten | M2.7 | 149 | done |
 | NUD-195 | Fahrer: „Geliefert" direkt auf der Karte des nächsten Stopps | M2.7 | – | done |
 | NUD-196 | Zahlungen: Bar bei Lieferung oder Monatsrechnung, kassierter Betrag, Monatsrechnung mit Bezahlt-Vermerk | M2.7 | 033 | done |
+| NUD-197 | Monatsrechnung: Korrekturzeile (Rabatt, Gutschrift, Zuschlag) | M2.8 | 196 | done |
+| NUD-198 | Monatsrechnung: Export als PDF und CSV für die Buchhaltung | M2.8 | 197 | todo |
+| NUD-199 | Zahlungen: Bezahlt-Historie als eigene Seite | M2.8 | 196 | todo |
 | NUD-100 | AI screenshot extraction (review required) | M3 | 031 | superseded → NUD-150 |
 | NUD-101 | Recurring / standing orders | M3 | 032 | superseded → NUD-149 |
 | NUD-102 | Multiple drivers / tours per day | M3 | 043 | superseded → NUD-147 |
@@ -3858,6 +3861,57 @@ Alle Entscheidungen: Product Owner, 2026-10-29 (§9).
 #### Ein-Zeilen-Eintrag (aus F13, nicht umgesetzt)
 **NUD-191 · Checklisten-Zeilen brauchen explizite Accessible Names** — Status: todo · Quelle: Blackbox-QA 2026-10-29, F13. Die Zeilen sind bereits `<button role="checkbox" aria-checked>` (e2e klickt sie per Rolle); offen ist nur der vorlesbare Name (bisher der zusammengesetzte Kindtext). Aufwand S, ein e2e-Locator per Name. Kein Ticket im QA-Block, weil der Befund als solcher nicht reproduzierbar war.
 
+### M2.8 — Offene Punkte aus dem Übergabe-Protokoll 2026-11-12 (NUD-197…199)
+
+Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile", „Bezahlt-Liste") und die Folge-Tickets aus den Notizen von NUD-196. Auftrag des neuen Eigentümers vom 2026-11-13. Reihenfolge 197 → 198 → 199, weil Export und Summen auf der Korrekturzeile aufbauen.
+
+#### NUD-197 · Monatsrechnung: Korrekturzeile (Rabatt, Gutschrift, Zuschlag)
+**Status:** done · **depends_on:** 196 · Quelle: Übergabe-Protokoll 7.2.
+
+**Goal:** Das Büro kann auf der Monatsrechnung eines Kunden Korrekturen eintragen: ein kurzer Text und ein fester Euro-Betrag, als Abzug (Rabatt, Gutschrift) oder als Zuschlag. Die Korrekturen zählen in die Summe des Monats, überall wo diese Summe steht.
+
+**Acceptance criteria**
+- [x] Tabelle `MonthlyAdjustment` (`customerId`, `periodStart`, `label` max. 120 Zeichen, `amountCents` mit Vorzeichen und nie 0, `createdAt`, `createdById`, `voidedAt`, `voidedById`); Migration nur additiv.
+- [x] Summe der Monatsrechnung = Bestellungen + aktive Korrekturen, an allen vier Stellen gleich: Monatsseite, Liste der offenen Monate, Summe „Offen auf Monatsrechnung", Snapshot beim „Als bezahlt markieren". Die Zwischensumme der Bestellungen bleibt auf der Monatsseite sichtbar.
+- [x] Monatsseite: Abschnitt „Korrekturen" mit Liste, Formular (Abzug oder Zuschlag, Text, Betrag wie im Bestellformular: `10`, `10,50`) und Entfernen je Zeile. Die Zeilen erscheinen im Druck, das Formular nicht.
+- [x] Solange der Monat als bezahlt markiert ist, sind Hinzufügen und Entfernen gesperrt (Server und Oberfläche); nach „Bezahlt-Markierung zurücknehmen" geht es wieder. So bleibt der Snapshot wahr.
+- [x] Entfernen löscht nicht, sondern setzt `voidedAt` (Soft delete); beides auditiert (`monthly.adjust`, `monthly.adjust_remove`) mit Ids und Betrag, ohne den Text.
+- [x] Korrekturen gehen auch im laufenden Monat (ein Rabatt wird oft vorab vereinbart).
+- [x] Server-Actions mit `requireRole("ADMIN")`, Zeilen in der Autorisierungs-Matrix, zod-Grenzen; Texte in `de`, `en`, `zh-Hans`; `docs/privacy.md` Abschnitt 6 nennt den neuen Freitext.
+
+**Implementation notes (NUD-197)**
+- `MonthlyAdjustment` speichert den Betrag mit Vorzeichen (negativ = Abzug, positiv = Zuschlag); das Formular nimmt einen positiven Betrag und die Art, `signedAdjustmentCents` setzt das Vorzeichen. `billTotalCents` (`src/domain/payment.ts`) ist die eine Summenformel für Monatsseite, Liste der offenen Monate und Snapshot.
+- Sperre: `addMonthlyAdjustment` / `removeMonthlyAdjustment` (`src/server/monthly-adjustments.ts`) antworten `locked`, solange ein gültiger Bezahlt-Vermerk existiert. Markieren, Hinzufügen und Entfernen nehmen in ihrer Transaktion zuerst eine Zeilensperre auf den Kunden (`lockCustomerBilling`), damit keine Korrektur zwischen Summe und Snapshot rutscht.
+- Eine Gutschrift darf größer sein als die Bestellungen des Monats; die Summe wird dann negativ (Guthaben des Kunden). Ein Betrag von 0 wird abgelehnt.
+- Oberfläche: der Fuß der Bestelltabelle liest sich wie auf einer Papierrechnung (Zwischensumme, Korrekturen mit Vorzeichen, Summe); ohne Korrekturen steht dort nur das Formular. Eine neue Zeile gleitet ein, die Summe oben pulsiert einmal kurz (`ConfirmPulse`), beides ohne Bewegung bei `prefers-reduced-motion`.
+- Das Audit-Log hält Id, Monat und Betrag, nie den Text (`monthly.adjust`, `monthly.adjust_remove`); `docs/privacy.md` Abschnitt 6 nennt `MonthlyAdjustment.label`.
+- Nebenbei: Tippfehler „nothing“ in der deutschen Meldung `nothing_to_pay` behoben; der Knopf-Druck skaliert jetzt auf 0,97 (Projektregel).
+- Tests: `payment.test.ts` (Summenformel), `monthly-adjustments.integration.test.ts` (12 Fälle: Summe, Monat/Kunde, Validierung, Liste, Snapshot, Sperre, Soft delete, Audit), `monthly-bill-adjustments.test.tsx` (8 Fälle), Autorisierungs-Matrix, `format.test.ts`.
+
+#### NUD-198 · Monatsrechnung: Export als PDF und CSV für die Buchhaltung
+**Status:** todo · **depends_on:** 197 · Quelle: Übergabe-Protokoll 7.2.
+
+**Goal:** Die Monatsrechnung eines Kunden lässt sich als Datei herunterladen: als PDF (dasselbe wie die Druckansicht, aber als fertige Datei) und als CSV (für Excel und die Buchhaltung). Dazu eine CSV mit allen Kunden eines Monats, damit die Buchhaltung nicht jede Rechnung einzeln holen muss.
+
+**Acceptance criteria**
+- [ ] `GET /api/admin/payments/export?month=YYYY-MM&customer=<id>&format=pdf|csv&locale=<de|en|zh-Hans>`: nur ADMIN (401/403 sonst), `Cache-Control: private, no-store`, `Content-Disposition: attachment` mit Dateiname `monatsrechnung-<Kundennummer>-<YYYY-MM>.<pdf|csv>`. Ohne `customer` nur CSV: alle Kunden mit Bestellungen auf Monatsrechnung in diesem Monat (`monatsrechnungen-<YYYY-MM>.csv`). Ungültige Parameter → 400, unbekannter Kunde → 404.
+- [ ] CSV: eine Zeile je Bestellung und je Korrektur mit Monat, Kundennummer, Kunde, Datum, Art, Beschreibung, Betrag, Status des Monats und Bezahlt-Datum. UTF-8 mit BOM, CRLF. Format nach Sprache: `de` → Trenner `;`, `42,50`, `31.10.2026` (deutsches Excel); `en` und `zh-Hans` → Trenner `,`, `42.50`, `2026-10-31`. Bestellung ohne Betrag → leere Zelle. Textzellen, die mit `=`, `+`, `-`, `@` beginnen, bekommen ein `'` davor (CSV-Injection).
+- [ ] PDF (A4): Absender (Depot aus den Einstellungen), Empfänger (Firma oder Name, Rechnungsadresse falls gepflegt, UID), Monat, Tabelle Datum / Produkte / Betrag, Zwischensumme, Korrekturen, Summe, Status (offen oder „Bezahlt am …"), Hinweis auf Bestellungen ohne Betrag, Seitenzahlen; lange Monate brechen sauber auf Folgeseiten um.
+- [ ] Monatsseite: „PDF" und „CSV" neben „Drucken". Zahlungsseite: Monat wählen und „Alle Kunden als CSV".
+- [ ] Zeile in der Autorisierungs-Matrix; keine neuen Umgebungsvariablen.
+
+#### NUD-199 · Zahlungen: Bezahlt-Historie als eigene Seite
+**Status:** todo · **depends_on:** 196 · Quelle: Übergabe-Protokoll 7.2.
+
+**Goal:** Alle als bezahlt vermerkten Monate stehen auf einer eigenen Seite, nicht nur die letzten 20 auf der Zahlungsseite: wann bezahlt, welcher Kunde und Monat, welcher Betrag, wer es vermerkt hat und mit welcher Notiz.
+
+**Acceptance criteria**
+- [ ] `/admin/payments/history`: gültige Bezahlt-Vermerke (nicht zurückgenommen), neueste zuerst, 50 je Seite mit Blättern. Spalten: Bezahlt am, Kunde (Name, Nummer), Monat, Bestellungen, Betrag (Snapshot), Vermerkt von, Notiz; die Zeile führt zur Monatsrechnung.
+- [ ] Filter: Jahr des abgerechneten Monats und Suche nach Kundenname oder Kundennummer; Anzahl und Summe der Treffer stehen darüber. Leerer Zustand mit und ohne Filter.
+- [ ] Zahlungsseite: „Bezahlt vermerkt" zeigt die letzten 5 und verlinkt auf die Historie.
+- [ ] Zurückgenommene Vermerke stehen nicht in der Liste (der Verlauf dazu bleibt im Audit-Log).
+- [ ] Texte in `de`, `en`, `zh-Hans`; geprüft bei 1280 px.
+
 ## 9. Decision log (append-only, one line per decision taken during implementation)
 
 | Date | Ticket | Decision | Reason |
@@ -4306,6 +4360,8 @@ Alle Entscheidungen: Product Owner, 2026-10-29 (§9).
 | 2026-11-02 | NUD-196 | Bar bei Lieferung ist die Ausnahme, Monatsrechnung der Standard (Feld auf der Bestellung, kein Kundenstammfeld) | Wunsch des Auftraggebers; ein Kundenstandard hätte jede neue Bestellung vorbelegen müssen, ohne dass jemand ihn pflegt |
 | 2026-11-02 | NUD-196 | Der Fahrer erfasst den kassierten Betrag als eigene Offline-Mutation (`payment`, `StopMutation.kind = PAYMENT`, idempotent je `clientMutationId`) und nur auf einem bereits gelieferten Stopp | Geld wechselt mit der Ware; der Weg ist derselbe wie bei Schlüssel/Parkplatz, damit es im Keller funktioniert und nicht doppelt gebucht wird |
 | 2026-11-02 | NUD-196 | „Bezahlt" einer Monatsrechnung ist ein Snapshot (Summe + Anzahl Bestellungen) mit `voidedAt` statt Löschen; ein Monat ist erst nach seinem Ende markierbar | Bestellungen können später noch geändert werden; die Historie bleibt im Audit-Log, und der laufende Monat ist noch nicht abzurechnen |
+| 2026-11-13 | NUD-197 | Korrekturen sind feste Euro-Beträge mit Text, keine Prozent-Rabatte | Es gibt keine Katalogpreise (D33); ein Prozentsatz würde sich mit jeder nachträglich geänderten Bestellung verschieben, ein fester Betrag bleibt, was vereinbart wurde |
+| 2026-11-13 | NUD-197 | Korrekturen sind gesperrt, solange der Monat als bezahlt markiert ist | Der Bezahlt-Vermerk ist ein Snapshot der Summe; eine spätere Korrektur würde ihn still falsch machen. Zurücknehmen, korrigieren, neu markieren hält die Historie ehrlich |
 
 ## 10. Open questions for the client (do not block on these – use placeholders)
 

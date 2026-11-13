@@ -2002,7 +2002,8 @@
         "emptyTitle": "本月没有订单",
         "emptyBody": "本月没有已确认的月度账单订单。",
         "currentMonth": "本月尚未结束；从下月 1 日起可标记为已付。",
-        "noAmount": "无金额"
+        "noAmount": "无金额",
+        "breakdown": "订单 {orders}，调整 {adjustments}"
       },
       "note": "备注（可选）",
       "notePlaceholder": "例如：现金结清，或 3 日转账",
@@ -2020,6 +2021,36 @@
         "not_found": "未找到该记录。",
         "nothing_to_pay": "本月无应付金额（没有订单，或本月尚未结束）。",
         "conflict": "该记录同时被修改。请重新加载。"
+      },
+      "adjust": {
+        "heading": "调整项",
+        "subtotal": "订单小计",
+        "total": "合计",
+        "formTitle": "添加调整项",
+        "formBody": "以固定金额记录折扣、退款或附加费。调整项计入本月合计。",
+        "kind": "类型",
+        "deduction": "扣减",
+        "surcharge": "附加",
+        "label": "说明",
+        "labelPlaceholder": "例如：老客户折扣",
+        "amount": "金额（欧元）",
+        "amountPlaceholder": "10.00",
+        "add": "添加",
+        "adding": "正在保存…",
+        "remove": "删除调整项“{label}”",
+        "locked": "本月已标记为已付，调整项因此被锁定。如需修改，请先撤销已付标记。",
+        "toast": {
+          "added": "已添加调整项。",
+          "removed": "已删除调整项。"
+        },
+        "errors": {
+          "labelRequired": "请填写说明。",
+          "amountInvalid": "请输入大于 0 的金额，例如 10.50。",
+          "invalid": "输入无效。请检查说明和金额。",
+          "not_found": "该调整项已不存在。请重新加载页面。",
+          "locked": "本月刚刚被标记为已付。如需修改，请先撤销已付标记。",
+          "generic": "操作未成功，请重试。"
+        }
       }
     }
   },

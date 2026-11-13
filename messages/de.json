@@ -2002,7 +2002,8 @@
         "emptyTitle": "Keine Bestellungen in diesem Monat",
         "emptyBody": "Für diesen Monat gibt es keine bestätigten Bestellungen auf Monatsrechnung.",
         "currentMonth": "Der Monat läuft noch; als bezahlt markieren geht ab dem 1. des Folgemonats.",
-        "noAmount": "ohne Betrag"
+        "noAmount": "ohne Betrag",
+        "breakdown": "Bestellungen {orders}, Korrekturen {adjustments}"
       },
       "note": "Notiz (freiwillig)",
       "notePlaceholder": "z. B. bar beglichen oder Überweisung am 3.",
@@ -2018,8 +2019,38 @@
         "generic": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
         "invalid": "Ungültige Eingabe.",
         "not_found": "Der Eintrag wurde nicht gefunden.",
-        "nothing_to_pay": "Für diesen Monat gibt es nothing zu bezahlen (keine Bestellungen oder der Monat läuft noch).",
+        "nothing_to_pay": "Für diesen Monat gibt es nichts zu bezahlen (keine Bestellungen oder der Monat läuft noch).",
         "conflict": "Der Eintrag wurde gleichzeitig geändert. Bitte neu laden."
+      },
+      "adjust": {
+        "heading": "Korrekturen",
+        "subtotal": "Zwischensumme Bestellungen",
+        "total": "Summe",
+        "formTitle": "Korrektur eintragen",
+        "formBody": "Rabatt, Gutschrift oder Zuschlag als fester Betrag. Die Korrektur zählt in die Summe des Monats.",
+        "kind": "Art",
+        "deduction": "Abzug",
+        "surcharge": "Zuschlag",
+        "label": "Text",
+        "labelPlaceholder": "z. B. Rabatt Stammkunde",
+        "amount": "Betrag in Euro",
+        "amountPlaceholder": "10,00",
+        "add": "Eintragen",
+        "adding": "Wird gespeichert …",
+        "remove": "Korrektur „{label}“ entfernen",
+        "locked": "Der Monat ist als bezahlt markiert, die Korrekturen sind deshalb gesperrt. Zum Ändern zuerst die Bezahlt-Markierung zurücknehmen.",
+        "toast": {
+          "added": "Korrektur eingetragen.",
+          "removed": "Korrektur entfernt."
+        },
+        "errors": {
+          "labelRequired": "Bitte einen Text eintragen.",
+          "amountInvalid": "Bitte einen Betrag über 0 eintragen, z. B. 10,50.",
+          "invalid": "Die Eingabe ist ungültig. Bitte Text und Betrag prüfen.",
+          "not_found": "Die Korrektur gibt es nicht mehr. Bitte die Seite neu laden.",
+          "locked": "Der Monat wurde inzwischen als bezahlt markiert. Zum Ändern zuerst die Bezahlt-Markierung zurücknehmen.",
+          "generic": "Das hat nicht geklappt. Bitte erneut versuchen."
+        }
       }
     }
   },

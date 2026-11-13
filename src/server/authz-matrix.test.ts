@@ -373,6 +373,12 @@ const MATRIX: Record<string, Row> = {
   "src/server/payment-actions.ts#unmarkMonthlyBillPaidAction": adminAction("payments", async () =>
     (await import("./payment-actions")).unmarkMonthlyBillPaidAction({}),
   ),
+  "src/server/payment-actions.ts#addMonthlyAdjustmentAction": adminAction("payments", async () =>
+    (await import("./payment-actions")).addMonthlyAdjustmentAction({}),
+  ),
+  "src/server/payment-actions.ts#removeMonthlyAdjustmentAction": adminAction("payments", async () =>
+    (await import("./payment-actions")).removeMonthlyAdjustmentAction({}),
+  ),
 
   // ---- driver-only server actions
   "src/server/stop-status-actions.ts#stopStatusAction": driverAction(

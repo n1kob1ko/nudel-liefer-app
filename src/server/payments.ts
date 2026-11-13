@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { formatCalendarDate, parseCalendarDate } from "@/domain/order";
 import {
+  billTotalCents,
   cashDueCents,
   type CashState,
   cashState,
@@ -13,7 +14,7 @@ import {
   nextMonthStart,
   parseMonthKey,
 } from "@/domain/payment";
-import type { PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 
 import { recordAudit } from "./audit";
 
@@ -35,14 +36,28 @@ export type PaymentsDb = Pick<
   | "order"
   | "customer"
   | "monthlyPayment"
+  | "monthlyAdjustment"
   | "auditLog"
   | "user"
   | "$queryRaw"
   | "$transaction"
 >;
 
-const idSchema = z.string().trim().min(1).max(64);
+export const idSchema = z.string().trim().min(1).max(64);
 const MAX_NOTE = 200;
+
+/**
+ * Serialises everything that changes what one customer's monthly bills add up to (NUD-197): marking
+ * a month paid and adding or removing a correction take this row lock first, inside their
+ * transaction. Without it a correction could slip in between reading the total and writing the
+ * "paid" snapshot, and the snapshot would be wrong from its first second.
+ */
+export async function lockCustomerBilling(
+  tx: Pick<Prisma.TransactionClient, "$queryRaw">,
+  customerId: string,
+): Promise<void> {
+  await tx.$queryRaw`SELECT 1 FROM "Customer" WHERE "id" = ${customerId} FOR UPDATE`;
+}
 
 // ---------------------------------------------------------------------------------------------
 // Cash at the stops
@@ -193,7 +208,7 @@ export async function monthlyOverviewQuery(
   if (aggregates.length === 0) return [];
 
   const customerIds = [...new Set(aggregates.map((row) => row.customerId))];
-  const [customers, paidRows] = await Promise.all([
+  const [customers, paidRows, adjustmentRows] = await Promise.all([
     db.customer.findMany({
       where: { id: { in: customerIds } },
       select: { id: true, customerNumber: true, name: true },
@@ -202,7 +217,19 @@ export async function monthlyOverviewQuery(
       where: { customerId: { in: customerIds }, voidedAt: null },
       select: { customerId: true, periodStart: true },
     }),
+    // Corrections (NUD-197) count into the month's total exactly like on the month page.
+    db.monthlyAdjustment.groupBy({
+      by: ["customerId", "periodStart"],
+      where: { customerId: { in: customerIds }, voidedAt: null, periodStart: { lt: currentMonth } },
+      _sum: { amountCents: true },
+    }),
   ]);
+  const adjusted = new Map(
+    adjustmentRows.map((row) => [
+      `${row.customerId}:${formatCalendarDate(row.periodStart)}`,
+      row._sum.amountCents ?? 0,
+    ]),
+  );
   const customerById = new Map(customers.map((customer) => [customer.id, customer]));
   const paid = new Set(
     paidRows.map((row) => `${row.customerId}:${formatCalendarDate(row.periodStart)}`),
@@ -221,7 +248,8 @@ export async function monthlyOverviewQuery(
           customerName: customer.name,
           periodStart: formatCalendarDate(period),
           monthKey: monthKey(period),
-          amountCents: row.amount,
+          amountCents:
+            row.amount + (adjusted.get(`${row.customerId}:${formatCalendarDate(period)}`) ?? 0),
           orderCount: row.orderCount,
           noAmountCount: row.noAmount,
           state: monthlyState({
@@ -247,6 +275,13 @@ export type MonthlyBillOrder = {
   items: Array<{ productName: unknown; sku: string; unit: string; quantity: number }>;
 };
 
+export type MonthlyBillAdjustment = {
+  id: string;
+  label: string;
+  /** Signed euro cents: negative = deduction, positive = surcharge. */
+  amountCents: number;
+};
+
 export type MonthlyBill = {
   customer: { id: string; customerNumber: string; name: string; city: string };
   /** `YYYY-MM-DD` of the first day. */
@@ -254,6 +289,11 @@ export type MonthlyBill = {
   monthKey: string;
   closed: boolean;
   orders: MonthlyBillOrder[];
+  /** Corrections of the month (NUD-197), oldest first; removed ones are not listed. */
+  adjustments: MonthlyBillAdjustment[];
+  /** Sum of the orders alone, before corrections. */
+  ordersTotalCents: number;
+  /** What the month costs: orders plus corrections. */
   totalCents: number;
   noAmountCount: number;
   state: MonthlyState;
@@ -268,8 +308,8 @@ export type MonthlyBill = {
 
 /**
  * One customer's accumulated bill of one month: every CONFIRMED monthly order of that month with
- * its amount (and the cash orders of the month as information, marked with their term), the total
- * and the paid note if there is one.
+ * its amount, the corrections of the month (NUD-197), the total of both and the paid note if there
+ * is one.
  */
 export async function monthlyBillQuery(
   db: PaymentsDb,
@@ -286,7 +326,7 @@ export async function monthlyBillQuery(
   });
   if (!customer) return null;
 
-  const [orders, payment] = await Promise.all([
+  const [orders, payment, adjustments] = await Promise.all([
     db.order.findMany({
       where: {
         customerId: customer.id,
@@ -321,9 +361,15 @@ export async function monthlyBillQuery(
         paidBy: { select: { displayName: true } },
       },
     }),
+    db.monthlyAdjustment.findMany({
+      where: { customerId: customer.id, periodStart: period, voidedAt: null },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: { id: true, label: true, amountCents: true },
+    }),
   ]);
 
   const paid = payment !== null && payment.voidedAt === null;
+  const orderAmounts = orders.map((order) => order.amountCents);
   return {
     customer,
     periodStart: formatCalendarDate(period),
@@ -343,7 +389,12 @@ export async function monthlyBillQuery(
         quantity: item.quantity,
       })),
     })),
-    totalCents: orders.reduce((sum, order) => sum + (order.amountCents ?? 0), 0),
+    adjustments,
+    ordersTotalCents: billTotalCents(orderAmounts, []),
+    totalCents: billTotalCents(
+      orderAmounts,
+      adjustments.map((adjustment) => adjustment.amountCents),
+    ),
     noAmountCount: orders.filter((order) => order.amountCents === null).length,
     state: monthlyState({
       periodStart: period,
@@ -389,9 +440,10 @@ export type MonthlyMarkResult =
   | { ok: false; error: MonthlyMarkError };
 
 /**
- * Marks one customer-month as paid. The amount and the number of orders are a snapshot: orders can
- * still be edited afterwards, and the note says what was paid, not what is there today. Marking an
- * already paid month again updates the note and clears a previous "unpaid" (the row stays).
+ * Marks one customer-month as paid. The amount (orders plus corrections, NUD-197) and the number of
+ * orders are a snapshot: orders can still be edited afterwards, and the note says what was paid, not
+ * what is there today. Marking an already paid month again updates the note and clears a previous
+ * "unpaid" (the row stays).
  */
 export async function markMonthlyPaid(
   db: PaymentsDb,
@@ -422,9 +474,17 @@ export async function markMonthlyPaid(
     select: { amountCents: true },
   });
   if (orders.length === 0) return { ok: false, error: "nothing_to_pay" };
-  const amountCents = orders.reduce((sum, order) => sum + (order.amountCents ?? 0), 0);
 
   return db.$transaction(async (tx): Promise<MonthlyMarkResult> => {
+    await lockCustomerBilling(tx, customer.id);
+    const adjustments = await tx.monthlyAdjustment.findMany({
+      where: { customerId: customer.id, periodStart: period, voidedAt: null },
+      select: { amountCents: true },
+    });
+    const amountCents = billTotalCents(
+      orders.map((order) => order.amountCents),
+      adjustments.map((adjustment) => adjustment.amountCents),
+    );
     const existing = await tx.monthlyPayment.findUnique({
       where: { customerId_periodStart: { customerId: customer.id, periodStart: period } },
       select: { paidAt: true, amountCents: true, voidedAt: true },

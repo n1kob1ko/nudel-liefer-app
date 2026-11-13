@@ -2002,7 +2002,8 @@
         "emptyTitle": "No orders in this month",
         "emptyBody": "There are no confirmed orders on a monthly bill for this month.",
         "currentMonth": "The month is still running; it can be marked paid from the 1st of the following month.",
-        "noAmount": "no amount"
+        "noAmount": "no amount",
+        "breakdown": "Orders {orders}, corrections {adjustments}"
       },
       "note": "Note (optional)",
       "notePlaceholder": "e.g. paid in cash, or transfer on the 3rd",
@@ -2020,6 +2021,36 @@
         "not_found": "The entry was not found.",
         "nothing_to_pay": "Nothing to pay for this month (no orders, or the month is still running).",
         "conflict": "The entry was changed at the same time. Please reload."
+      },
+      "adjust": {
+        "heading": "Corrections",
+        "subtotal": "Subtotal of the orders",
+        "total": "Total",
+        "formTitle": "Add a correction",
+        "formBody": "A discount, credit note or surcharge as a fixed amount. The correction counts into the total of the month.",
+        "kind": "Kind",
+        "deduction": "Deduction",
+        "surcharge": "Surcharge",
+        "label": "Text",
+        "labelPlaceholder": "e.g. regular customer discount",
+        "amount": "Amount in euro",
+        "amountPlaceholder": "10.00",
+        "add": "Add",
+        "adding": "Saving …",
+        "remove": "Remove the correction “{label}”",
+        "locked": "The month is marked paid, so its corrections are locked. To change them, take the paid note back first.",
+        "toast": {
+          "added": "Correction added.",
+          "removed": "Correction removed."
+        },
+        "errors": {
+          "labelRequired": "Please enter a text.",
+          "amountInvalid": "Please enter an amount above 0, e.g. 10.50.",
+          "invalid": "The input is not valid. Please check the text and the amount.",
+          "not_found": "This correction no longer exists. Please reload the page.",
+          "locked": "The month has been marked paid in the meantime. To change it, take the paid note back first.",
+          "generic": "That did not work. Please try again."
+        }
       }
     }
   },

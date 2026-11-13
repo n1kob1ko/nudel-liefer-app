@@ -24,4 +24,12 @@ describe("createAppFormatters", () => {
     expect(f("de").time(moment)).toBe("00:30");
     expect(f("de").dateShort(moment)).toContain("18");
   });
+
+  it("shows a correction with its sign, so a deduction and a surcharge cannot be confused", () => {
+    // Intl puts a no-break space before the euro sign; normalised so the test reads plainly.
+    const plain = (text: string) => text.replace(/\u00a0/g, " ");
+    expect(plain(f("de").signedAmount(-1000))).toBe("-10,00 €");
+    expect(plain(f("de").signedAmount(250))).toBe("+2,50 €");
+    expect(plain(f("en").signedAmount(-1000))).toBe("-€10.00");
+  });
 });

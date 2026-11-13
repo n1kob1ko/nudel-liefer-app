@@ -45,6 +45,8 @@ export const AUDIT_ACTIONS = [
   "stop.payment",
   "monthly.pay",
   "monthly.unpay",
+  "monthly.adjust",
+  "monthly.adjust_remove",
   "photo.add",
   "photo.replace",
   "parking.create",

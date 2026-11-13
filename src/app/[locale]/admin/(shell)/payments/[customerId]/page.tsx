@@ -4,7 +4,9 @@ import { getFormatter, getTranslations, setRequestLocale } from "next-intl/serve
 import { Suspense } from "react";
 
 import { MonthlyBillActions } from "@/components/admin/monthly-bill-actions";
+import { MonthlyBillAdjustments } from "@/components/admin/monthly-bill-adjustments";
 import { PageHeader } from "@/components/admin/page-header";
+import { ConfirmPulse } from "@/components/shared/confirm-pulse";
 import { EmptyState, LoadingSkeleton } from "@/components/shared/states";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -28,8 +30,9 @@ import { getFactoryTimezone } from "@/server/settings";
 
 /**
  * One customer's accumulated monthly bill (D33, NUD-196): every monthly order of the month with its
- * amount, the total, and the office's "paid" note. Printable, and the place where the office marks
- * the month as paid. Without `?month=` it opens on the last month.
+ * amount, the corrections of the month (NUD-197), the total, and the office's "paid" note.
+ * Printable, and the place where the office marks the month as paid. Without `?month=` it opens on
+ * the last month.
  */
 async function Guarded({
   locale,
@@ -92,11 +95,25 @@ async function Guarded({
                 })}
               </CardDescription>
             </div>
-            <p
-              className="text-2xl font-semibold tabular-nums"
-              data-testid="monthly-bill-total"
-            >
-              {fmt.amount(bill.totalCents)}
+            <p className="flex flex-col items-end gap-0.5">
+              <ConfirmPulse
+                value={bill.totalCents}
+                className="text-2xl font-semibold tabular-nums"
+                data-testid="monthly-bill-total"
+              >
+                {fmt.amount(bill.totalCents)}
+              </ConfirmPulse>
+              {bill.adjustments.length > 0 ? (
+                <span
+                  className="text-sm text-muted-foreground tabular-nums"
+                  data-testid="monthly-bill-breakdown"
+                >
+                  {t("bill.breakdown", {
+                    orders: fmt.amount(bill.ordersTotalCents),
+                    adjustments: fmt.signedAmount(bill.totalCents - bill.ordersTotalCents),
+                  })}
+                </span>
+              ) : null}
             </p>
           </div>
         </CardHeader>
@@ -141,7 +158,7 @@ async function Guarded({
             {t("bill.ordersCount", { count: bill.orders.length })}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-6">
           {bill.orders.length === 0 ? (
             <EmptyState
               icon={ReceiptTextIcon}
@@ -195,6 +212,18 @@ async function Guarded({
               </Table>
             </div>
           )}
+          <MonthlyBillAdjustments
+            customerId={bill.customer.id}
+            month={bill.monthKey}
+            locked={bill.payment !== null}
+            adjustments={bill.adjustments.map((adjustment) => ({
+              id: adjustment.id,
+              label: adjustment.label,
+              amountText: fmt.signedAmount(adjustment.amountCents),
+            }))}
+            ordersTotalText={fmt.amount(bill.ordersTotalCents)}
+            totalText={fmt.amount(bill.totalCents)}
+          />
         </CardContent>
       </Card>
     </div>
