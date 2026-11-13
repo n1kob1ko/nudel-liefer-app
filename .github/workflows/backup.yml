@@ -37,7 +37,9 @@ env:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    # Pinned, not `ubuntu-latest`: the client is installed from the PostgreSQL apt repository of
+    # this Ubuntu release, and a moving label breaks that the day it moves.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: backup
     services:
