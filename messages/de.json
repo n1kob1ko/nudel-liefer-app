@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Nudel Liefer App",
+    "appName": "Routenplanner",
     "language": "Sprache",
     "notifications": "Hinweise",
     "theme": {
@@ -124,7 +124,7 @@
     }
   },
   "home": {
-    "title": "Nudel Liefer App",
+    "title": "Routenplanner",
     "placeholder": "Platzhalter"
   },
   "auth": {
@@ -135,7 +135,7 @@
       "password": "Passwort",
       "submit": "Anmelden",
       "driverLink": "Fahrer-Anmeldung",
-      "brandSentence": "Büro-Anmeldung Nudel Liefer App",
+      "brandSentence": "Büro-Anmeldung Routenplanner",
       "showPassword": "Anzeigen",
       "hidePassword": "Verbergen"
     },
@@ -2387,8 +2387,8 @@
     }
   },
   "pwa": {
-    "name": "Nudel Liefer App",
-    "shortName": "Lieferungen",
+    "name": "Routenplanner",
+    "shortName": "Routenplanner",
     "description": "Tagestour, Adressen und Liefermengen für Fahrer",
     "offline": {
       "title": "Keine Verbindung",

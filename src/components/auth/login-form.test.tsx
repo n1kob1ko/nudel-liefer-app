@@ -19,7 +19,7 @@ const L1: Record<string, AbstractIntlMessages> = {
         passwordRequired: "Bitte Passwort eingeben",
       },
       adminLogin: {
-        brandSentence: "Büro-Anmeldung Nudel Liefer App",
+        brandSentence: "Büro-Anmeldung Routenplanner",
         showPassword: "Anzeigen",
         hidePassword: "Verbergen",
       },
@@ -35,7 +35,7 @@ const L1: Record<string, AbstractIntlMessages> = {
         passwordRequired: "请输入密码",
       },
       adminLogin: {
-        brandSentence: "Nudel Liefer 应用办公室登录",
+        brandSentence: "Routenplanner 办公室登录",
         showPassword: "显示",
         hidePassword: "隐藏",
       },
