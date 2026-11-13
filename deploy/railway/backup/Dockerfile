@@ -33,5 +33,8 @@ COPY scripts ./scripts
 COPY src/lib/s3-url-style.ts ./src/lib/s3-url-style.ts
 
 # The dump is written to a temporary file first; it holds personal data and never stays in the image.
+# The job is `pnpm backup:db`, started without pnpm: as `node`, pnpm's check of node_modules before
+# a script tried a reinstall, failed on the root-owned folder and left error lines in every run's
+# log (seen 2026-11-13; the dump itself was fine).
 USER node
-CMD ["pnpm", "backup:db"]
+CMD ["./node_modules/.bin/tsx", "scripts/backup/pg-backup.ts"]

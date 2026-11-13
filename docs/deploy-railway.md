@@ -25,13 +25,13 @@ There is no nginx, no systemd unit, no `/etc/delivery-app.env` and no `/etc/host
 
 ## 2. Service settings
 
-| Service  | Root directory           | Build                                         | Pre-deploy                                                         | Start        | Schedule (UTC) | Other                                                                    |
-| -------- | ------------------------ | --------------------------------------------- | ------------------------------------------------------------------ | ------------ | -------------- | ------------------------------------------------------------------------ |
-| `app`    | `/`                      | `pnpm build:railway`                          | `pnpm db:migrate && pnpm bucket:cors --apply && pnpm bucket:check` | `pnpm start` | –              | health check `/api/health` (180 s), restart on failure (10 tries)        |
-| `cron`   | `/deploy/railway/cron`   | Dockerfile                                    | –                                                                  | image        | `*/5 * * * *`  | restart never, watch `/deploy/railway/cron/**`                           |
-| `backup` | `/`                      | Dockerfile `deploy/railway/backup/Dockerfile` | –                                                                  | image        | `23 2 * * *`   | restart never, watch paths see below                                     |
-| `ors`    | `/deploy/railway/ors`    | Dockerfile                                    | –                                                                  | image        | –              | volume at `/data`, restart on failure, watch `/deploy/railway/ors/**`    |
-| `photon` | `/deploy/railway/photon` | Dockerfile                                    | –                                                                  | image        | –              | volume at `/data`, restart on failure, watch `/deploy/railway/photon/**` |
+| Service  | Root directory           | Build                                         | Pre-deploy                                                                                        | Start        | Schedule (UTC) | Other                                                                    |
+| -------- | ------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------------ | -------------- | ------------------------------------------------------------------------ |
+| `app`    | `/`                      | `pnpm build:railway`                          | `pnpm db:migrate && pnpm bucket:cors --apply && pnpm bucket:check && pnpm maps:check --warn-only` | `pnpm start` | –              | health check `/api/health` (180 s), restart on failure (10 tries)        |
+| `cron`   | `/deploy/railway/cron`   | Dockerfile                                    | –                                                                                                 | image        | `*/5 * * * *`  | restart never, watch `/deploy/railway/cron/**`                           |
+| `backup` | `/`                      | Dockerfile `deploy/railway/backup/Dockerfile` | –                                                                                                 | image        | `23 2 * * *`   | restart never, watch paths see below                                     |
+| `ors`    | `/deploy/railway/ors`    | Dockerfile                                    | –                                                                                                 | image        | –              | volume at `/data`, restart on failure, watch `/deploy/railway/ors/**`    |
+| `photon` | `/deploy/railway/photon` | Dockerfile                                    | –                                                                                                 | image        | –              | volume at `/data`, restart on failure, watch `/deploy/railway/photon/**` |
 
 - Every service and every volume is in `europe-west4-drams3a`. A new service starts in a US region by default, and so does the volume of a template (the `Postgres` volume was created in `sfo` and had to be replaced by a new one while the database was still empty; a volume cannot be moved). So: set the region of a service before its first deploy and name the region when a volume is created.
 - Create services one after the other. Four created at the same moment (2026-11-13) left one of them missing and two unusable for some minutes.
@@ -76,7 +76,7 @@ Values that are secrets are never written here. `${{...}}` is Railway's referenc
 
 ## 4. Deploying
 
-A push to the branch a service follows deploys it; there is no manual step and no SSH. `app` rebuilds on every push, the helper services only when their watch paths changed. The order of one `app` deploy: build (`check-deploy-env`, two `next build` passes, PWA files) → pre-deploy (migrations, CORS rule of the photo bucket, upload check against the bucket) → start → health check `/api/health` → the old container is stopped. A failed build, migration or health check leaves the running version in place.
+A push to the branch a service follows deploys it; there is no manual step and no SSH. `app` rebuilds on every push, the helper services only when their watch paths changed. The order of one `app` deploy: build (`check-deploy-env`, two `next build` passes, PWA files) → pre-deploy (migrations, CORS rule of the photo bucket, upload check against the bucket, Google check) → start → health check `/api/health` → the old container is stopped. A failed build, migration or health check leaves the running version in place.
 
 Rollback: Railway dashboard → `app` → Deployments → the last good one → Redeploy. A migration that was already applied is not undone by that.
 
@@ -90,7 +90,7 @@ A run that finds nothing due logs one line and ends. A run in which a job failed
 
 ## 6. Backup
 
-`backup` runs `pnpm backup:db` every night at 02:23 UTC: the same master-data dump as NUD-200 (settings, users, customers, products, standing tours, standing orders – never orders, tours or payments), written to the `backups` bucket under `db/`, 8 weeks kept. The image carries `pg_dump` 18 (`PG_MAJOR` in the Dockerfile must follow the database's major version).
+`backup` runs `pnpm backup:db` every night at 02:23 UTC: the same master-data dump as NUD-200 (settings, users, customers, products, standing tours, standing orders – never orders, tours or payments), written to the `backups` bucket under `db/`, 8 weeks kept. The image carries `pg_dump` 18 (`PG_MAJOR` in the Dockerfile must follow the database's major version). First run on 2026-11-13 (15:06 UTC, schedule set to that minute once and set back): 14 tables with data, 11 left out, one object under `db/`. A redeploy does not run the job; only the schedule does.
 
 Railway can also take scheduled copies of the whole database volume (service `Postgres` → Backups). That is **off**: such a copy holds orders and payments, which the owner does not want kept (NUD-200, NUD-201). It is the right tool for one deliberate copy before a risky change, deleted afterwards.
 
@@ -118,8 +118,9 @@ Owner's decision of 2026-11-13 (NUD-203): address search and road routes come fr
 **Then (the switch)**
 
 1. `GET /api/health` → `routing.mode` and `geocoding.mode` are `google`. The key wins over `ORS_BASE_URL` and `PHOTON_URL`, which may still be set at that moment.
-2. Geocode an address in the customer form, plan a tour: real distances, a route along roads, "Google Maps" in the map's attribution.
-3. Remove on Railway: the variables `ORS_BASE_URL`, `PHOTON_URL`, `PHOTON_LANG` of `app`, the services `ors` and `photon`, their volumes `ors-data` and `photon-data`. Then delete `deploy/railway/ors` and `deploy/railway/photon` and their rows on this page.
+2. The deploy log of `app` (pre-deploy) shows two lines of `pnpm maps:check` (`scripts/check-google-maps.ts`): `[maps-check] ok   geocode: …` and `[maps-check] ok   route: …`. That is one real address search and one real route with fixed public test data (two billed requests per deploy), asked without the caches and the fallback, so a refused key shows as `FAIL` with the reason (`REQUEST_DENIED`, `HTTP 403`, …) instead of being covered by the estimate. Health alone only says that a key is set. The step runs with `--warn-only`: a deploy does not wait for Google, the line is the signal. By hand: `pnpm maps:check` (exit code 2 on a failure).
+3. Geocode an address in the customer form, plan a tour: real distances, a route along roads, "Google Maps" in the map's attribution.
+4. Remove on Railway: the variables `ORS_BASE_URL`, `PHOTON_URL`, `PHOTON_LANG` of `app`, the services `ors` and `photon`, their volumes `ors-data` and `photon-data`. Then delete `deploy/railway/ors` and `deploy/railway/photon` and their rows on this page.
 
 **Terms (read on 2026-11-13; not legal advice)**
 
@@ -147,25 +148,38 @@ Railway buckets have no lifecycle rules, so `scripts/set-bucket-lifecycle.ts` do
 
 ## 9. Moving the data from the old server
 
-The database of the old server listens on `127.0.0.1` only, so the copy has to be pushed from there. Everything below runs **on the old server as root**; it reads the old data and writes nothing there. Do it at a moment nobody is working in the app, and stop the old app first so that nothing changes during the copy (`systemctl stop delivery-app`).
+The database and the photo store of the old server listen on `127.0.0.1` only, so the copy is pushed from there by one script, `scripts/railway/move-from-server.sh`. It only reads on the old server (the old app keeps running) and **replaces** the Railway database and adds to the Railway photo bucket. It can be run again: the database is replaced again, photos that are already there are skipped.
 
-1. Railway dashboard → `Postgres` → Settings → Networking → enable the TCP proxy, copy the public connection URL (`DATABASE_PUBLIC_URL`). Remove the proxy again after step 3.
-2. Stop `app` on Railway for the restore, or accept that it shows errors for a minute.
-3. Database (replaces whatever the Railway database holds):
+**Before (on Railway)**
 
-   ```bash
-   set -a; . /etc/delivery-app.env; set +a
-   read -rs -p "Railway DATABASE_PUBLIC_URL: " TARGET; echo
-   pg_dump -Fc --no-owner --no-acl "$DATABASE_URL" > /root/nudel-move.dump
-   pg_restore --clean --if-exists --no-owner --no-acl -d "$TARGET" /root/nudel-move.dump
-   rm /root/nudel-move.dump
+1. `Postgres` → Settings → Networking → enable the TCP proxy (port 5432). The database is then reachable from the internet with its password; remove the proxy again when the move is done.
+2. One variable that holds everything the script needs, made of references so that nobody types a secret. On the service `backup` (a variable there restarts nothing that serves users):
+
+   ```
+   MOVE_TARGET=postgresql://${{Postgres.PGUSER}}:${{Postgres.POSTGRES_PASSWORD}}@${{Postgres.RAILWAY_TCP_PROXY_DOMAIN}}:${{Postgres.RAILWAY_TCP_PROXY_PORT}}/${{Postgres.PGDATABASE}}|${{photos.ENDPOINT}}|${{photos.REGION}}|${{photos.BUCKET}}|${{photos.ACCESS_KEY_ID}}|${{photos.SECRET_ACCESS_KEY}}
    ```
 
-4. Photos: copy the bucket `nudel-photos` of the server's MinIO into the Railway bucket `photos` (credentials: dashboard → `photos` → Credentials). Any S3 copy tool works; the object keys must stay the same, the database refers to them.
-5. Variables that only the old server knows (`/etc/delivery-app.env`): `MAP_TILE_URL`, `MAP_TILE_ATTRIBUTION`, `DEEPL_API_KEY`, `OPENROUTER_API_KEY` and its options, `SENTRY_DSN`. Enter them in the dashboard → `app` → Variables. Do **not** copy `DATABASE_URL`, `AUTH_SECRET`, `S3_*`, `CRON_SECRET`, `ORS_*`, `PHOTON_*`.
-6. Redeploy `app` (the build reads `MAP_TILE_URL` and `SENTRY_DSN`), then run the checks of section 10.
+   Its **value** (dashboard → `backup` → Variables → copy) is the "Railway line" the script asks for. Delete the variable after the move.
 
-The pre-deploy step runs `prisma migrate deploy`, so a database that is behind the code is migrated on the next deploy.
+**The move (on the old server as root)**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/n1kob1ko/nudel-liefer-app/main/scripts/railway/move-from-server.sh -o /root/umzug.sh && bash /root/umzug.sh
+```
+
+The script reads `/etc/delivery-app.env`, asks for the Railway line (hidden input), shows the row counts of both databases and asks before it replaces the Railway one. Then:
+
+- **Database:** `pg_dump` of the old database into a temporary file, the `public` schema on Railway dropped and restored from it, the file removed. It compares the row count of every table on both sides and stops when one differs. A table the app's database user may not read (a manual copy made by another role, on the old server `StandingTourCustomer_backup_20261105`) is named and left behind: the app does not know it.
+- **Photos:** every object of the old bucket is copied under the same key (the database refers to the keys), with its content type; at the end the listing of both buckets is compared. `--skip-db` runs only this part again.
+- **Provider variables:** it prints the lines of `MAP_TILE_URL`, `MAP_TILE_ATTRIBUTION`, `MAP_TILE_CACHE`, `DEEPL_API_KEY`, `DEEPL_API_PLAN`, `OPENROUTER_*`, `SENTRY_DSN`, `SENTRY_ENVIRONMENT` as far as the old server has them. They go into the dashboard → `app` → Variables → Raw Editor. `DATABASE_URL`, `AUTH_SECRET`, `S3_*`, `CRON_SECRET`, `ORS_*`, `PHOTON_*` are **not** copied: Railway has its own.
+
+**After (on Railway)**
+
+1. Redeploy `app`: the pre-deploy step runs `prisma migrate deploy`, which brings the restored database (the old server was some migrations behind) up to the code; the build reads `MAP_TILE_URL` and `SENTRY_DSN`.
+2. Remove the TCP proxy of `Postgres` and the variable `MOVE_TARGET`.
+3. Run the checks of section 10 and log in with an account of the old server (the users came with the database; everybody has to log in again, because `AUTH_SECRET` is new).
+
+The script was tried on 2026-11-13 against a local copy of this setup: a database in the state of the old server (migrations up to `20261103211400_payments`) restored over a migrated one and then migrated to the current code, and 131 objects between two buckets.
 
 ## 10. Checks
 
