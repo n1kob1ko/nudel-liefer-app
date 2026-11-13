@@ -114,12 +114,36 @@ jobs:
       SEED_ADMIN_PASSWORD: ci-only-password
       AUTH_SECRET: ci-only-secret-0123456789abcdef0123456789abcdef
       BASE_URL: http://localhost:3000
+      # `pnpm start` is a production server: without object storage `GET /api/driver/tour/today`
+      # answers 500, the driver home shows its sync error line and the run measures that layout shift
+      # instead of the page (same MinIO as the e2e job).
+      S3_ENDPOINT: http://localhost:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: nudel-photos
+      S3_ACCESS_KEY_ID: minioadmin
+      S3_SECRET_ACCESS_KEY: minioadmin
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      - name: Start the object storage (MinIO)
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+            chainguard/minio:latest server /data
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:9000/minio/health/ready && exit 0
+            sleep 1
+          done
+          docker logs minio
+          exit 1
+      - name: Create the object-storage bucket
+        run: |
+          docker run --rm --network host \
+            -e MC_HOST_local=http://minioadmin:minioadmin@localhost:9000 \
+            chainguard/minio-client:latest mb --ignore-existing local/nudel-photos
       - run: pnpm db:migrate && pnpm db:seed
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm build
