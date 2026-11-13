@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { GoogleGeocoder, mapGoogleGeocodeResponse } from "./google";
 import { getGeocoder, setGeocoderForTests } from "./index";
-import { GeocoderError } from "./types";
+import { type Geocoder, GeocoderError } from "./types";
 
 const KEY = "AIza-test-key-0123456789";
 
@@ -25,6 +25,10 @@ const hit = (
 });
 
 const ok = (...results: unknown[]) => ({ status: "OK", results });
+
+const expectedFailure = (): GeocoderError => {
+  throw new Error("expected the call to fail");
+};
 
 describe("mapGoogleGeocodeResponse", () => {
   it("maps hits to candidates, best first, with the typed address as the label", () => {
@@ -185,10 +189,10 @@ describe("GoogleGeocoder.search", () => {
 
     const timedOut = await new GoogleGeocoder({ apiKey: KEY, fetch: timeout, retries: 0 })
       .search("x")
-      .catch((e: unknown) => e as GeocoderError);
+      .then(expectedFailure, (e: unknown) => e as GeocoderError);
     const unreachable = await new GoogleGeocoder({ apiKey: KEY, fetch: offline, retries: 0 })
       .search("x")
-      .catch((e: unknown) => e as GeocoderError);
+      .then(expectedFailure, (e: unknown) => e as GeocoderError);
 
     expect(timedOut).toMatchObject({ code: "TIMEOUT" });
     expect(unreachable).toMatchObject({ code: "NETWORK" });
@@ -206,9 +210,8 @@ describe("GoogleGeocoder.search", () => {
 describe("GoogleGeocoder.reverse", () => {
   it("answers null without a request: the app shows no address for a pin", async () => {
     const fetchMock = vi.fn<typeof fetch>(async () => jsonResponse(ok()));
-    expect(
-      await new GoogleGeocoder({ apiKey: KEY, fetch: fetchMock }).reverse(48.2, 16.37),
-    ).toBeNull();
+    const geocoder: Geocoder = new GoogleGeocoder({ apiKey: KEY, fetch: fetchMock });
+    expect(await geocoder.reverse(48.2, 16.37)).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

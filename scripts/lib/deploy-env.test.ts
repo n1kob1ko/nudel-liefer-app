@@ -75,7 +75,7 @@ describe("checkDeployEnv", () => {
   });
 
   it("warns (production only) when no map service answers: made-up pins, estimated tours (NUD-203)", () => {
-    const { GOOGLE_MAPS_SERVER_KEY: _key, ...without } = good;
+    const without = { ...good, GOOGLE_MAPS_SERVER_KEY: undefined };
     const { errors, warnings } = checkDeployEnv(without);
     expect(errors).toEqual([]);
     expect(warnings.join("\n")).toMatch(/GOOGLE_MAPS_SERVER_KEY.*address/i);

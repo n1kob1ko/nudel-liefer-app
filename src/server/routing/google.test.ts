@@ -57,6 +57,10 @@ function routesFetch() {
   });
 }
 
+const expectedFailure = (): RoutingError => {
+  throw new Error("expected the call to fail");
+};
+
 const provider = (fetchMock: typeof fetch, extra = {}) =>
   new GoogleRoutingProvider({ apiKey: KEY, fetch: fetchMock, ...extra });
 
@@ -310,7 +314,7 @@ describe("GoogleRoutingProvider.route", () => {
     );
     const error = await provider(fetchMock)
       .route({ depot, orderedStops: stops(1) })
-      .catch((e: unknown) => e as RoutingError);
+      .then(expectedFailure, (e: unknown) => e as RoutingError);
 
     expect(error).toBeInstanceOf(RoutingError);
     expect(error).toMatchObject({ code: "HTTP", status: 403 });
@@ -328,10 +332,10 @@ describe("GoogleRoutingProvider.route", () => {
 
     const timedOut = await provider(timeout)
       .route({ depot, orderedStops: stops(1) })
-      .catch((e: unknown) => e as RoutingError);
+      .then(expectedFailure, (e: unknown) => e as RoutingError);
     const unreachable = await provider(offline)
       .route({ depot, orderedStops: stops(1) })
-      .catch((e: unknown) => e as RoutingError);
+      .then(expectedFailure, (e: unknown) => e as RoutingError);
 
     expect(timedOut).toMatchObject({ code: "TIMEOUT" });
     expect(unreachable).toMatchObject({ code: "NETWORK" });
