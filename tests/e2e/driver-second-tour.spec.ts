@@ -279,6 +279,8 @@ test("warm cache with queued taps: tour 1 finished offline, the follow-up replac
       await expect(visible(page, "btn-delivered")).toBeEnabled();
       await visible(page, "btn-delivered").click();
       await expect(page.getByTestId("pending-badge")).toHaveAttribute("data-count", String(i + 1));
+      // No automatic jump (NUD-176): the result card leads on to the second stop.
+      if (i === 0) await visible(page, "next-stop-action").click();
     }
     // Both taps wait on the phone; the cached tour 1 is "finished" on the screen.
     await expect(async () => {
