@@ -1,6 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { Client } from "pg";
 
+import { expireSettingsCache } from "./helpers/settings";
 import { ensureVehicle } from "./helpers/vehicle";
 
 // NUD-043. Needs a seeded database (product NUDELN-BEUTEL, demo driver), DATABASE_URL and
@@ -42,6 +43,7 @@ async function fixture() {
     await client.query(`SELECT "id","displayName" FROM "User" WHERE "username"='fahrer-de'`)
   ).rows[0] as { id: string; displayName: string };
   await client.query(`UPDATE "Settings" SET "depotPinConfirmed"=true`);
+  await expireSettingsCache();
 
   const customer = async (suffix: string, offset: number) => {
     const id = `id-${tag}-${suffix}`;
@@ -104,6 +106,7 @@ async function fixture() {
       await client.query(`DELETE FROM "Order" WHERE "customerId" LIKE $1`, [`id-${tag}-%`]);
       await client.query(`DELETE FROM "Customer" WHERE "id" LIKE $1`, [`id-${tag}-%`]);
       await client.query(`UPDATE "Settings" SET "depotPinConfirmed"=$1`, [depot.depotPinConfirmed]);
+      await expireSettingsCache();
       await client.end();
     },
   };

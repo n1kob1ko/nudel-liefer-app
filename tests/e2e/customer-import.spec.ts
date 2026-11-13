@@ -289,15 +289,19 @@ test("customer import: the dashboard to-do opens the Parkplatz queue, saved spot
     await visible(page, "queue-confirm").click();
     await expect(position).toContainText("Kunde 3 von");
     await visible(page, "queue-confirm").click();
-    await expect(position).toContainText("Kunde 4 von");
-    const saved = await withDb((db) =>
-      db.query(
-        `SELECT c."customerNumber" FROM "ParkingSpot" s JOIN "Customer" c ON c."id" = s."customerId"
-          WHERE c."customerNumber" LIKE $1 AND s.active ORDER BY c."customerNumber"`,
-        [`${prefix}%`],
-      ),
-    );
-    expect(saved.rows.map((r) => r.customerNumber)).toEqual([`${prefix}0002`, `${prefix}0003`]);
+    // What follows customer 3 depends on the rest of the database (a fourth customer without a
+    // parking spot, or the end of the queue), so the second save is awaited where it lands.
+    const saved = () =>
+      withDb(async (db) =>
+        (
+          await db.query(
+            `SELECT c."customerNumber" FROM "ParkingSpot" s JOIN "Customer" c ON c."id" = s."customerId"
+              WHERE c."customerNumber" LIKE $1 AND s.active ORDER BY c."customerNumber"`,
+            [`${prefix}%`],
+          )
+        ).rows.map((r) => r.customerNumber as string),
+      );
+    await expect.poll(saved).toEqual([`${prefix}0002`, `${prefix}0003`]);
 
     // A reload of the queue no longer offers the saved customers; the skipped one is still there.
     await page.goto("/de/admin/customers/parking");

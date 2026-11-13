@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { Client } from "pg";
 
 import { requireDatabaseUrl, requireFreeDay, requireUsableDatabase } from "./helpers/preconditions";
+import { expireSettingsCache } from "./helpers/settings";
 import { ensureVehicle } from "./helpers/vehicle";
 
 // NUD-099: an order confirmed after the tour of its day is COMPLETED.
@@ -88,11 +89,13 @@ test.beforeAll(async () => {
   await removeSpecData(); // leftovers of a crashed run
   await requireFreeDay(db, today, { today: true });
   await db.query(`UPDATE "Settings" SET "depotPinConfirmed"=true`);
+  await expireSettingsCache();
 });
 
 test.afterAll(async () => {
   await removeSpecData();
   await db.query(`UPDATE "Settings" SET "depotPinConfirmed"=$1`, [depotWasConfirmed]);
+  await expireSettingsCache();
   await db.end();
 });
 
@@ -196,12 +199,14 @@ test("late order after a completed tour: banner, follow-up tour, release, driver
   await form.locator('input[name="pin"]').fill(PIN);
   await driver.getByTestId("login-submit").click();
   await expect(driver).toHaveURL(/\/de\/driver$/);
-  // Delivering a stop moves on to the next open one; the last one returns to the tour screen.
+  // A delivered stop offers the way to the next open one; the last one leads back to the tour.
   await visible(driver, "details").click();
   for (let i = 0; i < 2; i++) {
     await expect(driver).toHaveURL(/\/de\/driver\/stops\/[^/]+$/);
     const here = driver.url();
     await visible(driver, "btn-delivered").click();
+    // No automatic jump (NUD-176): the result card leads to the next stop or back to the tour.
+    await visible(driver, i === 0 ? "next-stop-action" : "back-to-tour-action").click();
     if (i === 0) await expect(driver).not.toHaveURL(here);
   }
   await expect(driver).toHaveURL(/\/de\/driver$/);
@@ -321,6 +326,8 @@ test("late order after a completed tour: banner, follow-up tour, release, driver
     expect(quantity).toMatch(name === customers.A.name ? /^3(?![.,]?\d)/ : /^5(?![.,]?\d)/);
     const here = driver.url();
     await visible(driver, "btn-delivered").click();
+    // No automatic jump (NUD-176): the result card leads to the next stop or back to the tour.
+    await visible(driver, i === 0 ? "next-stop-action" : "back-to-tour-action").click();
     if (i === 0) await expect(driver).not.toHaveURL(here);
   }
   await expect(driver).toHaveURL(/\/de\/driver$/);
@@ -467,6 +474,8 @@ test("correction on a delivered stop: the increase goes onto a follow-up tour, t
     await expect(driver).toHaveURL(/\/de\/driver\/stops\/[^/]+$/);
     const here = driver.url();
     await visible(driver, "btn-delivered").click();
+    // No automatic jump (NUD-176): the result card leads to the next stop or back to the tour.
+    await visible(driver, i === 0 ? "next-stop-action" : "back-to-tour-action").click();
     if (i === 0) await expect(driver).not.toHaveURL(here);
   }
   await expect(visible(driver, "all-done")).toBeVisible();
@@ -579,6 +588,7 @@ test("correction on a delivered stop: the increase goes onto a follow-up tour, t
   expect((await items.getByTestId("item-quantity").innerText()).trim()).toMatch(/^3(?![.,]?\d)/);
   await driver.screenshot({ path: testInfo.outputPath("nud-117-driver.png") });
   await visible(driver, "btn-delivered").click();
+  await visible(driver, "back-to-tour-action").click();
   await expect(driver).toHaveURL(/\/de\/driver$/);
   await expect(visible(driver, "all-done")).toBeVisible();
 

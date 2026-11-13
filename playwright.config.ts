@@ -83,6 +83,15 @@ const webServerCommand = !process.env.CI
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
+  /**
+   * One worker: the specs share one database, and several of them own something that exists only
+   * once in it: the settings row (depot confirmation, departure checklist), "today" of the
+   * dashboard and of the driver app, the vehicles of the planning dialog. Side by side they changed
+   * each other's preconditions, so a full run failed in different places every time (first full CI
+   * run, 2026-11-13). `--workers=N` on the command line still wins for specs known to be
+   * independent.
+   */
+  workers: 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
@@ -136,6 +145,9 @@ export default defineConfig({
       // and every later login in the run is rejected as rate limited. The per-identifier limit the
       // rate-limit tests actually assert is unchanged. Ignored when a server is reused.
       LOGIN_MAX_FAILURES_PER_IP: "1000000",
+      // The hidden error pages and the settings-cache hook the specs use after writing the settings
+      // row themselves (tests/e2e/helpers/settings.ts). Ignored when a server is reused.
+      ENABLE_ERROR_TEST_PAGES: "true",
       // NUD-162: the server of this run reads the same database the specs assert on (ignored when
       // a server is reused: that one keeps the environment it was started with).
       ...(e2eDatabaseUrl ? { DATABASE_URL: e2eDatabaseUrl } : {}),

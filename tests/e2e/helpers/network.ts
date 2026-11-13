@@ -1,4 +1,4 @@
-import type { BrowserContext, Page } from "@playwright/test";
+import { type BrowserContext, expect, type Locator, type Page } from "@playwright/test";
 
 /**
  * `navigator.onLine` and the online / offline events do not follow `context.setOffline()` in every
@@ -140,4 +140,21 @@ export async function gotoSettled(page: Page, url: string) {
       if (new URL(page.url()).pathname === wanted.pathname) return;
     }
   }
+}
+
+/**
+ * Follows a link of the driver app while the connection is cut and waits until the page is on `url`.
+ *
+ * Offline, Next falls back to a browser navigation (the RSC fetch fails). At that moment Chromium's
+ * network emulation sometimes fires a short `online` / `offline` pair (measured 2026-11-13: about
+ * one navigation in four). The offline shell reloads on `online`, which is right on a real phone
+ * but here aborts the navigation the click started, so the page stays where it was. The click is
+ * repeated until the page arrives; the taps made before are in the outbox and survive the reload.
+ */
+export async function followLinkOffline(page: Page, link: Locator, url: RegExp) {
+  await expect(async () => {
+    if (!url.test(page.url())) await link.click({ timeout: 3_000 });
+    await expect(page).toHaveURL(url, { timeout: 3_000 });
+  }).toPass({ timeout: 30_000 });
+  await page.waitForLoadState("load").catch(() => {});
 }
