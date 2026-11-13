@@ -7,6 +7,10 @@
  * default: it prints the rule it would put and the rules the bucket has now. Run it again with
  * every address the app is opened under whenever an address is added (the list is replaced).
  *
+ * The addresses may also come from S3_CORS_ORIGINS (comma separated). On Railway that variable is
+ * `https://${{RAILWAY_PUBLIC_DOMAIN}}` and `pnpm bucket:cors --apply` is a pre-deploy command, so
+ * the rule follows the address by itself.
+ *
  * Reads S3_ENDPOINT / S3_BUCKET / S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY / S3_URL_STYLE like the
  * app. Exit codes: 0 = done, 1 = setup problem, 2 = the provider refused.
  */
@@ -16,7 +20,10 @@ import { readS3Config } from "../src/server/storage/s3";
 import { type CorsRule, corsRules } from "./lib/bucket-cors";
 
 function parseArgs(argv: readonly string[]): { origins: string[]; apply: boolean } {
-  const origins: string[] = [];
+  const origins = (process.env.S3_CORS_ORIGINS ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
   let apply = false;
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === "--apply") apply = true;
