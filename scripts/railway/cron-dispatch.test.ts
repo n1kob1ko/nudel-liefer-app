@@ -101,7 +101,7 @@ describe("runDue", () => {
   };
 
   it("calls each due route with the bearer secret", async () => {
-    const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
+    const fetchImpl = vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 }));
     const log = vi.fn();
     const result = await runDue({ ...base, fetchImpl, log });
     expect(result).toEqual({ ok: [cron("retry-translations"), cron("retention")], failed: [] });
