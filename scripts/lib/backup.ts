@@ -61,6 +61,7 @@ export const NOT_BACKED_UP_TABLES = [
   "StopMutation",
   "StopOrder",
   "MonthlyPayment",
+  "MonthlyAdjustment",
   "AuditLog",
   "LoginAttempt",
 ] as const;

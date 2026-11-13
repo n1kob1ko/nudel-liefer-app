@@ -193,6 +193,7 @@ describe("what a backup holds: master data only (NUD-200)", () => {
       [
         "AuditLog",
         "LoginAttempt",
+        "MonthlyAdjustment",
         "MonthlyPayment",
         "Order",
         "OrderItem",
