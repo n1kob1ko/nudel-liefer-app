@@ -103,7 +103,7 @@ export function CustomersTable({
   return (
     <div className="flex flex-col gap-3">
       <Table data-testid="customers-table" aria-label={t("title")}>
-        <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur-sm [&_th]:bg-muted/95">
+        <TableHeader className="sticky top-0 z-10 bg-muted [&_th]:bg-muted">
           <TableRow>
             <TableHead className="max-md:w-full">{t("columns.customer")}</TableHead>
             <TableHead className="max-md:hidden">{t("columns.number")}</TableHead>

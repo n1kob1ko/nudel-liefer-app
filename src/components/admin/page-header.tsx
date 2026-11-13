@@ -60,7 +60,7 @@ export function PageHeader({
         ) : null}
       </div>
       {children ? (
-        <div className="sticky top-14 z-20 -mx-6 flex flex-wrap items-center gap-2 border-b bg-card/80 px-6 py-3 backdrop-blur lg:-mx-8 lg:px-8">
+        <div className="sticky top-14 z-20 -mx-6 flex flex-wrap items-center gap-2 border-b bg-card px-6 py-3 lg:-mx-8 lg:px-8">
           {children}
         </div>
       ) : null}

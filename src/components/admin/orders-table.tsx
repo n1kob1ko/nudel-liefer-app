@@ -105,7 +105,7 @@ export function OrdersTable({
       >
         {/* Sticky header: the utilities are set here so the table does not depend on an optional
             prop of the shared kit (`TableHeader` also supports `data-sticky`). */}
-        <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur-sm max-md:hidden [&_th]:bg-muted/95">
+        <TableHeader className="sticky top-0 z-10 bg-muted max-md:hidden [&_th]:bg-muted">
           <TableRow>
             {multiDay ? <TableHead>{t("columns.date")}</TableHead> : null}
             <TableHead>{t("columns.customer")}</TableHead>
