@@ -5,7 +5,7 @@ import { useEffect } from "react";
 
 import messages from "@/lib/fatal-messages.json";
 import { reportClientError } from "@/lib/monitoring-client";
-import { PWA_THEME_COLOR } from "@/lib/pwa";
+import { PWA_THEME_COLOR, PWA_THEME_FOREGROUND } from "@/lib/pwa";
 
 type Locale = keyof typeof messages;
 
@@ -59,7 +59,7 @@ export function FatalError({ error }: { error: Error & { digest?: string } }) {
               fontWeight: 600,
               border: 0,
               borderRadius: 8,
-              color: "#fff",
+              color: PWA_THEME_FOREGROUND,
               background: PWA_THEME_COLOR,
             }}
           >
