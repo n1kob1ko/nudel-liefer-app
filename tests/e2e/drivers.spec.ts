@@ -52,6 +52,9 @@ test("admin manages a driver: create, PIN shown once, reset, deactivate -> logge
   // printing while the dialog is open prints only the PIN sheet (the print rule applies only then)
   await admin.emulateMedia({ media: "print" });
   await expect(pinValue).toBeVisible();
+  // ... and the sheet is on the paper: "visible" alone was true while it sat left of and above the page
+  await expect(pinValue).toBeInViewport({ ratio: 1 });
+  await expect(admin.getByTestId("pin-username")).toBeInViewport({ ratio: 1 });
   await expect(admin.getByTestId("section-title")).toBeHidden();
   await admin.emulateMedia({ media: "screen" });
   await admin.getByTestId("pin-done").click();
