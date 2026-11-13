@@ -25,6 +25,7 @@ const state = vi.hoisted(() => ({
     photos: { total: 3, cached: 3 },
   } as Record<string, unknown>,
   entries: [] as unknown[],
+  failure: null as string | null,
   notices: [] as unknown[],
   flushing: false,
   inFlight: new Set<string>(),
@@ -36,7 +37,7 @@ vi.mock("@/lib/offline/outbox-browser", () => ({
   useOutbox: () => ({
     entries: state.entries,
     notices: state.notices,
-    failure: null,
+    failure: state.failure,
     // NUD-174: the panel reads the real flush state, not `navigator.onLine`.
     flushing: state.flushing,
     inFlight: state.inFlight,
@@ -88,6 +89,7 @@ afterEach(() => {
   state.online = true;
   state.offline = { ...state.offline, phase: "ready", savedAt: "2099-07-02T05:12:00.000Z" };
   state.entries = [];
+  state.failure = null;
   state.flushing = false;
   state.inFlight = new Set<string>();
 });
@@ -130,6 +132,31 @@ describe.each(Object.keys(MESSAGES))("DriverShell in %s", (locale) => {
     expect(screen.getByTestId("connection-indicator")).toHaveAttribute("data-online", "false");
     expect(screen.getByTestId("sync-chip")).toHaveAttribute("data-state", "pending");
     expect(screen.getByTestId("pending-badge")).toHaveAttribute("data-count", "1");
+  });
+
+  it("shows queued taps without a connection as waiting, not as an error", () => {
+    // Multi-day run 2026-11-16: three "Geliefert" taps in a dead spot turned the chip red ("Fehler")
+    // because the flush had failed with "network" — which is the normal offline case.
+    state.online = false;
+    state.failure = "network";
+    state.entries = [
+      {
+        clientMutationId: "a",
+        userId: "u",
+        type: "delivered",
+        stopId: "s1",
+        createdAt: "2099-07-02T06:12:00.000Z",
+        seq: 1,
+        customerName: "Trattoria 1",
+      },
+    ];
+    show(locale);
+    expect(screen.getByTestId("sync-chip")).toHaveAttribute("data-state", "pending");
+    cleanup();
+    state.online = true;
+    state.failure = "server";
+    show(locale);
+    expect(screen.getByTestId("sync-chip")).toHaveAttribute("data-state", "error");
   });
 
   it("never claims to be sending while nothing is in flight (NUD-174)", async () => {

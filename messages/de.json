@@ -1549,7 +1549,7 @@
       },
       "dialog": {
         "title": "Tour freigeben?",
-        "description": "Die Tour wird für den Fahrer sichtbar. Danach kann sie hier nicht mehr geändert werden.",
+        "description": "Die Tour wird für den Fahrer sichtbar. Fahrer, Fahrzeug und Reihenfolge lassen sich danach noch über „Bearbeiten“ ändern.",
         "stops": "Stopps",
         "duration": "Gesamtdauer",
         "driver": "Fahrer",
