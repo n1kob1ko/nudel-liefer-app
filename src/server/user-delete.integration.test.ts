@@ -93,7 +93,10 @@ describe.skipIf(!process.env.DATABASE_URL)(
         ok: false,
         error: "not_found",
       });
-      expect(await deleteUser(t.prisma, adminId, 7, TODAY)).toEqual({ ok: false, error: "invalid" });
+      expect(await deleteUser(t.prisma, adminId, 7, TODAY)).toEqual({
+        ok: false,
+        error: "invalid",
+      });
       expect(await t.prisma.user.findUnique({ where: { id: adminId } })).not.toBeNull();
     });
 
@@ -146,7 +149,11 @@ describe.skipIf(!process.env.DATABASE_URL)(
         expect(row.driverId).toBeNull();
       }
       const kept = await t.prisma.stop.findUniqueOrThrow({ where: { id: stop.id } });
-      expect(kept).toMatchObject({ status: "DELIVERED", collectedCents: 1250, collectedById: null });
+      expect(kept).toMatchObject({
+        status: "DELIVERED",
+        collectedCents: 1250,
+        collectedById: null,
+      });
       expect(await t.prisma.workSchedule.count({ where: { driverId: id } })).toBe(0);
       expect(
         (await t.prisma.standingTour.findUniqueOrThrow({ where: { id: standing.id } })).driverId,
@@ -192,9 +199,9 @@ describe.skipIf(!process.env.DATABASE_URL)(
       expect(
         (await t.prisma.parkingSpot.findUniqueOrThrow({ where: { id: spot.id } })).createdById,
       ).toBe(adminId);
-      expect((await t.prisma.order.findUniqueOrThrow({ where: { id: order.id } })).createdById).toBe(
-        adminId,
-      );
+      expect(
+        (await t.prisma.order.findUniqueOrThrow({ where: { id: order.id } })).createdById,
+      ).toBe(adminId);
     });
   },
 );

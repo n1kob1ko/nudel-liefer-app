@@ -188,8 +188,14 @@ function OrderRow({
    * instead of ellipsising mid-word. The full line stays in `title` and in the `sr-only` span, so
    * the visible abbreviation never costs information.
    */
-  const itemChipLabel = (item: OrderOverviewRow["items"][number]) =>
-    `${fmt.quantity(item.quantity)} × ${productName(item.productName, locale)}`;
+  const names = order.items.map((item) => productName(item.productName, locale));
+  // Two products of one order may share a name and differ only in the unit ("Nudeln" as Sackerl and
+  // as Kiste): then the short form would read "3 × Nudeln · 4 × Nudeln", so those chips keep the unit.
+  const sameName = new Set(names.filter((name, index) => names.indexOf(name) !== index));
+  const itemChipLabel = (item: OrderOverviewRow["items"][number]) => {
+    const name = productName(item.productName, locale);
+    return sameName.has(name) ? itemLabel(item) : `${fmt.quantity(item.quantity)} × ${name}`;
+  };
   const collapsed = order.items.length > CHIP_LIMIT;
 
   return (

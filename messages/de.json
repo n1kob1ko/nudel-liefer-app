@@ -1819,7 +1819,19 @@
         "recurring_create": "Dauerbestellung angelegt",
         "recurring_update": "Dauerbestellung geändert",
         "recurring_pause": "Dauerbestellung pausiert",
-        "recurring_resume": "Dauerbestellung fortgesetzt"
+        "recurring_resume": "Dauerbestellung fortgesetzt",
+        "stop_payment": "Barzahlung erfasst",
+        "monthly_pay": "Monatsrechnung als bezahlt markiert",
+        "monthly_unpay": "Bezahlt-Markierung zurückgenommen",
+        "monthly_adjust": "Korrektur zur Monatsrechnung",
+        "monthly_adjust_remove": "Korrektur entfernt",
+        "driver_schedule_update": "Arbeitszeit geändert",
+        "standing_tour_create": "Stammtour angelegt",
+        "standing_tour_update": "Stammtour geändert",
+        "standing_tour_driver": "Fahrer der Stammtour geändert",
+        "standing_tour_activate": "Stammtour aktiviert",
+        "standing_tour_deactivate": "Stammtour deaktiviert",
+        "user_delete": "Konto gelöscht"
       },
       "fields": {
         "status": "Status",

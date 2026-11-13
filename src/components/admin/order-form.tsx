@@ -10,7 +10,7 @@ import {
   Trash2Icon,
   XIcon,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { type KeyboardEvent, useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -140,6 +140,7 @@ type Screenshot = { storageKey: string; url: string };
  */
 export function OrderForm({ customers, products, defaultDate, order, aiAvailable = false }: Props) {
   const t = useTranslations("admin.orders.form");
+  const amountLocale = useLocale();
   const tc = useTranslations("common");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -166,7 +167,7 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
   const [paymentTerm, setPaymentTerm] = useState<PaymentTerm>(
     order?.paymentTerm ?? DEFAULT_PAYMENT_TERM,
   );
-  const [amount, setAmount] = useState(amountInputValue(order?.amountCents ?? null));
+  const [amount, setAmount] = useState(amountInputValue(order?.amountCents ?? null, amountLocale));
   const [submitted, setSubmitted] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [screenshot, setScreenshot] = useState<Screenshot | null>(

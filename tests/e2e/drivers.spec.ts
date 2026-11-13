@@ -21,7 +21,7 @@ async function driverLogin(page: Page, username: string, pin: string) {
   await page.getByTestId("login-submit").click();
 }
 
-test("admin manages a driver: create, PIN shown once, reset, deactivate -> logged out", async ({
+test("admin manages a driver: create, PIN shown once, reset, deactivate -> logged out, delete", async ({
   browser,
 }) => {
   test.setTimeout(120_000);
@@ -113,6 +113,18 @@ test("admin manages a driver: create, PIN shown once, reset, deactivate -> logge
   await expect(admin.getByTestId(`driver-row-${username}`)).toContainText("Aktiv");
   await driverLogin(fresh, username, newPin);
   await expect(fresh).toHaveURL(/\/sr-Latn\/driver$/);
+
+  // delete for good (NUD-206): the office is asked first, then the row is gone and the login refused
+  await admin.getByTestId(`driver-row-${username}`).getByRole("button").last().click(); // row menu (portal)
+  await admin.getByTestId("delete-user").click();
+  await expect(admin.getByTestId("confirm-submit")).toHaveText("Endgültig löschen");
+  await admin.getByTestId("confirm-submit").click();
+  await expect(admin.getByTestId(`driver-row-${username}`)).toHaveCount(0);
+  await admin.reload();
+  await expect(admin.getByTestId(`driver-row-${username}`)).toHaveCount(0);
+  const gone = await (await browser.newContext()).newPage();
+  await driverLogin(gone, username, newPin);
+  await expect(gone.getByTestId("login-error")).toBeVisible();
 });
 
 test("a driver cannot reach the driver management page", async ({ browser }) => {

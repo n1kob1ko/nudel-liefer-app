@@ -1819,7 +1819,19 @@
         "recurring_create": "已创建长期订单",
         "recurring_update": "已修改长期订单",
         "recurring_pause": "已暂停长期订单",
-        "recurring_resume": "已恢复长期订单"
+        "recurring_resume": "已恢复长期订单",
+        "stop_payment": "已登记现金收款",
+        "monthly_pay": "月结账单已标记为已付",
+        "monthly_unpay": "已撤销已付标记",
+        "monthly_adjust": "月结账单调整",
+        "monthly_adjust_remove": "已删除调整",
+        "driver_schedule_update": "已修改工作时间",
+        "standing_tour_create": "已创建固定线路",
+        "standing_tour_update": "已修改固定线路",
+        "standing_tour_driver": "已更换固定线路的司机",
+        "standing_tour_activate": "已启用固定线路",
+        "standing_tour_deactivate": "已停用固定线路",
+        "user_delete": "已删除账号"
       },
       "fields": {
         "status": "状态",

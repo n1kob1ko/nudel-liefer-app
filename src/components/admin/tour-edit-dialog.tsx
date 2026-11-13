@@ -276,7 +276,8 @@ function EditForm({
       </div>
 
       {error}
-      <DialogFooter>
+      {/* Stays in view: a driver change must not need a scroll past twenty stops to be saved. */}
+      <DialogFooter className="sticky -bottom-6 z-10 -mx-6 -mb-6 border-t border-border bg-card px-6 py-3">
         <Button type="button" variant="outline" onClick={onCancel}>
           {tc("actions.cancel")}
         </Button>

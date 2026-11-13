@@ -1819,7 +1819,19 @@
         "recurring_create": "Standing order created",
         "recurring_update": "Standing order changed",
         "recurring_pause": "Standing order paused",
-        "recurring_resume": "Standing order resumed"
+        "recurring_resume": "Standing order resumed",
+        "stop_payment": "Cash recorded",
+        "monthly_pay": "Monthly bill marked as paid",
+        "monthly_unpay": "Paid mark taken back",
+        "monthly_adjust": "Correction to the monthly bill",
+        "monthly_adjust_remove": "Correction removed",
+        "driver_schedule_update": "Working time changed",
+        "standing_tour_create": "Standing tour created",
+        "standing_tour_update": "Standing tour changed",
+        "standing_tour_driver": "Driver of the standing tour changed",
+        "standing_tour_activate": "Standing tour activated",
+        "standing_tour_deactivate": "Standing tour deactivated",
+        "user_delete": "Account deleted"
       },
       "fields": {
         "status": "Status",

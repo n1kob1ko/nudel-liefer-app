@@ -66,6 +66,14 @@ describe("amountInputValue", () => {
     expect(amountInputValue(null)).toBe("");
     expect(amountInputValue(undefined)).toBe("");
   });
+
+  it("carries the decimal sign of the reader's language", () => {
+    expect(amountInputValue(4550, "de")).toBe("45,50");
+    expect(amountInputValue(4550, "cs")).toBe("45,50");
+    expect(amountInputValue(4550, "en")).toBe("45.50");
+    expect(amountInputValue(4550, "zh-Hans")).toBe("45.50");
+    expect(parseAmountToCents(amountInputValue(4550, "de"))).toBe(4550);
+  });
 });
 
 describe("sumCents", () => {

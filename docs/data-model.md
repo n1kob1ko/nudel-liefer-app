@@ -40,7 +40,7 @@ The provider is `postgresql`; the generated client is emitted to
 - **`User`** — an ADMIN or DRIVER account. Login is `email` (admin) or `username` (driver), both
   unique and nullable; `passwordHash` is the stored bcrypt hash, `locale`/`localeChosen` drive the
   first-start language picker, `active` disables the account, and `lastLoginAt` is set on every
-  successful login. Users are archived, never deleted (referencing rows use `onDelete: Restrict`).
+  successful login. Users are normally deactivated; an admin can also delete one for good (NUD-206, `src/server/user-delete.ts`, which first moves or clears every referencing row because they use `onDelete: Restrict`).
 - **`Settings`** — a singleton row (`id = 1`) holding depot name/address/coordinates,
   `depotPinConfirmed` (tour building requires it), `timezone`, `departureTime`,
   `serviceMinutesPerStop`, `deliveryWeekdays` and `departureChecklist` (JSON list of `{ id, text: LocalizedText }`:

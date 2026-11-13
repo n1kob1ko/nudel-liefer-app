@@ -146,7 +146,7 @@ A pasta factory delivers to business customers (mostly restaurants). The office 
 - Quantities: `Int` (whole numbers, D23). No decimals anywhere: no half Sackerl, no half Kiste.
 - Driver UI: touch targets ≥ 48 px, body text ≥ 16 px, quantities ≥ 28 px bold, icons alongside text so the screen is understandable even with an unexpected language.
 - Accessibility: WCAG AA contrast, keyboard-navigable admin.
-- Use soft delete (`active=false` / archive) for customers, products and users. Never hard-delete business data. The one exception is the order retention job (NUD-201, client decision 2026-11-13): it deletes paid orders, their stops and tours and paid monthly bills 30 days after the payment.
+- Use soft delete (`active=false` / archive) for customers, products and users. Never hard-delete business data. A user account can be deleted for good by an admin (NUD-206, owner decision 2026-11-13; what the account left behind stays, see the ticket). The other exception is the order retention job (NUD-201, client decision 2026-11-13): it deletes paid orders, their stops and tours and paid monthly bills 30 days after the payment.
 - Every service-layer write to orders, tours, stops or customer photos records an audit entry in the same transaction (`recordAudit`, NUD-092); the audit log is append-only.
 
 ### 4.4 Environment variables (grow `.env.example` as tickets add them)
@@ -362,6 +362,9 @@ Read rule: `pick(text, locale)` returns the requested locale; if empty, the clos
 | NUD-201 | Bezahlte Bestellungen, Touren und Monatsrechnungen automatisch löschen | M2.8 | 196 | done |
 | NUD-202 | Hosting on Railway instead of the dedicated server | M2.8 | 200 | in-progress |
 | NUD-203 | Google Maps for address search and routes instead of own map services | M2.8 | 202 | done |
+| NUD-204 | "PIN drucken" printed an empty page | M2.8 | 008 | done |
+| NUD-205 | The driver sees the tours released for the coming days | M2.8 | 051 | done |
+| NUD-206 | Delete a user account for good (not only deactivate) | M2.8 | 008 | done |
 | NUD-100 | AI screenshot extraction (review required) | M3 | 031 | superseded → NUD-150 |
 | NUD-101 | Recurring / standing orders | M3 | 032 | superseded → NUD-149 |
 | NUD-102 | Multiple drivers / tours per day | M3 | 043 | superseded → NUD-147 |
@@ -4035,6 +4038,52 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 - A route cache for standing tours was built first (local branch `route-cache`) and dropped: Google allows no such cache, and the owner prefers the template.
 - The first deploy with the key (16:15 UTC) was refused: Geocoding `REQUEST_DENIED`, Routes HTTP 403. A wrong key gives HTTP 400 on Routes, so the key was right and the Google project was not released for billed requests yet. After the owner had dealt with that in the Google Cloud console, the same key answered (17:06 UTC) without a change on our side.
 
+#### NUD-204 · "PIN drucken" printed an empty page
+**Status:** done · **depends_on:** 008 · Source: owner 2026-11-13 ("Fahrer anlegen und pin drucken gibt eine leere seite aus").
+
+**Goal:** The sheet with user name and PIN is on the printed page.
+
+**Acceptance criteria**
+- [x] With the PIN dialog open, print media shows the sheet at the top left of the page, completely inside it; nothing else of the app prints.
+- [x] `tests/e2e/drivers.spec.ts` asserts the position (`toBeInViewport({ ratio: 1 })`), not only "visible".
+
+**Implementation notes (NUD-204)**
+- Cause: Tailwind 4 centres the dialog with the `translate` property (`--tw-translate-x/y`), not with `transform`. The print rule reset `transform` only, so the sheet stayed shifted by half its size to the left of and above the paper. `translate: none` cannot be used: Lightning CSS rewrites it to `transform: none`. The rule now sets the two variables to 0 (`src/app/globals.css`). The close button of every dialog is `print:hidden`.
+
+#### NUD-205 · The driver sees the tours released for the coming days
+**Status:** done · **depends_on:** 051 · Source: owner 2026-11-13 ("der fahrer soll ja aber sehen wenn es morgen ist oder ein anderer tag").
+
+**Goal:** A tour the office released for tomorrow or a later day no longer looks like a release that never arrived: the driver's home screen lists it below today's tour.
+
+**Acceptance criteria**
+- [x] Below today's tour (or the "no tour today" card) the section "Kommende Touren" lists the driver's released tours of the next 14 days, nearest day first, at most 10; each row shows day, number of stops and the first planned arrival.
+- [x] A row opens to the stops in driving order with customer, address, quantities (the released snapshot) and planned time. Nothing can be ticked off; on the day the tour is the home screen.
+- [x] Another driver's tours and tours that are not released are not listed; an admin gets an empty list.
+- [x] All five languages; no horizontal scroll at 375 px.
+- [x] In "Tour bearbeiten" the buttons stay in view, so giving a tour to another driver does not need a scroll past all stops.
+
+**Implementation notes (NUD-205)**
+- `src/server/driver-upcoming.ts` (`getDriverUpcomingTours`, `driverUpcomingQuery` with `requireRole`), `src/components/driver/upcoming-tours.tsx` (native `<details>`, works without script), rendered by `src/app/[locale]/driver/(app)/page.tsx`. Read online only; the offline copy still holds today's tour.
+- Giving a released tour to another driver already existed ("Bearbeiten" on the tour, NUD-135) and was checked by hand for today and tomorrow: the new driver sees the tour at once, the former one does not.
+- Tests: `driver-upcoming.integration.test.ts`, `tests/e2e/driver-upcoming.spec.ts`.
+
+#### NUD-206 · Delete a user account for good (not only deactivate)
+**Status:** done · **depends_on:** 008 · Source: owner 2026-11-13 ("ich möchte auch konten löschen können nicht nur deaktivieren").
+
+**Goal:** An admin can remove a driver or office account completely. What the account did stays.
+
+**Acceptance criteria**
+- [x] The row menu of "Fahrer" (drivers and office accounts) has "Löschen"; a dialog asks first ("Endgültig löschen"). The own account cannot be deleted.
+- [x] A released tour from today on stops the delete; the message names the days and says how to hand the tour over. Nothing is changed in that case.
+- [x] Every other tour keeps its stops, times and cash and loses only the driver. Photos, parking spots, order screenshots, orders, standing orders, "paid" marks and bill corrections go to the admin who deletes. "Changed by" marks, the default driver of a standing tour and "collected by" are cleared; working hours are deleted with the account.
+- [x] The delete is one transaction and writes the audit entry `user.delete`; the freed user name carries no old login lock.
+- [x] A test compares the handled columns with `prisma/schema.prisma`: a new relation to `User` fails it until `user-delete.ts` handles it.
+
+**Implementation notes (NUD-206)**
+- `src/server/user-delete.ts`, action `deleteUserAction` in `src/server/user-actions.ts`, UI in `src/components/admin/users-manager.tsx`. No migration: the foreign keys stay `Restrict`, the code moves or clears every reference first.
+- Found while testing by hand and fixed in the same change: twelve audit actions had no label in the timeline (a missing-message error after a cash payment; `audit-coverage.test.ts` now checks every action in de, en, zh-Hans); the totals bar of the day planning was hidden behind the phone's bottom navigation; the amount field showed "45.50" in German (`amountInputValue(cents, locale)`); two products with the same name in one order read "3 × Nudeln · 4 × Nudeln" in the order list (those chips keep the unit).
+- Tests: `user-delete.test.ts`, `user-delete.integration.test.ts`, `tests/e2e/drivers.spec.ts`.
+
 ## 9. Decision log (append-only, one line per decision taken during implementation)
 
 | Date | Ticket | Decision | Reason |
@@ -4522,6 +4571,10 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 | 2026-11-13 | NUD-203 | No cache table for route results; standing tours stay templates | Google's terms allow no stored routes, and the owner said a template that asks Google again on use is what he wants |
 | 2026-11-13 | NUD-203 | `maps:check` runs before every deploy but never stops one (`--warn-only`) | It is the only place where a real answer of Google can be seen without anyone but the app holding the key. The app keeps working on its estimate while Google is down, so a deploy should not wait for Google |
 | 2026-11-13 | NUD-201 | Deleting paid orders is switched on on Railway (`ORDER_RETENTION_MODE=delete`, 17:21 UTC); the other two deletion jobs stay `dry-run` | The owner's word ("löschregel soll an sein"). The counting run on the moved data just before reported 0 orders and 0 stops, so the first run deletes nothing |
+| 2026-11-13 | NUD-206 | A user account can be deleted for good; "users are never deleted" (4.3) no longer holds | Owner: "ich möchte auch konten löschen können nicht nur deaktivieren". Deactivating stays for an account that may come back |
+| 2026-11-13 | NUD-206 | Records that must name a user (photos, parking spots, orders, standing orders, paid marks) go to the admin who deletes; tours only lose the driver | The alternative was to delete them with the account, which would take customer photos and bills with a driver who leaves |
+| 2026-11-13 | NUD-206 | A released tour from today on stops the delete instead of being unassigned | A released tour without a driver is a delivery nobody sees; the office must choose the new driver itself |
+| 2026-11-13 | NUD-205 | The coming tours are a preview (14 days, read online), not a second working screen | Ticking off, photos and the offline copy belong to the day of the tour; a stop ticked off a day early would be a wrong delivery record |
 
 ## 10. Open questions for the client (do not block on these – use placeholders)
 

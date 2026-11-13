@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { getDriverUpcomingTours } from "./driver-upcoming";
 import { hashSecret } from "./auth/password";
+import { getDriverUpcomingTours } from "./driver-upcoming";
 import { createTestDb, type TestDb } from "./test-db";
 
 // 22:30 UTC on 1 July is already 2 July in Vienna: "today" is the factory's calendar day.

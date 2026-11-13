@@ -107,6 +107,18 @@ describe("audit coverage", () => {
     }
   });
 
+  it("every action has a label in the office languages (the timeline looks it up by name)", () => {
+    for (const locale of ["de", "en", "zh-Hans"]) {
+      const messages = JSON.parse(
+        readFileSync(join(process.cwd(), "messages", `${locale}.json`), "utf8"),
+      ) as { admin: { history: { actions: Record<string, string> } } };
+      const missing = AUDIT_ACTIONS.filter(
+        (action) => !messages.admin.history.actions[action.replace(".", "_")],
+      );
+      expect(missing, locale).toEqual([]);
+    }
+  });
+
   it("the audit log has no update path and exactly one delete path (the retention job)", () => {
     const offenders = files
       .filter(
