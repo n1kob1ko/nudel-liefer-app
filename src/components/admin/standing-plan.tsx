@@ -211,7 +211,7 @@ export function StandingPlan({
           <CardContent>
             <Link
               href={`/admin/tours?date=${plan.date}`}
-              className="text-base font-medium underline underline-offset-4"
+              className="text-base link"
             >
               {t("readOnly.toTours")}
             </Link>

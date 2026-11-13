@@ -110,7 +110,7 @@ async function Guarded({
             {t("description")}{" "}
             <Link
               href="/admin/drivers"
-              className="underline underline-offset-4"
+              className="link"
               data-testid="utilization-schedule-hint"
             >
               {t("scheduleHint")}
@@ -289,7 +289,7 @@ async function Guarded({
           {/* NUD-187: the way out of the wall of dashes, right where it is read. */}
           <Link
             href="/admin/drivers"
-            className="underline underline-offset-4"
+            className="link"
             data-testid="utilization-missing-schedule-link"
           >
             {t("scheduleHint")}

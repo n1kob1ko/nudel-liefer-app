@@ -150,7 +150,7 @@ async function Guarded({
                     <TableCell className="min-w-56">
                       <Link
                         href={`/admin/payments/${row.customerId}?month=${row.monthKey}`}
-                        className="rounded-sm font-medium underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="rounded-sm link outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         aria-label={t("history.openBill", {
                           customer: row.customerName,
                           month: monthLabel(row.periodStart),

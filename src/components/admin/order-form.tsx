@@ -969,7 +969,8 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
 
           <Card>
             <CardContent>
-              <div className="grid gap-4 sm:grid-cols-2">
+              {/* Side by side only where the card is wide enough for the full option text. */}
+              <div className="grid gap-4 2xl:grid-cols-2">
                 <FormField label={t("paymentTerm")} description={t("paymentTermHint")}>
                   <Select
                     value={paymentTerm}
