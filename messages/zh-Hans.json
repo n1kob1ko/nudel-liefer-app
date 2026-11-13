@@ -263,7 +263,19 @@
       "collapseSidebar": "收起侧边栏",
       "expandSidebar": "展开侧边栏",
       "more": "更多",
-      "bottomNavigation": "快速导航"
+      "bottomNavigation": "快速导航",
+      "command": {
+        "open": "搜索并跳转",
+        "shortcut": "Ctrl K",
+        "title": "命令菜单",
+        "description": "搜索页面或操作，按回车键打开。",
+        "placeholder": "搜索页面或操作…",
+        "empty": "未找到任何内容。",
+        "create": "新建",
+        "pages": "页面",
+        "newOrder": "新建订单",
+        "newCustomer": "新建客户"
+      }
     },
     "nav": {
       "dashboard": "总览",

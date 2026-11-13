@@ -263,7 +263,19 @@
       "collapseSidebar": "Collapse sidebar",
       "expandSidebar": "Expand sidebar",
       "more": "More",
-      "bottomNavigation": "Quick navigation"
+      "bottomNavigation": "Quick navigation",
+      "command": {
+        "open": "Search and jump",
+        "shortcut": "Ctrl K",
+        "title": "Command menu",
+        "description": "Search for a page or an action and open it with Enter.",
+        "placeholder": "Search for a page or an action …",
+        "empty": "Nothing found.",
+        "create": "Create",
+        "pages": "Pages",
+        "newOrder": "New order",
+        "newCustomer": "New customer"
+      }
     },
     "nav": {
       "dashboard": "Overview",

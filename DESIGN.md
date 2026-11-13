@@ -139,6 +139,15 @@ More rules that apply everywhere:
 - **Motion:** lanes arrive 30 ms apart; a delivery that comes in while the page is open is
   confirmed by one ring around that driver's count. The page re-reads itself every 30 s.
 - A finished tour reads "Abgeschlossen" everywhere, the same word as on the tour page.
+- **Figures are one strip,** not a row of cards: one bordered surface with hairlines between the
+  cells (overview, tour, payments, utilization).
+- **Lists are calm.** Initials are grey, "Aktiv" is grey: a colour in a list row is a status.
+  A selection (period, tour tab) is pale yolk, never the yolk fill.
+- **Day planning is a sheet.** A zero recedes, a quantity is bold, Enter and the arrow keys walk a
+  column, and the bar at the bottom sums the day while typing.
+- **Ctrl+K / ⌘K opens the command menu** from every office page: every section plus "Neue
+  Bestellung" and "Neuer Kunde". It opens without motion because it is used all day.
+- Sticky bars are solid surfaces. No blur.
 
 ## Do and don't
 

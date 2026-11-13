@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { type ReactNode, useEffect, useSyncExternalStore } from "react";
 
 import { AdminBottomNav } from "@/components/admin/admin-bottom-nav";
+import { AdminCommandMenu } from "@/components/admin/admin-command-menu";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { MobileNav } from "@/components/admin/mobile-nav";
 import { activeNavItem } from "@/components/admin/nav-items";
@@ -55,8 +56,8 @@ function setCollapsedStored(next: boolean) {
 /**
  * Admin chrome (re-design.md §8.1): 260 px sidebar (collapsible to a 72 px icon rail, state in
  * `localStorage`, off-canvas drawer ≤ 1024 px), 56 px top bar with breadcrumb, language select and
- * user menu, and a 1440 px content column. Keyboard: `/` focuses the page search, the drawer closes
- * with `Esc` (Radix).
+ * user menu, and a 1440 px content column. Keyboard: `/` focuses the page search, Ctrl+K or ⌘K opens
+ * the command menu (`AdminCommandMenu`), the drawer closes with `Esc` (Radix).
  */
 export function AdminShell({
   name,
@@ -177,6 +178,7 @@ export function AdminShell({
             <MobileNav />
             <Breadcrumb pathname={pathname} />
             <div className="ms-auto flex items-center gap-2">
+              <AdminCommandMenu />
               <ThemeToggle />
               <LanguageSwitcher variant="compact" />
               <UserMenu name={name} locale={locale} />

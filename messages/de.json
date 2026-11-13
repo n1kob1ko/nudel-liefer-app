@@ -263,7 +263,19 @@
       "collapseSidebar": "Seitenleiste einklappen",
       "expandSidebar": "Seitenleiste ausklappen",
       "more": "Mehr",
-      "bottomNavigation": "Schnellnavigation"
+      "bottomNavigation": "Schnellnavigation",
+      "command": {
+        "open": "Suchen und springen",
+        "shortcut": "Strg K",
+        "title": "Befehlsmenü",
+        "description": "Seite oder Aktion suchen und mit Enter öffnen.",
+        "placeholder": "Seite oder Aktion suchen …",
+        "empty": "Nichts gefunden.",
+        "create": "Neu anlegen",
+        "pages": "Seiten",
+        "newOrder": "Neue Bestellung",
+        "newCustomer": "Neuer Kunde"
+      }
     },
     "nav": {
       "dashboard": "Übersicht",
