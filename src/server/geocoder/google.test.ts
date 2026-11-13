@@ -1,7 +1,8 @@
 // @vitest-environment node
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { GoogleGeocoder, mapGoogleGeocodeResponse } from "./google";
+import { getGeocoder, setGeocoderForTests } from "./index";
 import { GeocoderError } from "./types";
 
 const KEY = "AIza-test-key-0123456789";
@@ -209,5 +210,62 @@ describe("GoogleGeocoder.reverse", () => {
       await new GoogleGeocoder({ apiKey: KEY, fetch: fetchMock }).reverse(48.2, 16.37),
     ).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("getGeocoder with GOOGLE_MAPS_SERVER_KEY", () => {
+  afterEach(() => {
+    setGeocoderForTests(undefined);
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("Google wins over Photon and the ORS key, and an address is asked only once", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      jsonResponse(ok(hit(48.2, 16.37, "ROOFTOP"))),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    // The state on Railway during the switch: the key is new, the old variables are still there.
+    const geocoder = getGeocoder({
+      GOOGLE_MAPS_SERVER_KEY: ` ${KEY} `,
+      PHOTON_URL: "http://photon.railway.internal:2322",
+      PHOTON_LANG: "de",
+      ORS_API_KEY: "old-key",
+    });
+    const first = await geocoder.search("Stephansplatz 1, Wien");
+    const second = await geocoder.search("Stephansplatz 1, Wien");
+
+    expect(first).toEqual([
+      { label: "Stephansplatz 1, Wien", lat: 48.2, lng: 16.37, confidence: 1 },
+    ]);
+    expect(second).toEqual(first);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const url = new URL(String(fetchMock.mock.calls[0]![0]));
+    expect(url.hostname).toBe("maps.googleapis.com");
+    expect(url.searchParams.get("key")).toBe(KEY);
+    expect(url.searchParams.get("language")).toBe("de");
+    expect(url.searchParams.get("region")).toBe("at");
+  });
+
+  it("GOOGLE_MAPS_LANGUAGE and GOOGLE_MAPS_REGION replace the defaults; blanks do not", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => jsonResponse(ok()));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getGeocoder({
+      GOOGLE_MAPS_SERVER_KEY: KEY,
+      GOOGLE_MAPS_LANGUAGE: " en ",
+      GOOGLE_MAPS_REGION: "  ",
+    }).search("x");
+
+    const url = new URL(String(fetchMock.mock.calls[0]![0]));
+    expect(url.searchParams.get("language")).toBe("en");
+    expect(url.searchParams.get("region")).toBe("at");
+  });
+
+  it("without any provider the warning names the Google variable", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    getGeocoder({ GOOGLE_MAPS_SERVER_KEY: "  " });
+    expect(String(warn.mock.calls[0]![0])).toContain("GOOGLE_MAPS_SERVER_KEY");
   });
 });

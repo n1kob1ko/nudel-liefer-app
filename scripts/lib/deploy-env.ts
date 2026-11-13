@@ -81,6 +81,22 @@ export function checkDeployEnv(env: Record<string, string | undefined>): DeployE
     );
   }
 
+  // NUD-203: without a map service the app still works, but silently on made-up data. The same
+  // variables and precedence as `geocoder/index.ts` and `routing/index.ts`.
+  const has = (name: string) => Boolean(env[name]?.trim());
+  if (isProduction && !has("GOOGLE_MAPS_SERVER_KEY")) {
+    if (!has("PHOTON_URL") && !has("ORS_API_KEY")) {
+      warnings.push(
+        "GOOGLE_MAPS_SERVER_KEY is not set: the address search answers with made-up coordinates (Fake geocoder)",
+      );
+    }
+    if (!has("ORS_BASE_URL") && !has("ORS_API_KEY")) {
+      warnings.push(
+        "GOOGLE_MAPS_SERVER_KEY is not set: tour distances and times are estimates, the route is drawn as straight lines",
+      );
+    }
+  }
+
   // NUD-094: Sentry is optional; a half-configured one is worth a warning, never a failed build.
   const dsn = env.SENTRY_DSN?.trim();
   if (dsn && !parseSentryDsn(dsn)) {

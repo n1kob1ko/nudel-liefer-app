@@ -52,6 +52,26 @@ describe("runHealthChecks", () => {
     expect(JSON.stringify(mixed)).not.toMatch(/secret|photon\.local/);
   });
 
+  it("says google as soon as the Google key is set, also next to the old variables (NUD-203)", async () => {
+    const report = await runHealthChecks({
+      ...base,
+      env: {
+        GOOGLE_MAPS_SERVER_KEY: "AIza-secret-key",
+        ORS_BASE_URL: "http://ors.railway.internal:8082/ors",
+        PHOTON_URL: "http://photon.railway.internal:2322",
+        ORS_API_KEY: "old-key",
+      },
+    });
+    expect(report.checks.routing).toEqual({ mode: "google" });
+    expect(report.checks.geocoding).toEqual({ mode: "google" });
+    expect(JSON.stringify(report)).not.toMatch(/AIza|old-key|railway\.internal/);
+
+    // A blank key is no key.
+    const blank = await runHealthChecks({ ...base, env: { GOOGLE_MAPS_SERVER_KEY: "  " } });
+    expect(blank.checks.routing).toEqual({ mode: "heuristic" });
+    expect(blank.checks.geocoding).toEqual({ mode: "fake" });
+  });
+
   it("fails when the database is unreachable and leaks no error details", async () => {
     const report = await runHealthChecks({
       ...base,

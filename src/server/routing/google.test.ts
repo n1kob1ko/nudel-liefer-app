@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   GOOGLE_ROUTES_FIELD_MASK,
@@ -8,7 +8,9 @@ import {
   mapComputeRoutesResponse,
   MAX_GOOGLE_INTERMEDIATES,
 } from "./google";
-import { type LatLng, RoutingError } from "./types";
+import { LocalHeuristicProvider } from "./heuristic";
+import { getRoutingProvider, setRoutingProviderForTests } from "./index";
+import { type LatLng, type OptimizeInput, RoutingError } from "./types";
 
 const KEY = "AIza-test-key-0123456789";
 
@@ -353,5 +355,67 @@ describe("GoogleRoutingProvider.route", () => {
     await expect(
       provider(fetchMock).route({ depot, orderedStops: stops(1) }),
     ).rejects.toMatchObject({ code: "BAD_RESPONSE" });
+  });
+});
+
+describe("getRoutingProvider with GOOGLE_MAPS_SERVER_KEY", () => {
+  afterEach(() => {
+    setRoutingProviderForTests(undefined);
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  const input: OptimizeInput = {
+    depot,
+    stops: stops(4).map((location, i) => ({ id: `s${i}`, location, serviceSeconds: 60 })),
+  };
+
+  it("Google wins over the old ORS variables: order from the heuristic, roads from Google", async () => {
+    const fetchMock = routesFetch();
+    vi.stubGlobal("fetch", fetchMock);
+
+    // The state on Railway during the switch: the key is new, the old variables are still there.
+    const routing = getRoutingProvider({
+      GOOGLE_MAPS_SERVER_KEY: ` ${KEY} `,
+      ORS_BASE_URL: "http://ors.railway.internal:8082/ors",
+      ORS_API_KEY: "old-key",
+    });
+    const result = await routing.optimize(input);
+
+    expect(result.approximate).toBe(false);
+    expect(result.orderedStopIds).toEqual(
+      (await new LocalHeuristicProvider().optimize(input)).orderedStopIds,
+    );
+    expect(result.legs).toHaveLength(5);
+    const urls = fetchMock.mock.calls.map(([url]) => String(url));
+    expect(urls).toEqual([GOOGLE_ROUTES_URL]);
+    expect(new Headers(fetchMock.mock.calls[0]![1]?.headers).get("X-Goog-Api-Key")).toBe(KEY);
+  });
+
+  it("falls back to the estimate when Google refuses, and logs no key", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async () => json({ error: { message: `key ${KEY} blocked` } }, 403)),
+    );
+
+    const result = await getRoutingProvider({ GOOGLE_MAPS_SERVER_KEY: KEY }).optimize(input);
+
+    expect(result.approximate).toBe(true);
+    expect(result.legs).toHaveLength(5);
+    expect(warn).toHaveBeenCalled();
+    expect(JSON.stringify(warn.mock.calls)).not.toContain(KEY);
+  });
+
+  it("a blank key is no key: the heuristic answers, and the warning names the variable", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const fetchMock = routesFetch();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getRoutingProvider({ GOOGLE_MAPS_SERVER_KEY: "   " }).optimize(input);
+
+    expect(result.approximate).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(String(warn.mock.calls[0]![0])).toContain("GOOGLE_MAPS_SERVER_KEY");
   });
 });

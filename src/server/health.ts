@@ -7,9 +7,10 @@ export type CheckStatus = "ok" | "error" | "skipped";
 /**
  * Which provider answers routing and geocoding. Reported because the tour page looks identical
  * whether the real road network or the local heuristic produced the numbers — with `heuristic`
- * every distance and time is an estimate ("Näherungswerte", NUD-145). No hostnames, no keys.
+ * every distance and time is an estimate ("Näherungswerte", NUD-145). `google` = Google Maps
+ * Platform through `GOOGLE_MAPS_SERVER_KEY` (NUD-203). No hostnames, no keys.
  */
-export type ProviderMode = "hosted" | "self-hosted" | "heuristic" | "fake";
+export type ProviderMode = "google" | "hosted" | "self-hosted" | "heuristic" | "fake";
 
 export type HealthReport = {
   status: "ok" | "error";
@@ -62,6 +63,10 @@ async function timed(run: () => Promise<unknown>, timeoutMs: number) {
  */
 function providerModes(env: Record<string, string | undefined>) {
   const has = (name: string) => Boolean(env[name]?.trim());
+  // NUD-203: the Google key selects both and wins over everything older.
+  if (has("GOOGLE_MAPS_SERVER_KEY")) {
+    return { routing: "google" as ProviderMode, geocoding: "google" as ProviderMode };
+  }
   const routing: ProviderMode = has("ORS_BASE_URL")
     ? "self-hosted"
     : has("ORS_API_KEY")
