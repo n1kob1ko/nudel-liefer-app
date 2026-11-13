@@ -8,28 +8,28 @@ Contents: 1 What runs where, 2 Service settings, 3 Variables, 4 Deploying, 5 Sch
 
 ## 1. What runs where
 
-| Service    | What it is                                              | Built from                                             | Reachable                              |
-| ---------- | ------------------------------------------------------- | ------------------------------------------------------ | -------------------------------------- |
-| `app`      | the Next.js app                                         | repository root, Railpack (no Dockerfile)              | public, the `*.up.railway.app` address |
-| `Postgres` | PostgreSQL 18, Railway's template, volume 5 GB          | image `ghcr.io/railwayapp-templates/postgres-ssl:18`   | private network only                   |
-| `photos`   | bucket for customer photos and order screenshots        | Railway bucket, region `ams`, private                  | presigned URLs only                    |
-| `backups`  | bucket for the nightly master-data dumps                | Railway bucket, region `ams`, private                  | the `backup` service only              |
-| `cron`     | calls the app's `/api/cron/*` routes                    | `deploy/railway/cron` (Dockerfile)                     | nothing listens; runs every 5 minutes  |
-| `backup`   | `pnpm backup:db`, master data only                      | repository root, `deploy/railway/backup/Dockerfile`    | nothing listens; runs every night      |
-| `ors`      | openrouteservice 9.1.1 (routing), volume 5 GB at `/data` | `deploy/railway/ors` (Dockerfile)                      | `ors.railway.internal:8082`            |
-| `photon`   | Photon 1.3.0 (geocoding), volume 5 GB at `/data`        | `deploy/railway/photon` (Dockerfile)                   | `photon.railway.internal:2322`         |
+| Service    | What it is                                               | Built from                                           | Reachable                              |
+| ---------- | -------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------- |
+| `app`      | the Next.js app                                          | repository root, Railpack (no Dockerfile)            | public, the `*.up.railway.app` address |
+| `Postgres` | PostgreSQL 18, Railway's template, volume 5 GB           | image `ghcr.io/railwayapp-templates/postgres-ssl:18` | private network only                   |
+| `photos`   | bucket for customer photos and order screenshots         | Railway bucket, region `ams`, private                | presigned URLs only                    |
+| `backups`  | bucket for the nightly master-data dumps                 | Railway bucket, region `ams`, private                | the `backup` service only              |
+| `cron`     | calls the app's `/api/cron/*` routes                     | `deploy/railway/cron` (Dockerfile)                   | nothing listens; runs every 5 minutes  |
+| `backup`   | `pnpm backup:db`, master data only                       | repository root, `deploy/railway/backup/Dockerfile`  | nothing listens; runs every night      |
+| `ors`      | openrouteservice 9.1.1 (routing), volume 5 GB at `/data` | `deploy/railway/ors` (Dockerfile)                    | `ors.railway.internal:8082`            |
+| `photon`   | Photon 1.3.0 (geocoding), volume 5 GB at `/data`         | `deploy/railway/photon` (Dockerfile)                 | `photon.railway.internal:2322`         |
 
 There is no nginx, no systemd unit, no `/etc/delivery-app.env` and no `/etc/hosts` entry: Railway terminates TLS, restarts a crashed service and injects the variables.
 
 ## 2. Service settings
 
-| Service  | Root directory            | Build                                       | Pre-deploy                                      | Start        | Schedule (UTC) | Other                                                              |
-| -------- | ------------------------- | ------------------------------------------- | ----------------------------------------------- | ------------ | -------------- | ------------------------------------------------------------------ |
-| `app`    | `/`                       | `pnpm build:railway`                        | `pnpm db:migrate && pnpm bucket:cors --apply`   | `pnpm start` | –              | health check `/api/health` (180 s), restart on failure (10 tries)  |
-| `cron`   | `/deploy/railway/cron`    | Dockerfile                                  | –                                               | image        | `*/5 * * * *`  | restart never, watch `/deploy/railway/cron/**`                     |
-| `backup` | `/`                       | Dockerfile `deploy/railway/backup/Dockerfile` | –                                             | image        | `23 2 * * *`   | restart never, watch paths see below                               |
-| `ors`    | `/deploy/railway/ors`     | Dockerfile                                  | –                                               | image        | –              | volume at `/data`, restart on failure, watch `/deploy/railway/ors/**` |
-| `photon` | `/deploy/railway/photon`  | Dockerfile                                  | –                                               | image        | –              | volume at `/data`, restart on failure, watch `/deploy/railway/photon/**` |
+| Service  | Root directory           | Build                                         | Pre-deploy                                    | Start        | Schedule (UTC) | Other                                                                    |
+| -------- | ------------------------ | --------------------------------------------- | --------------------------------------------- | ------------ | -------------- | ------------------------------------------------------------------------ |
+| `app`    | `/`                      | `pnpm build:railway`                          | `pnpm db:migrate && pnpm bucket:cors --apply` | `pnpm start` | –              | health check `/api/health` (180 s), restart on failure (10 tries)        |
+| `cron`   | `/deploy/railway/cron`   | Dockerfile                                    | –                                             | image        | `*/5 * * * *`  | restart never, watch `/deploy/railway/cron/**`                           |
+| `backup` | `/`                      | Dockerfile `deploy/railway/backup/Dockerfile` | –                                             | image        | `23 2 * * *`   | restart never, watch paths see below                                     |
+| `ors`    | `/deploy/railway/ors`    | Dockerfile                                    | –                                             | image        | –              | volume at `/data`, restart on failure, watch `/deploy/railway/ors/**`    |
+| `photon` | `/deploy/railway/photon` | Dockerfile                                    | –                                             | image        | –              | volume at `/data`, restart on failure, watch `/deploy/railway/photon/**` |
 
 - Every service runs in `europe-west4-drams3a`. A new service starts in a US region by default: set the region before the first deploy, above all for a service with a volume.
 - `app` is built by Railpack on purpose. The Content-Security-Policy is put together when the app is **built** (`next.config.ts` reads `S3_*`, `MAP_TILE_URL`, `SENTRY_DSN`), and a Railpack build sees every service variable; a Dockerfile would need each of them as a build argument. For the same reason there must never be a `Dockerfile` in the repository root: Railway would use it for `app`.
@@ -45,21 +45,21 @@ Values that are secrets are never written here. `${{...}}` is Railway's referenc
 
 **`app`**
 
-| Variable | Value |
-| --- | --- |
-| `PORT` | `3000` (the public address routes to it, `cron` reads it) |
-| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
-| `AUTH_SECRET` | generated once (`openssl rand -base64 32`); a new value logs everybody out |
-| `CRON_SECRET` | `${{shared.CRON_SECRET}}` |
-| `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | `${{photos.ENDPOINT}}`, `${{photos.BUCKET}}`, `${{photos.REGION}}`, `${{photos.ACCESS_KEY_ID}}`, `${{photos.SECRET_ACCESS_KEY}}` |
-| `S3_URL_STYLE` | `virtual` (a Railway bucket lives on `https://<bucket>.<endpoint host>`) |
-| `S3_CORS_ORIGINS` | `https://${{RAILWAY_PUBLIC_DOMAIN}}`; add further addresses comma separated when the app gets its own domain |
-| `ORS_BASE_URL` | `http://ors.railway.internal:8082/ors` |
-| `PHOTON_URL`, `PHOTON_LANG` | `http://photon.railway.internal:2322`, `de` |
-| `SKIP_TYPECHECK` | `1` (as on the server: `pnpm typecheck` in CI is the gate) |
-| `DATA_RETENTION_MODE`, `ORDER_RETENTION_MODE`, `ORPHAN_CLEANUP_MODE` | `dry-run` each. **Deleting stays off until the owner asks for it.** |
-| `AUDIT_RETENTION_DAYS`, `DRIVER_TEXT_RETENTION_DAYS`, `SCREENSHOT_RETENTION_DAYS`, `ORPHAN_CLEANUP_GRACE_DAYS` | `730`, `365`, `180`, `14` (the values of the server) |
-| `MAP_TILE_URL`, `MAP_TILE_ATTRIBUTION`, `DEEPL_API_KEY`, `OPENROUTER_API_KEY`, `SENTRY_DSN`, … | whatever the old server had in `/etc/delivery-app.env`; see section 9. Without them the app runs with the development map tiles, without translation and without the AI order draft. |
+| Variable                                                                                                       | Value                                                                                                                                                                                |
+| -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PORT`                                                                                                         | `3000` (the public address routes to it, `cron` reads it)                                                                                                                            |
+| `DATABASE_URL`                                                                                                 | `${{Postgres.DATABASE_URL}}`                                                                                                                                                         |
+| `AUTH_SECRET`                                                                                                  | generated once (`openssl rand -base64 32`); a new value logs everybody out                                                                                                           |
+| `CRON_SECRET`                                                                                                  | `${{shared.CRON_SECRET}}`                                                                                                                                                            |
+| `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`                            | `${{photos.ENDPOINT}}`, `${{photos.BUCKET}}`, `${{photos.REGION}}`, `${{photos.ACCESS_KEY_ID}}`, `${{photos.SECRET_ACCESS_KEY}}`                                                     |
+| `S3_URL_STYLE`                                                                                                 | `virtual` (a Railway bucket lives on `https://<bucket>.<endpoint host>`)                                                                                                             |
+| `S3_CORS_ORIGINS`                                                                                              | `https://${{RAILWAY_PUBLIC_DOMAIN}}`; add further addresses comma separated when the app gets its own domain                                                                         |
+| `ORS_BASE_URL`                                                                                                 | `http://ors.railway.internal:8082/ors`                                                                                                                                               |
+| `PHOTON_URL`, `PHOTON_LANG`                                                                                    | `http://photon.railway.internal:2322`, `de`                                                                                                                                          |
+| `SKIP_TYPECHECK`                                                                                               | `1` (as on the server: `pnpm typecheck` in CI is the gate)                                                                                                                           |
+| `DATA_RETENTION_MODE`, `ORDER_RETENTION_MODE`, `ORPHAN_CLEANUP_MODE`                                           | `dry-run` each. **Deleting stays off until the owner asks for it.**                                                                                                                  |
+| `AUDIT_RETENTION_DAYS`, `DRIVER_TEXT_RETENTION_DAYS`, `SCREENSHOT_RETENTION_DAYS`, `ORPHAN_CLEANUP_GRACE_DAYS` | `730`, `365`, `180`, `14` (the values of the server)                                                                                                                                 |
+| `MAP_TILE_URL`, `MAP_TILE_ATTRIBUTION`, `DEEPL_API_KEY`, `OPENROUTER_API_KEY`, `SENTRY_DSN`, …                 | whatever the old server had in `/etc/delivery-app.env`; see section 9. Without them the app runs with the development map tiles, without translation and without the AI order draft. |
 
 **`cron`:** `APP_URL` = `http://${{app.RAILWAY_PRIVATE_DOMAIN}}:${{app.PORT}}`, `CRON_SECRET` = `${{shared.CRON_SECRET}}`.
 
