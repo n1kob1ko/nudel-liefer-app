@@ -66,6 +66,7 @@ describe.skipIf(!process.env.DATABASE_URL)("product catalog", { timeout: 60_000 
     state.session = null;
     await t.prisma.orderItem.deleteMany();
     await t.prisma.order.deleteMany();
+    await t.prisma.recurringOrder.deleteMany();
     await t.prisma.product.deleteMany();
   });
 
@@ -337,6 +338,30 @@ describe.skipIf(!process.env.DATABASE_URL)("product catalog", { timeout: 60_000 
     expect(await getProductQuery(id)).toMatchObject({ unitLocked: true });
     // Names stay editable.
     expect((await updateProductAction(id, { ...valid, sku: "U1", unit: "KG" })).ok).toBe(true);
+  });
+
+  it("keeps the unit locked for a product that is only on a standing order (NUD-201)", async () => {
+    // Its orders may be deleted after they were paid; the standing order still means "3 of this unit".
+    const id = await create({ sku: "U2" });
+    const customer = await t.prisma.customer.create({
+      data: { customerNumber: "K3", name: "K", street: "S 1", postalCode: "1010", city: "Wien" },
+    });
+    await t.prisma.recurringOrder.create({
+      data: {
+        customerId: customer.id,
+        weekdays: [1],
+        anchorDate: new Date("2026-11-02"),
+        confirmedById: adminId,
+        items: { create: [{ productId: id, quantity: 3 }] },
+      },
+    });
+    const stored = await t.prisma.product.findUniqueOrThrow({ where: { id } });
+    const other = stored.unit === "CRATE" ? "KG" : "CRATE";
+    expect(await updateProductAction(id, { ...valid, sku: "U2", unit: other })).toEqual({
+      ok: false,
+      error: "unit_locked",
+    });
+    expect(await getProductQuery(id)).toMatchObject({ unitLocked: true });
   });
 
   it("stores the weight per unit, accepts a decimal comma and rejects 0, negatives and text", async () => {

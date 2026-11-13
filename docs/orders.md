@@ -16,8 +16,9 @@ stale_since: null
 ## Purpose
 
 Office order entry and the product catalog. An order belongs to one customer, targets one
-delivery day and carries one or more product lines. Orders never die: they are `DRAFT`,
-`CONFIRMED` or `CANCELLED`, never deleted. Products are the catalog those lines reference
+delivery day and carries one or more product lines. Nobody deletes an order by hand: they are `DRAFT`,
+`CONFIRMED` or `CANCELLED`. Only the order retention job removes them, 30 days after they
+were paid (NUD-201, `docs/audit-and-retention.md`). Products are the catalog those lines reference
 and can only ever be soft-deleted (`active = false`), because old orders keep pointing at
 them. Everything here is admin-only and every server action re-checks the role against the
 database before reading the input.
@@ -178,7 +179,7 @@ sums without a product name next to them use `driver.unitsTotal` ("3 Stück").
   `0..n-1`, which also repairs ties; no-op at the ends.
 - Reads: `listProducts` (all, in `sortOrder`), `getActiveProducts` (active only, the picker
   of NUD-030), `getProduct` (detail for the form plus `unitLocked` from the order-items
-  count). Corrupt name JSON falls back to the `sku` so the list never crashes.
+  and standing-order-items counts). Corrupt name JSON falls back to the `sku` so the list never crashes.
 
 `product-actions.ts` wraps the writes, `product-queries.ts` the reads. Both check
 `requireRole("ADMIN")` first.
@@ -195,4 +196,5 @@ sums without a product name next to them use `driver.unitsTotal` ("3 Stück").
 - Delivery dates must be today or later; overview totals and late-order maths count
   `CONFIRMED` orders only.
 - Quantities are aggregated as whole numbers and never summed across units; a product's
-  unit is locked once the product appears on an order.
+  unit is locked once the product appears on an order or a standing order (orders are
+  deleted after they were paid, NUD-201; the standing order keeps the lock).

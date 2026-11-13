@@ -306,6 +306,30 @@ describe.skipIf(!process.env.DATABASE_URL)(
       expect(await ordersOf(c)).toHaveLength(2);
     });
 
+    it("stops after maxDeliveries also when earlier orders were deleted since (NUD-201)", async () => {
+      const c = await customer();
+      const created = await createRecurringOrder(
+        t.prisma,
+        adminId,
+        rule(c, { maxDeliveries: 2 }),
+        ctx(),
+      );
+      if (!created.ok) throw new Error("setup");
+      expect(await daysOf(c)).toEqual(["2099-06-15", "2099-06-22"]);
+      // What the order retention job does once the deliveries are paid.
+      await t.prisma.order.deleteMany({ where: { customerId: c } });
+
+      const later = await generateRecurringOrders(t.prisma, {
+        ...ctx(),
+        leadDays: 40,
+        ruleIds: [created.id],
+      });
+
+      // The two deliveries happened: the rule is used up, whatever is left of its orders.
+      expect(later.created).toBe(0);
+      expect(await ordersOf(c)).toHaveLength(0);
+    });
+
     it("counts the budget across several runs", async () => {
       const c = await customer();
       const created = await createRecurringOrder(

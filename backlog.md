@@ -146,7 +146,7 @@ A pasta factory delivers to business customers (mostly restaurants). The office 
 - Quantities: `Int` (whole numbers, D23). No decimals anywhere: no half Sackerl, no half Kiste.
 - Driver UI: touch targets ≥ 48 px, body text ≥ 16 px, quantities ≥ 28 px bold, icons alongside text so the screen is understandable even with an unexpected language.
 - Accessibility: WCAG AA contrast, keyboard-navigable admin.
-- Use soft delete (`active=false` / archive) for customers, products and users. Never hard-delete business data.
+- Use soft delete (`active=false` / archive) for customers, products and users. Never hard-delete business data. The one exception is the order retention job (NUD-201, client decision 2026-11-13): it deletes paid orders, their stops and tours and paid monthly bills 30 days after the payment.
 - Every service-layer write to orders, tours, stops or customer photos records an audit entry in the same transaction (`recordAudit`, NUD-092); the audit log is append-only.
 
 ### 4.4 Environment variables (grow `.env.example` as tickets add them)
@@ -359,6 +359,7 @@ Read rule: `pick(text, locale)` returns the requested locale; if empty, the clos
 | NUD-198 | Monatsrechnung: Export als PDF und CSV für die Buchhaltung | M2.8 | 197 | done |
 | NUD-199 | Zahlungen: Bezahlt-Historie als eigene Seite | M2.8 | 196 | done |
 | NUD-200 | Nightly backup of the master data on the server (no orders, tours or payments; nothing off-site) | M2.7 | 094 | done |
+| NUD-201 | Bezahlte Bestellungen, Touren und Monatsrechnungen automatisch löschen | M2.8 | 196 | done |
 | NUD-100 | AI screenshot extraction (review required) | M3 | 031 | superseded → NUD-150 |
 | NUD-101 | Recurring / standing orders | M3 | 032 | superseded → NUD-149 |
 | NUD-102 | Multiple drivers / tours per day | M3 | 043 | superseded → NUD-147 |
@@ -3952,6 +3953,37 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 - Zeilen blenden gestaffelt ein (`.row-enter` in `globals.css`, 30 ms je Zeile, höchstens zwölf Stufen, aus bei „weniger Bewegung").
 - Nebenbei: „Bezahlt am" auf der Monatsseite zeigt jetzt den Tag in der Zeitzone der Fabrik (`fmt.dayOfMoment`); vorher konnte ein Vermerk kurz nach Mitternacht den Vortag zeigen. Die Knöpfe der Monatsseite werden nicht mehr mitgedruckt.
 
+#### NUD-201 · Bezahlte Bestellungen, Touren und Monatsrechnungen automatisch löschen
+**Status:** done · **depends_on:** 196 · Quelle: Übergabe-Protokoll 7.2, Entscheidung des Kunden vom 13.11.2026.
+
+**Goal:** Der Kunde will Bestellungen, Touren und Rechnungen nicht aufbewahren. Was bezahlt ist, wird 30 Tage nach der Bezahlung endgültig gelöscht. Was nicht bezahlt ist, bleibt, egal wie alt. Einstellungen, Kunden, Produkte, Stammtouren und Daueraufträge bleiben immer.
+
+**Acceptance criteria**
+- [x] Monatsrechnung: 30 Tage nachdem das Büro den Monat als bezahlt markiert hat, gehen die Bestellungen des Monats, ihre Stopps, der Bezahlt-Vermerk und die Korrekturzeilen des Monats. Ein offener oder zurückgenommener Monat bleibt.
+- [x] Bar bei Lieferung: 30 Tage nachdem der Fahrer den vollen Betrag kassiert hat. Offene oder nur zum Teil bezahlte Barbeträge bleiben. Eine gelieferte Barbestellung ohne Betrag zählt ab der Lieferung. Hat der Fahrer den Stopp einer freigegebenen Tour nie abgehakt und es ist dort Geld fällig, bleibt die Bestellung (niemand weiß, ob bezahlt wurde).
+- [x] Stornierte Bestellungen, Entwürfe und Barbestellungen, die nie geliefert wurden (keine Tour, Tour nie freigegeben oder Problem gemeldet): 30 Tage nach dem Liefertag.
+- [x] Eine Bestellung und ihr Stopp gehen nur zusammen: liegt an einem Stopp noch etwas Unbezahltes, bleiben der Stopp und alle seine Bestellungen. Eine Tour verliert ihre bezahlten Stopps einzeln und verschwindet, wenn kein Stopp mehr übrig ist.
+- [x] Screenshots, die zu keiner Bestellung mehr gehören, werden mit gelöscht (Datei und Zeile).
+- [x] Nie angefasst: Kunden, Produkte, Benutzer, Einstellungen, Stammtouren, Daueraufträge, Kundenfotos, Parkplätze, das Änderungsprotokoll.
+- [x] Schalter `ORDER_RETENTION_MODE` (`dry-run` als Standard: zählt nur; `delete`; `off`) und `ORDER_RETENTION_DAYS` (Standard 30, 7 bis 3650). Ohne ausdrückliches `delete` wird nichts gelöscht. Ein gesetzter, aber unbrauchbarer Wert (`60d`, `4000`) fällt nicht auf 30 zurück: der Lauf verweigert.
+- [x] Route `GET /api/cron/order-retention` (Bearer `CRON_SECRET`), täglich 03:57 UTC; Zeile in der Autorisierungs-Matrix.
+- [x] Daueraufträge mit „nach N Lieferungen" zählen ihre erzeugten Bestellungen selbst (`RecurringOrder.generatedCount`), damit gelöschte Bestellungen das Kontingent nicht zurückgeben. Die Einheit eines Produkts bleibt gesperrt, solange ein Dauerauftrag es benutzt.
+- [x] Die Monatsseite und die Bezahlt-Historie sagen, ab wann gelöscht wird, aber nur wenn das Löschen eingeschaltet ist. Texte in `de`, `en`, `zh-Hans`.
+
+**Implementation notes**
+- `src/domain/order-retention.ts`: `purgeSelection` (was darf zusammen gehen, rein und für sich getestet), `deletionDue`, die Grenzen der Frist. `src/server/order-retention.ts`: `purgeSettledOrders`, die Regel „bezahlt und Frist vorbei" als eine SQL-Bedingung (`settledSql`), `orderRetentionMode`, `orderRetentionDays`, `orderRetentionPolicy` (für die Seiten). `src/server/order-retention-cron.ts` und `src/app/api/cron/order-retention/route.ts` wie die anderen Aufräum-Jobs.
+- Ablauf je Lauf: Stapel von 200 Bestellungen (höchstens 25 je Lauf, der Rest am nächsten Tag), jeder Stapel in einer Transaktion. Vor dem Löschen werden Stopps, Bestellungen und Bezahlt-Vermerke gesperrt und die Auswahl noch einmal getroffen; nimmt das Büro in dem Moment einen Vermerk zurück, löscht der Stapel nichts. Danach: alte Stopps ohne Bestellung, alte Touren ohne Stopp, Bezahlt-Vermerke und Korrekturen von Monaten ohne Bestellung, dann die Screenshots.
+- Ein Bezahlt-Vermerk bleibt, solange eine Bestellung seines Monats noch warten muss (sie teilt sich einen Stopp mit etwas Unbezahltem); ohne den Vermerk sähe sie wieder offen aus.
+- Zeiten werden in UTC verglichen, der Liefertag in der Zeitzone der Fabrik (`Settings.timezone`).
+- Migration `20261113100000_recurring_generated_count` (neue Spalte, gefüllt mit der heutigen Zahl der Bestellungen je Dauerauftrag). Keine neue Abhängigkeit. Neue Umgebungsvariablen: `ORDER_RETENTION_DAYS`, `ORDER_RETENTION_MODE` (`.env.example`, `docs/env.md`).
+- Der Lauf schreibt keinen Eintrag ins Änderungsprotokoll (Systemlauf ohne Benutzer, Ausnahme in `audit-coverage.test.ts` begründet); die Zahlen stehen in der Antwort und in einer Logzeile `[order-retention]`.
+- Folgen, die man kennen muss: Auslastung, Bezahlt-Historie und Export zeigen nur noch, was nicht gelöscht ist. Das Änderungsprotokoll behält seine Einträge zu gelöschten Bestellungen bis zu seiner eigenen Frist (`AUDIT_RETENTION_DAYS`, Standard 730 Tage, mindestens 90).
+- Zwei Läufe gleichzeitig (Cron und Aufruf von Hand) arbeiten ihre Stapel abwechselnd ab (`pg_advisory_xact_lock`).
+- Aus der Code-Durchsicht: Dauerauftrags-Kontingent und Einheiten-Sperre (oben), strengere Bar-Regel für nie abgehakte Stopps, kein stiller Rückfall auf 30 Tage bei einem Tippfehler, eine Lieferung ohne jede Zeitangabe gilt nie als alt genug.
+- Der zuerst gebaute Ansatz (Archiv mit eigenem Zugriff) ist verworfen und nicht im Repository.
+- Doku: `docs/audit-and-retention.md` (Regeln), `docs/privacy.md` Abschnitt 6, `docs/runbook.md` Abschnitt 10 (Einschalten), `docs/deploy.md` (Cron-Zeile), `AGENTS.md`, Hilfeseite (`content/hand-off`).
+- Tests: `order-retention.test.ts` in `src/domain` (Auswahlregel) und `src/server` (Schalter, Route), `order-retention.integration.test.ts` (35 Fälle auf echter Datenbank), `recurring-order-patterns.integration.test.ts` (Kontingent nach dem Löschen), `product-actions.integration.test.ts` (Einheiten-Sperre), `deletion-notice.test.tsx`.
+
 ## 9. Decision log (append-only, one line per decision taken during implementation)
 
 | Date | Ticket | Decision | Reason |
@@ -4416,6 +4448,15 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 | 2026-11-13 | NUD-200 | Backups stay on the server; the bucket destination of NUD-094 remains in the code, switched off, and its GitHub check is skipped | Owner: store it on the server only. Deleting tested code would only make a later change of mind expensive |
 | 2026-11-13 | NUD-200 | Nightly instead of weekly, same 8 weeks retention | A dump of the master data is a few hundred kB; a week of changed customers and standing tours is more than anybody wants to retype |
 | 2026-11-13 | NUD-200 | The job uses the app's `DATABASE_URL` unless `BACKUP_DATABASE_URL` is set | One secret less to copy and rotate on a single host; `pg_dump` only reads, a read-only role stays possible |
+| 2026-11-13 | NUD-201 | Bezahlte Bestellungen, Touren und Monatsrechnungen werden 30 Tage nach der Bezahlung endgültig gelöscht; Unbezahltes bleibt. Das Archiv (erster Ansatz) ist verworfen | Entscheidung des Kunden (13.11.2026): außer Einstellungen, Kunden und Stammtouren soll nichts aufbewahrt werden. Auf mögliche gesetzliche Aufbewahrungspflichten für Rechnungen wurde hingewiesen. Hebt für diese Daten die Regel „never hard-delete business data" (4.3) auf |
+| 2026-11-13 | NUD-201 | Bar bei Lieferung zählt ab dem vollständigen Kassieren; offene und zum Teil bezahlte Barbeträge werden nie gelöscht | „Unbezahltes bleibt" gilt für beide Zahlungsarten; sonst verschwände eine offene Forderung |
+| 2026-11-13 | NUD-201 | Stornierte Bestellungen, Entwürfe und nie gelieferte Barbestellungen gehen 30 Tage nach dem Liefertag | Für sie ist nichts zu bezahlen; ohne eigene Regel blieben sie für immer liegen |
+| 2026-11-13 | NUD-201 | Bestellung und Stopp gehen nur zusammen; eine Tour verschwindet erst mit ihrem letzten Stopp | Ein unbezahlter Auftrag braucht seinen Stopp (Lieferstatus, kassierter Betrag). Halbe Stopps darf es nicht geben; dass eine alte Tour dabei Stopps verliert, nimmt die Entscheidung des Kunden in Kauf |
+| 2026-11-13 | NUD-201 | Standard ist `dry-run`; gelöscht wird erst nach `ORDER_RETENTION_MODE=delete` auf dem Server | Löschen lässt sich nicht zurücknehmen. Ein Deploy darf nicht von selbst damit anfangen; der Betreiber liest erst die Zählungen |
+| 2026-11-13 | NUD-201 | Eine Barbestellung, deren Stopp auf einer freigegebenen Tour nie abgehakt wurde, bleibt, solange dort Geld fällig ist | Der Zustand ist unbekannt, nicht „nichts offen". Löschen ist endgültig, also im Zweifel behalten; das Büro lässt den Stopp abschließen oder storniert die Bestellung |
+| 2026-11-13 | NUD-201 | Ein unbrauchbarer Wert in `ORDER_RETENTION_DAYS` stoppt den Lauf, statt auf 30 zurückzufallen | Bei den anderen Aufräum-Jobs ist der Rückfall die vorsichtige Richtung, hier wäre er die kürzeste Frist |
+| 2026-11-13 | NUD-201 | `maxDeliveries` eines Dauerauftrags wird gegen einen eigenen Zähler geprüft, nicht gegen die vorhandenen Bestellungen | Gelöschte Bestellungen hätten einem aufgebrauchten Dauerauftrag sein Kontingent zurückgegeben; der Kunde bekäme Lieferungen, die er nicht bestellt hat |
+| 2026-11-13 | NUD-201 | Das Änderungsprotokoll wird nicht mitgelöscht | Es ist append-only (Trigger) und hat seine eigene Frist (NUD-111). Wer die Spuren früher loswerden will, senkt `AUDIT_RETENTION_DAYS` (mindestens 90) |
 
 ## 10. Open questions for the client (do not block on these – use placeholders)
 
@@ -4427,4 +4468,4 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 - OpenRouter model choice and budget (NUD-150).
 - Vehicle type (car vs. van/truck profile for routing) → ORS profile setting (NUD-040).
 - Map tile provider account for production (NUD-011) and DeepL API account (NUD-070).
-- Retention of orders, tours and stops (NUD-112): keep forever (current behaviour, nothing is deleted), or delete / anonymise completed orders and tours after N years (proposal 3 years, or as long as accounting and dispute obligations require)? What may be anonymised: `Order.internalNote`, the driver link of tours? Also confirm the driver text period (365 days proposed) and the audit period (730 days proposed). Until decided nothing is deleted; the periods are variables (`docs/privacy.md` section 6).
+- ~~Retention of orders, tours and stops (NUD-112)~~ → decided 2026-11-13: paid orders, tours and monthly bills are deleted 30 days after the payment, unpaid ones stay (NUD-201). Still to confirm by the client: the driver text period (365 days proposed), the audit period (730 days proposed; the audit log keeps entries about deleted orders until then), and with the tax adviser whether invoices may be deleted that early (`docs/privacy.md` section 6).

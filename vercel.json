@@ -22,6 +22,10 @@
       "schedule": "47 3 * * *"
     },
     {
+      "path": "/api/cron/order-retention",
+      "schedule": "57 3 * * *"
+    },
+    {
       "path": "/api/cron/recurring-orders",
       "schedule": "27 2 * * *"
     },
