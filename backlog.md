@@ -3995,6 +3995,7 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 **Acceptance criteria**
 - [x] A virtual-hosted bucket works: `S3_URL_STYLE=virtual` (`BACKUP_S3_URL_STYLE` for the backup) makes the storage clients sign `https://<bucket>.<endpoint host>/<key>` and the CSP allow that host. Unset keeps path style, so MinIO, R2 and the dedicated server behave as before.
 - [x] `pnpm bucket:cors [--apply]` puts the CORS rule a bucket on another host needs for the browser upload (origins from `--origin` or `S3_CORS_ORIGINS`, dry run by default).
+- [x] `pnpm bucket:check` proves the browser upload path against the real bucket (preflight, PUT to a presigned URL, read, each with the app's `Origin`); it is the last pre-deploy step on Railway, so a broken upload path stops the deploy.
 - [x] `pnpm build:railway` checks the environment first (`checkDeployEnv` knows Railway: `CRON_SECRET` required, no R2 warning, unknown `S3_URL_STYLE` refused).
 - [x] `deploy/railway/cron`: one dispatcher run every 5 minutes calls the due `/api/cron/*` routes; its list is asserted against `vercel.json`; a failed job ends the run with exit code 1.
 - [x] `deploy/railway/backup`, `deploy/railway/ors`, `deploy/railway/photon`: images for the nightly master-data dump, openrouteservice and Photon; map data is fetched onto a volume on the first start.
@@ -4486,6 +4487,7 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 | 2026-11-13 | NUD-202 | The backup on Railway is still the master-data dump; Railway's volume backups stay off | Owner (NUD-200/201): orders and payments are not to be kept. A volume backup would hold them for its whole retention |
 | 2026-11-13 | NUD-202 | Photos in a Railway bucket instead of MinIO in a container | No volume to size and back up, no service to keep running; costs USD 0.015 per GB. It needs virtual-hosted URLs and a CORS rule, both now supported |
 | 2026-11-13 | NUD-202 | Photon reads a prebuilt Austria index instead of an own Nominatim import | Nominatim needs a PostGIS database of its own and hours of import for the same search result; the prebuilt index is one download |
+| 2026-11-13 | NUD-202 | `OSM_URL` of the routing service takes several addresses; the default adds the openstreetmap.fr extract | `download.geofabrik.de` refuses connections from Railway's outbound addresses, so the first start could never fetch the map. A second source keeps the service self-starting instead of needing a hand-carried file |
 
 ## 10. Open questions for the client (do not block on these – use placeholders)
 

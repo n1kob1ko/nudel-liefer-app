@@ -23,15 +23,17 @@ There is no nginx, no systemd unit, no `/etc/delivery-app.env` and no `/etc/host
 
 ## 2. Service settings
 
-| Service  | Root directory           | Build                                         | Pre-deploy                                    | Start        | Schedule (UTC) | Other                                                                    |
-| -------- | ------------------------ | --------------------------------------------- | --------------------------------------------- | ------------ | -------------- | ------------------------------------------------------------------------ |
-| `app`    | `/`                      | `pnpm build:railway`                          | `pnpm db:migrate && pnpm bucket:cors --apply` | `pnpm start` | –              | health check `/api/health` (180 s), restart on failure (10 tries)        |
-| `cron`   | `/deploy/railway/cron`   | Dockerfile                                    | –                                             | image        | `*/5 * * * *`  | restart never, watch `/deploy/railway/cron/**`                           |
-| `backup` | `/`                      | Dockerfile `deploy/railway/backup/Dockerfile` | –                                             | image        | `23 2 * * *`   | restart never, watch paths see below                                     |
-| `ors`    | `/deploy/railway/ors`    | Dockerfile                                    | –                                             | image        | –              | volume at `/data`, restart on failure, watch `/deploy/railway/ors/**`    |
-| `photon` | `/deploy/railway/photon` | Dockerfile                                    | –                                             | image        | –              | volume at `/data`, restart on failure, watch `/deploy/railway/photon/**` |
+| Service  | Root directory           | Build                                         | Pre-deploy                                                         | Start        | Schedule (UTC) | Other                                                                    |
+| -------- | ------------------------ | --------------------------------------------- | ------------------------------------------------------------------ | ------------ | -------------- | ------------------------------------------------------------------------ |
+| `app`    | `/`                      | `pnpm build:railway`                          | `pnpm db:migrate && pnpm bucket:cors --apply && pnpm bucket:check` | `pnpm start` | –              | health check `/api/health` (180 s), restart on failure (10 tries)        |
+| `cron`   | `/deploy/railway/cron`   | Dockerfile                                    | –                                                                  | image        | `*/5 * * * *`  | restart never, watch `/deploy/railway/cron/**`                           |
+| `backup` | `/`                      | Dockerfile `deploy/railway/backup/Dockerfile` | –                                                                  | image        | `23 2 * * *`   | restart never, watch paths see below                                     |
+| `ors`    | `/deploy/railway/ors`    | Dockerfile                                    | –                                                                  | image        | –              | volume at `/data`, restart on failure, watch `/deploy/railway/ors/**`    |
+| `photon` | `/deploy/railway/photon` | Dockerfile                                    | –                                                                  | image        | –              | volume at `/data`, restart on failure, watch `/deploy/railway/photon/**` |
 
-- Every service runs in `europe-west4-drams3a`. A new service starts in a US region by default: set the region before the first deploy, above all for a service with a volume.
+- Every service and every volume is in `europe-west4-drams3a`. A new service starts in a US region by default, and so does the volume of a template (the `Postgres` volume was created in `sfo` and had to be replaced by a new one while the database was still empty; a volume cannot be moved). So: set the region of a service before its first deploy and name the region when a volume is created.
+- Create services one after the other. Four created at the same moment (2026-11-13) left one of them missing and two unusable for some minutes.
+- The pre-deploy command is one line joined with `&&`; Railway refuses a list of several commands.
 - `app` is built by Railpack on purpose. The Content-Security-Policy is put together when the app is **built** (`next.config.ts` reads `S3_*`, `MAP_TILE_URL`, `SENTRY_DSN`), and a Railpack build sees every service variable; a Dockerfile would need each of them as a build argument. For the same reason there must never be a `Dockerfile` in the repository root: Railway would use it for `app`.
 - `pnpm build:railway` runs `scripts/check-deploy-env.ts` first: a missing `CRON_SECRET`, a database on localhost, a missing bucket variable or an unknown `S3_URL_STYLE` stop the deploy with a readable list.
 - `pnpm start` is plain `next start`: it listens on every interface (IPv4 and IPv6) and on `PORT`.
@@ -65,13 +67,13 @@ Values that are secrets are never written here. `${{...}}` is Railway's referenc
 
 **`backup`:** `BACKUP_DATABASE_URL` = `${{Postgres.DATABASE_URL}}`, `BACKUP_S3_ENDPOINT` / `BACKUP_S3_BUCKET` / `BACKUP_S3_REGION` / `BACKUP_S3_ACCESS_KEY_ID` / `BACKUP_S3_SECRET_ACCESS_KEY` = the matching `${{backups.…}}` references, `BACKUP_S3_URL_STYLE` = `virtual`.
 
-**`ors`:** none needed. Optional: `OSM_URL` (default: the Geofabrik extract of Austria), `XMS` / `XMX` (default `1g` / `4g`), `REBUILD_OSM=true` for one start to fetch the extract again, `REBUILD_GRAPHS=true` for one start to rebuild the graph.
+**`ors`:** `RAILWAY_RUN_UID` = `0` (a Railway volume belongs to root). Optional: `OSM_URL` (one or several addresses separated by spaces, tried in order; default: the Austria extract of Geofabrik, then the one of openstreetmap.fr), `XMS` / `XMX` (default `1g` / `4g`), `REBUILD_OSM=true` for one start to fetch the extract again, `REBUILD_GRAPHS=true` for one start to rebuild the graph.
 
-**`photon`:** none needed. Optional: `PHOTON_INDEX_URL`, `JAVA_OPTS` (default `-Xmx1g`), `PHOTON_LANG`.
+**`photon`:** none needed. Optional: `PHOTON_INDEX_URL` (default: GraphHopper's weekly Austria index, `https://download1.graphhopper.com/public/europe/austria/photon-db-austria-1.0-latest.tar.bz2`, about 920 MB), `JAVA_OPTS` (default `-Xmx1g`), `PHOTON_LANG`.
 
 ## 4. Deploying
 
-A push to the branch a service follows deploys it; there is no manual step and no SSH. `app` rebuilds on every push, the helper services only when their watch paths changed. The order of one `app` deploy: build (`check-deploy-env`, two `next build` passes, PWA files) → pre-deploy (migrations, CORS rule of the photo bucket) → start → health check `/api/health` → the old container is stopped. A failed build, migration or health check leaves the running version in place.
+A push to the branch a service follows deploys it; there is no manual step and no SSH. `app` rebuilds on every push, the helper services only when their watch paths changed. The order of one `app` deploy: build (`check-deploy-env`, two `next build` passes, PWA files) → pre-deploy (migrations, CORS rule of the photo bucket, upload check against the bucket) → start → health check `/api/health` → the old container is stopped. A failed build, migration or health check leaves the running version in place.
 
 Rollback: Railway dashboard → `app` → Deployments → the last good one → Redeploy. A migration that was already applied is not undone by that.
 
@@ -94,7 +96,8 @@ Restore: `pnpm backup:verify` with `BACKUP_S3_*` and `RESTORE_DATABASE_URL` (see
 ## 7. Routing and geocoding
 
 - `ors` is the official image with `ORS_HOME=/data`, so the extract, the graph and the logs are on the volume. The first start downloads the OSM extract and builds the car graph (Austria: about 15 minutes, up to 4 GB of RAM); later starts take seconds. Until the graph is ready the app plans with the heuristic and says so ("Näherungswerte").
-- `photon` unpacks the search index onto its volume on the first start and serves it.
+- `download.geofabrik.de` refuses connections from Railway's outbound addresses (port 443, "Connection refused", seen 2026-11-13 and reported by others in Railway's forum). That is why `OSM_URL` takes several addresses and the start script logs which one delivered the file, together with the answer's `Last-Modified` header. A refresh that finds no address keeps serving the extract already on the volume.
+- `photon` unpacks the search index onto its volume on the first start (about a minute for Austria) and serves it.
 - Both have no public address. `GET /api/health` on the app reports `routing.mode` and `geocoding.mode`; both must be `self-hosted`.
 - New map data: `ors` → variable `REBUILD_OSM=true`, deploy, remove the variable again. `photon` → change `PHOTON_INDEX_URL` or delete the folder `photon` on the volume.
 
@@ -104,6 +107,7 @@ The browser uploads a photo with a PUT to a presigned URL and shows photos from 
 
 - `S3_URL_STYLE=virtual`: URLs are `https://<bucket>.<endpoint host>/<key>`, and the Content-Security-Policy allows exactly that host (`src/lib/security-headers.ts`).
 - The bucket needs a CORS rule for the app's address. `pnpm bucket:cors --apply` puts it on every deploy from `S3_CORS_ORIGINS` (`scripts/set-bucket-cors.ts`; without `--apply` it only shows the rule).
+- `pnpm bucket:check` (`scripts/check-bucket-upload.ts`) then does what a browser does: preflight, PUT to a presigned URL and a read, each with the app's `Origin`, and deletes its test object. A deploy whose upload path is broken stops there and the running version stays.
 
 Railway buckets have no lifecycle rules, so `scripts/set-bucket-lifecycle.ts` does not apply here; the retention cron already deletes screenshot rows together with their objects.
 
