@@ -164,7 +164,11 @@ export function requestOfflineSync(): void {
   if (lastUserId) void syncOfflineNow(lastUserId);
 }
 
-/** Shows what a previous visit stored (so "last updated" is known before the first sync ends). */
+/**
+ * Shows what a previous visit stored (so "last updated" is known before the first sync ends). The
+ * phase is left alone: only a sync compares the photos with the server, and a "partial" set here
+ * made the home flash "0 von 0 Fotos" above the tour until that sync started (a layout shift).
+ */
 export async function loadOfflineStatus(userId?: string): Promise<void> {
   try {
     const record = await loadCurrentRecord(getOfflineStore(), new Date(), userId);
@@ -173,7 +177,6 @@ export async function loadOfflineStatus(userId?: string): Promise<void> {
         savedAt: record.savedAt,
         timezone: record.data.timezone,
         tourIds: tourIdsOf(record.data),
-        phase: "partial",
       });
     }
   } catch {
