@@ -38,6 +38,7 @@ const AUDITED = [
   "server/standing-tours.ts",
   "server/stop-payment.ts",
   "server/payments.ts",
+  "server/monthly-adjustments.ts",
 ];
 
 /** Writes that are deliberately not audited, with the reason. */

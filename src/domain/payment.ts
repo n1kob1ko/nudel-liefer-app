@@ -103,3 +103,30 @@ export function monthlyState(input: {
   if (!isClosedMonth(input.periodStart, input.today)) return "current";
   return input.orderCount > 0 ? "open" : "current";
 }
+
+/**
+ * A correction on a monthly bill (NUD-197): a discount or credit note the office grants
+ * (`deduction`), or an extra charge (`surcharge`). The office types a positive amount and picks the
+ * kind; the stored amount carries the sign, so a total is always a plain sum.
+ */
+export const ADJUSTMENT_KINDS = ["deduction", "surcharge"] as const;
+export type AdjustmentKind = (typeof ADJUSTMENT_KINDS)[number];
+
+/** Longest text of a correction line ("Rabatt Stammkunde", "Gutschrift Bruchware 12.10."). */
+export const MAX_ADJUSTMENT_LABEL = 120;
+
+/** The stored amount of a correction: negative for a deduction, positive for a surcharge. */
+export function signedAdjustmentCents(kind: AdjustmentKind, cents: number): number {
+  return kind === "deduction" ? -cents : cents;
+}
+
+/**
+ * Total of a monthly bill: the amounts of its orders (a missing amount counts as 0) plus its
+ * corrections. A credit larger than the orders gives a negative total — money the customer is owed.
+ */
+export function billTotalCents(
+  orderAmounts: ReadonlyArray<number | null | undefined>,
+  adjustmentAmounts: readonly number[],
+): number {
+  return sumCents(orderAmounts) + adjustmentAmounts.reduce((sum, cents) => sum + cents, 0);
+}

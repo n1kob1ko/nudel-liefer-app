@@ -2,6 +2,12 @@
 
 import { requireRole } from "./auth/guards";
 import { getDb } from "./db";
+import {
+  type AddAdjustmentResult,
+  addMonthlyAdjustment,
+  type RemoveAdjustmentResult,
+  removeMonthlyAdjustment,
+} from "./monthly-adjustments";
 import { todayIn } from "./orders";
 import {
   markMonthlyPaid,
@@ -26,4 +32,18 @@ export async function markMonthlyBillPaidAction(input: unknown): Promise<Monthly
 export async function unmarkMonthlyBillPaidAction(input: unknown): Promise<MonthlyUnmarkResult> {
   const actor = await requireRole("ADMIN");
   return unmarkMonthlyPaid(getDb(), actor.id, input);
+}
+
+/** Adds a correction line (discount, credit note, surcharge) to a customer-month (NUD-197). */
+export async function addMonthlyAdjustmentAction(input: unknown): Promise<AddAdjustmentResult> {
+  const actor = await requireRole("ADMIN");
+  return addMonthlyAdjustment(getDb(), actor.id, input);
+}
+
+/** Takes a correction line off the bill; the row and the audit history stay (NUD-197). */
+export async function removeMonthlyAdjustmentAction(
+  input: unknown,
+): Promise<RemoveAdjustmentResult> {
+  const actor = await requireRole("ADMIN");
+  return removeMonthlyAdjustment(getDb(), actor.id, input);
 }

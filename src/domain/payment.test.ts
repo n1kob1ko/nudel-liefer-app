@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   addMonths,
+  billTotalCents,
   cashDueCents,
   cashOrders,
   cashState,
@@ -11,6 +12,7 @@ import {
   monthStart,
   nextMonthStart,
   parseMonthKey,
+  signedAdjustmentCents,
 } from "./payment";
 
 const date = (iso: string) => new Date(`${iso}T00:00:00Z`);
@@ -78,5 +80,22 @@ describe("month helpers", () => {
     expect(monthlyState({ periodStart: november, today, paid: false, orderCount: 0 })).toBe(
       "current",
     );
+  });
+});
+
+describe("corrections on a monthly bill (NUD-197)", () => {
+  it("a deduction lowers the bill, a surcharge raises it", () => {
+    expect(signedAdjustmentCents("deduction", 1000)).toBe(-1000);
+    expect(signedAdjustmentCents("surcharge", 1000)).toBe(1000);
+  });
+
+  it("the total is the orders plus the signed corrections", () => {
+    expect(billTotalCents([5000, 2500], [-1000, 250])).toBe(6750);
+    expect(billTotalCents([5000], [])).toBe(5000);
+  });
+
+  it("an order without an amount counts as 0, and a credit larger than the orders goes below 0", () => {
+    expect(billTotalCents([null, 3000], [-500])).toBe(2500);
+    expect(billTotalCents([1000], [-2500])).toBe(-1500);
   });
 });

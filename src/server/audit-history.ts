@@ -546,6 +546,8 @@ async function toViews(db: DbForHistory, rows: Row[]): Promise<AuditEntryView[]>
       // Monthly bills (NUD-196) have their own page; no order or tour timeline shows them.
       case "monthly.pay":
       case "monthly.unpay":
+      case "monthly.adjust":
+      case "monthly.adjust_remove":
         return [];
     }
   };
