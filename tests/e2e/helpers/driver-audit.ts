@@ -10,19 +10,29 @@ import type { Page, TestInfo } from "@playwright/test";
  *  - `layoutAudit`: the driver rules of backlog 4.3 measured in the browser (touch targets >= 48 px,
  *    text >= 16 px, quantities >= 28 px bold, no horizontal scroll).
  */
-/** Lets CSS transitions / animations (sheet, toast, button colours) finish: axe reads mid-fade colours. */
+/**
+ * Lets CSS transitions / animations (sheet, toast, button colours, rows that rise in) finish: axe
+ * reads mid-fade colours. One look is not enough: content that streams in is revealed up to 300 ms
+ * after the page, and its entrance starts only then. So this waits until two looks in a row, 150 ms
+ * apart, find nothing moving.
+ */
 export async function settle(page: Page) {
-  await page.waitForTimeout(150);
-  await page
-    .evaluate(() =>
-      Promise.all(
-        document
+  let quiet = 0;
+  for (let round = 0; round < 20 && quiet < 2; round++) {
+    await page.waitForTimeout(150);
+    const moving = await page
+      .evaluate(async () => {
+        const running = document
           .getAnimations()
-          .filter((a) => a.effect?.getTiming().iterations !== Infinity)
-          .map((a) => a.finished.catch(() => {})),
-      ),
-    )
-    .catch(() => {});
+          .filter(
+            (a) => a.effect?.getTiming().iterations !== Infinity && a.playState !== "finished",
+          );
+        await Promise.all(running.map((a) => a.finished.catch(() => {})));
+        return running.length;
+      })
+      .catch(() => 0);
+    quiet = moving === 0 ? quiet + 1 : 0;
+  }
 }
 
 export type AxeFinding = {

@@ -244,16 +244,23 @@ const visible = (page: Page, id: string) => page.locator(`[data-testid="${id}"]:
 const noHorizontalScroll = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
 
-/** Tour 2 on the screen: label, its own stops, no "tour finished" card, nothing of tour 1 left over. */
+/**
+ * Tour 2 on the screen: label, its own stops, no "tour finished" card, nothing of tour 1 left over.
+ *
+ * Only what is shown counts. While the page streams in, the tour can be in the document twice for
+ * a moment: once on the screen and once in the hidden block the server sent for the same place
+ * (React removes it up to 300 ms later). A plain test id then matched two elements and the test
+ * failed about three runs in ten, on main as well.
+ */
 async function expectSecondTour(page: Page) {
-  const badge = page.getByTestId("tour-badge");
+  const badge = visible(page, "tour-badge");
   await expect(badge).toBeVisible({ timeout: 30_000 });
   await expect(badge).toHaveAttribute("data-tour-number", "2");
   await expect(badge).toContainText("Tour 2 von 2");
   await expect(badge).toContainText("Folgetour");
-  await expect(page.getByTestId("all-done")).toHaveCount(0);
-  await expect(page.getByTestId("next-stop-name")).toHaveText(names[1]!);
-  await expect(page.getByTestId("progress-count")).toHaveText(/0\s*\/\s*2/);
+  await expect(visible(page, "all-done")).toHaveCount(0);
+  await expect(visible(page, "next-stop-name")).toHaveText(names[1]!);
+  await expect(visible(page, "progress-count")).toHaveText(/0\s*\/\s*2/);
   expect(await noHorizontalScroll(page)).toBe(true);
 }
 
