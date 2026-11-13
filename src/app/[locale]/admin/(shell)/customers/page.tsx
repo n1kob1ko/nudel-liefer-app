@@ -36,17 +36,9 @@ async function Guarded({
       <PageHeader
         title={t("title")}
         description={
-          <>
-            <span
-              className="text-foreground tabular-nums"
-              data-testid="customer-count"
-              aria-live="polite"
-            >
-              {tc("itemsCount", { count: result.total })}
-            </span>
-            {" · "}
-            {t("description")}
-          </>
+          <span className="tabular-nums" data-testid="customer-count" aria-live="polite">
+            {tc("itemsCount", { count: result.total })}
+          </span>
         }
         actions={
           <>

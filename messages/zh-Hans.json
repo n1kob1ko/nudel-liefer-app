@@ -486,7 +486,6 @@
     },
     "customers": {
       "title": "客户",
-      "description": "搜索客户资料。搜索不区分大小写和重音符号。",
       "new": "新增客户",
       "backToList": "返回客户列表",
       "search": {

@@ -486,7 +486,6 @@
     },
     "customers": {
       "title": "Kunden",
-      "description": "Kundenstamm durchsuchen. Die Suche ignoriert Groß-/Kleinschreibung und Akzente.",
       "new": "Neuer Kunde",
       "backToList": "Zurück zur Kundenliste",
       "search": {

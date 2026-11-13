@@ -55,7 +55,6 @@ import type { ScheduleDay } from "@/domain/work-time";
 import { createAppFormatters } from "@/lib/format";
 import { isAppLocale, LOCALE_LABELS } from "@/lib/locale-resolution";
 import { LOCALES } from "@/lib/localized-text";
-import { cn } from "@/lib/utils";
 import {
   createAdminAction,
   createDriverAction,
@@ -94,23 +93,9 @@ const ERROR_KEYS: Record<UserError, string> = {
 type PinSheet = { name: string; username: string; pin: string };
 type Confirm = { kind: "reset" | "deactivate"; user: UserListRow };
 
-/** Deterministic soft avatar colours (re-design.md §8.7) — no image file, no `Avatar` dependency. */
-const AVATAR_TONES = [
-  "bg-primary-soft text-primary-soft-foreground",
-  "bg-success-soft text-success-soft-foreground",
-  "bg-info-soft text-info-soft-foreground",
-  "bg-warning-soft text-warning-soft-foreground",
-] as const;
-
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);
   return parts.map((part) => part[0]?.toUpperCase() ?? "").join("") || "?";
-}
-
-function avatarTone(id: string): (typeof AVATAR_TONES)[number] {
-  let hash = 0;
-  for (const char of id) hash = (hash * 31 + (char.codePointAt(0) ?? 0)) % 997;
-  return AVATAR_TONES[hash % AVATAR_TONES.length];
 }
 
 /** "vor 2 Std." / "vor 3 Tagen", built from the locale's relative-time vocabulary. */
@@ -332,14 +317,12 @@ export function UsersManager({
           <div className="flex items-center gap-3">
             <span
               aria-hidden
-              className={cn(
-                "flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-                avatarTone(user.id),
-              )}
+              // Neutral on purpose: a colour per person would read as a status (DESIGN.md, rule 3).
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground"
             >
               {initials(user.displayName)}
             </span>
-            <span className="font-medium">{user.displayName}</span>
+            <span className="font-medium whitespace-nowrap">{user.displayName}</span>
             {kind === "admin" && user.id === currentUserId ? (
               <span className="text-sm text-muted-foreground">({t("admins.you")})</span>
             ) : null}
@@ -368,7 +351,9 @@ export function UsersManager({
         ) : null}
         <TableCell className="py-1.5">
           <StatusBadge
-            tone={user.active ? "success" : "neutral"}
+            // "Aktiv" is the normal case and stays quiet: green means delivered, done or saved.
+            tone="neutral"
+            className={user.active ? undefined : "text-muted-foreground"}
             icon={user.active ? CheckCircle2Icon : BanIcon}
             size="sm"
           >

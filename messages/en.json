@@ -486,7 +486,6 @@
     },
     "customers": {
       "title": "Customers",
-      "description": "Search the customer list. The search ignores case and accents.",
       "new": "New customer",
       "backToList": "Back to the customer list",
       "search": {

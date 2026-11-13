@@ -5,6 +5,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/shared/states";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -130,12 +131,18 @@ export function VehiclesManager({ rows }: { rows: VehicleRow[] }) {
 
   return (
     <TooltipProvider>
-      <div className="flex justify-end">
-        <Button type="button" onClick={() => openForm(EMPTY)} data-testid="new-vehicle">
-          <PlusIcon aria-hidden />
-          {t("new")}
-        </Button>
-      </div>
+      {/* The header lives here (like the drivers page): its button opens the form of this
+          component, and it belongs next to the title, not on a row of its own. */}
+      <PageHeader
+        title={t("title")}
+        description={t("description")}
+        actions={
+          <Button type="button" onClick={() => openForm(EMPTY)} data-testid="new-vehicle">
+            <PlusIcon aria-hidden />
+            {t("new")}
+          </Button>
+        }
+      />
 
       {rows.length === 0 ? (
         <EmptyState title={t("emptyTitle")} description={t("empty")} />
