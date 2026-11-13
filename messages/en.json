@@ -2050,8 +2050,10 @@
           "invalid": "The input is not valid. Please check the text and the amount.",
           "not_found": "This correction no longer exists. Please reload the page.",
           "locked": "The month has been marked paid in the meantime. To change it, take the paid note back first.",
-          "generic": "That did not work. Please try again."
-        }
+          "generic": "That did not work. Please try again.",
+          "no_orders": "This month has no orders on a monthly bill, so no correction can be added here."
+        },
+        "noOrders": "Corrections are only possible in a month that has orders on a monthly bill."
       },
       "export": {
         "pdf": "PDF",
@@ -2073,7 +2075,8 @@
           "description": "Description",
           "amount": "Amount (EUR)",
           "status": "Status",
-          "paidOn": "Paid on"
+          "paidOn": "Paid on",
+          "paidAmount": "Paid total (EUR)"
         },
         "document": {
           "title": "Monthly bill",
@@ -2081,12 +2084,14 @@
           "vatId": "VAT ID {vatId}",
           "open": "Open",
           "current": "The month is still running, this statement is preliminary.",
-          "paidOn": "Paid on {date}",
+          "paidOn": "Paid on {date}, {amount}",
           "note": "Note: {note}",
           "noAmountNotice": "{count, plural, one {# order without an amount is} other {# orders without an amount are}} not included in the total.",
           "empty": "No orders on a monthly bill in this month.",
-          "page": "Page {page} of {pages}"
-        }
+          "page": "Page {page} of {pages}",
+          "paidDiffers": "The paid amount differs from the total above because orders were changed after the month was marked paid."
+        },
+        "failed": "The download did not work. Please reload the page and try again."
       },
       "history": {
         "title": "Paid history",

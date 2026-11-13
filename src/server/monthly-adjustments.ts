@@ -5,6 +5,7 @@ import { formatCalendarDate } from "@/domain/order";
 import {
   ADJUSTMENT_KINDS,
   MAX_ADJUSTMENT_LABEL,
+  nextMonthStart,
   parseMonthKey,
   signedAdjustmentCents,
 } from "@/domain/payment";
@@ -22,7 +23,7 @@ import { idSchema, lockCustomerBilling, type PaymentsDb } from "./payments";
  * holds ids and the amount, never the typed text.
  */
 
-export type AdjustmentError = "invalid" | "not_found" | "locked";
+export type AdjustmentError = "invalid" | "not_found" | "locked" | "no_orders";
 
 export type AddAdjustmentResult =
   { ok: true; id: string; amountCents: number } | { ok: false; error: AdjustmentError };
@@ -59,7 +60,10 @@ async function isMonthPaid(
   return payment !== null && payment.voidedAt === null;
 }
 
-/** Adds one correction to a customer-month. Refused (`locked`) while the month is marked paid. */
+/**
+ * Adds one correction to a customer-month. Refused while the month is marked paid (`locked`) and
+ * for a month without orders on monthly bill (`no_orders`).
+ */
 export async function addMonthlyAdjustment(
   db: PaymentsDb,
   actorId: string,
@@ -83,6 +87,17 @@ export async function addMonthlyAdjustment(
   return db.$transaction(async (tx): Promise<AddAdjustmentResult> => {
     await lockCustomerBilling(tx, customer.id);
     if (await isMonthPaid(tx, customer.id, period)) return { ok: false, error: "locked" };
+    // A month without orders on monthly bill has no bill: it is never listed as open and cannot
+    // be marked paid, so a correction on it would be money nobody sees again.
+    const orders = await tx.order.count({
+      where: {
+        customerId: customer.id,
+        status: "CONFIRMED",
+        paymentTerm: "MONTHLY",
+        deliveryDate: { gte: period, lt: nextMonthStart(period) },
+      },
+    });
+    if (orders === 0) return { ok: false, error: "no_orders" };
     const created = await tx.monthlyAdjustment.create({
       data: {
         customerId: customer.id,

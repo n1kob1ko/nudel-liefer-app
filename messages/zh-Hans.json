@@ -2050,8 +2050,10 @@
           "invalid": "输入无效。请检查说明和金额。",
           "not_found": "该调整项已不存在。请重新加载页面。",
           "locked": "本月刚刚被标记为已付。如需修改，请先撤销已付标记。",
-          "generic": "操作未成功，请重试。"
-        }
+          "generic": "操作未成功，请重试。",
+          "no_orders": "本月没有月度账单订单，因此无法在此添加更正。"
+        },
+        "noOrders": "只有含月度账单订单的月份才能添加更正。"
       },
       "export": {
         "pdf": "PDF",
@@ -2073,7 +2075,8 @@
           "description": "说明",
           "amount": "金额（欧元）",
           "status": "状态",
-          "paidOn": "付款日期"
+          "paidOn": "付款日期",
+          "paidAmount": "已付合计 (EUR)"
         },
         "document": {
           "title": "月度账单",
@@ -2081,12 +2084,14 @@
           "vatId": "增值税号 {vatId}",
           "open": "未结",
           "current": "本月尚未结束，此清单为暂定。",
-          "paidOn": "已于 {date} 付款",
+          "paidOn": "已于 {date} 付款，金额 {amount}",
           "note": "备注：{note}",
           "noAmountNotice": "{count, plural, other {# 个无金额的订单}}未计入合计。",
           "empty": "本月没有月度账单订单。",
-          "page": "第 {page} 页，共 {pages} 页"
-        }
+          "page": "第 {page} 页，共 {pages} 页",
+          "paidDiffers": "已付金额与上方合计不同，因为标记已付后订单有改动。"
+        },
+        "failed": "下载失败。请刷新页面后重试。"
       },
       "history": {
         "title": "已付记录",

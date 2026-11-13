@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { type BillPdfModel, layoutBillPdf, PDF_PAGE, type PdfOp } from "./bill-pdf-layout";
+import {
+  type BillPdfModel,
+  layoutBillPdf,
+  PDF_PAGE,
+  type PdfOp,
+  splitFontRuns,
+} from "./bill-pdf-layout";
 
 /** Every character is half its font size wide: enough to check wrapping and right alignment. */
 const measure = (text: string, size: number) => text.length * size * 0.5;
@@ -28,8 +34,7 @@ const model = (extra: Partial<BillPdfModel> = {}): BillPdfModel => ({
   ...extra,
 });
 
-const texts = (page: PdfOp[]) =>
-  page.flatMap((op) => (op.type === "text" ? [op] : []));
+const texts = (page: PdfOp[]) => page.flatMap((op) => (op.type === "text" ? [op] : []));
 const find = (page: PdfOp[], text: string) => texts(page).find((op) => op.text === text);
 const right = PDF_PAGE.width - PDF_PAGE.margin;
 
@@ -156,5 +161,168 @@ describe("layoutBillPdf", () => {
   it("says so when the month has no orders", () => {
     const page = layoutBillPdf(model({ orders: [] }), measure)[0]!;
     expect(find(page, "Keine Bestellungen in diesem Monat.")).toBeDefined();
+  });
+
+  /** No text leaves the printable area or runs into the page footer; nothing overlaps the edge. */
+  const expectInsidePage = (pages: PdfOp[][]) => {
+    const footerY = PDF_PAGE.margin - 16;
+    for (const [index, page] of pages.entries()) {
+      for (const op of texts(page)) {
+        const where = `page ${index + 1}: "${op.text.slice(0, 40)}"`;
+        expect(op.x, where).toBeGreaterThanOrEqual(PDF_PAGE.margin - 0.01);
+        expect(op.x + measure(op.text, op.size), where).toBeLessThanOrEqual(right + 0.01);
+        expect(op.y, where).toBeGreaterThanOrEqual(footerY);
+        expect(op.y, where).toBeLessThanOrEqual(PDF_PAGE.height - PDF_PAGE.margin);
+        // Only the footer itself may stand on the footer line.
+        if (op.y < PDF_PAGE.margin + 28) expect(op.y, where).toBe(footerY);
+      }
+    }
+  };
+
+  it("wraps a long sender name and address in the space left of the title", () => {
+    const pages = layoutBillPdf(
+      model({
+        sender: {
+          name: "Erste Wiener Nudel- und Teigwarenmanufaktur Produktions- und Vertriebsgesellschaft",
+          addressLines: [
+            "Gewerbepark Süd, Halle 14, Zufahrt über die Laxenburger Straße, Tor 3, 2. Stock, 1100 Wien, Österreich",
+          ],
+        },
+      }),
+      measure,
+    );
+    expectInsidePage(pages);
+    const page = pages[0]!;
+    const title = find(page, "Monatsrechnung")!;
+    const senderOps = texts(page).filter((op) => op.y > title.y - 40 && op.x < title.x);
+    expect(senderOps.length).toBeGreaterThan(2);
+    for (const op of senderOps) {
+      expect(op.x + measure(op.text, op.size), op.text).toBeLessThan(title.x);
+    }
+    // The recipient starts below the last sender line, not on top of it.
+    const lowestSender = Math.min(...senderOps.map((op) => op.y));
+    expect(find(page, "Gelso Nero GmbH")!.y).toBeLessThan(lowestSender);
+  });
+
+  it("wraps a recipient or meta line that is wider than the page", () => {
+    const company =
+      "Gastronomiebetriebe Zum Goldenen Schlüssel und Zur Alten Mühle Betriebsführungs- und Beteiligungsgesellschaft m.b.H. & Co KG";
+    const pages = layoutBillPdf(
+      model({
+        recipient: [company, "Hauptstraße 1", "1010 Wien"],
+        meta: [`Kundennummer ${"X".repeat(140)}`],
+      }),
+      measure,
+    );
+    expectInsidePage(pages);
+    const page = pages[0]!;
+    const first = texts(page).find((op) => op.text.startsWith("Gastronomiebetriebe"))!;
+    // Every line of the wrapped first recipient line stays bold.
+    expect(first.bold).toBe(true);
+    expect(texts(page).filter((op) => op.bold && op.size === 11).length).toBeGreaterThan(1);
+    expect(find(page, "Hauptstraße 1")!.y).toBeLessThan(first.y - 15);
+  });
+
+  it("shortens a footer text that would run into the page number", () => {
+    const pages = layoutBillPdf(
+      model({
+        footerLeft: `${"Sehr langer Firmenname ".repeat(12)}· Monatsrechnung Oktober 2026 · D-001`,
+      }),
+      measure,
+    );
+    expectInsidePage(pages);
+    const page = pages[0]!;
+    const label = find(page, "Seite 1 von 1")!;
+    const footer = texts(page).find((op) => op.text.startsWith("Sehr langer"))!;
+    expect(footer.text.endsWith("…")).toBe(true);
+    expect(footer.x + measure(footer.text, footer.size)).toBeLessThan(label.x);
+  });
+
+  it("carries a foot with more corrections than fit one page onto the next, total included", () => {
+    const corrections = Array.from({ length: 60 }, (_, index) => ({
+      label: `Korrektur ${index + 1}`,
+      amount: "-1,00 €",
+      style: "plain" as const,
+    }));
+    const pages = layoutBillPdf(
+      model({
+        foot: [
+          { label: "Zwischensumme Bestellungen", amount: "119,45 €", style: "muted" },
+          ...corrections,
+          { label: "Summe", amount: "59,45 €", style: "total" },
+        ],
+      }),
+      measure,
+    );
+    expectInsidePage(pages);
+    expect(pages.length).toBeGreaterThan(1);
+    const all = pages.flatMap((page) => texts(page).map((op) => op.text));
+    for (const { label } of corrections) expect(all, label).toContain(label);
+    expect(texts(pages.at(-1)!).map((op) => op.text)).toContain("Summe");
+  });
+
+  it("carries one order with more product lines than a page holds onto the next page", () => {
+    const items = Array.from({ length: 400 }, (_, index) => `${index + 1} Kiste Nudelsorte`).join(
+      ", ",
+    );
+    const pages = layoutBillPdf(
+      model({ orders: [{ date: "06.10.2026", items, amount: "55,15 €" }] }),
+      measure,
+    );
+    expectInsidePage(pages);
+    expect(pages.length).toBeGreaterThan(1);
+    const all = pages.flatMap((page) => texts(page).map((op) => op.text)).join(" ");
+    expect(all).toContain("400 Kiste Nudelsorte");
+    expect(all).toContain("Summe");
+  });
+
+  it("keeps every text inside the page for an ordinary and for a long bill", () => {
+    expectInsidePage(layoutBillPdf(model(), measure));
+    expectInsidePage(
+      layoutBillPdf(
+        model({
+          orders: Array.from({ length: 120 }, (_, index) => ({
+            date: "06.10.2026",
+            items: `${index + 1} Sackerl Nudeln, 2 Kiste Nudeln, 3 kg Teigblätter für Lasagne und Cannelloni`,
+            amount: "55,15 €",
+          })),
+          notes: Array.from({ length: 30 }, () => "Notiz: ".padEnd(300, "lang ")),
+        }),
+        measure,
+      ),
+    );
+  });
+});
+
+describe("splitFontRuns", () => {
+  /** A "main font" that only knows Latin-1, as a stand-in for a font without Chinese letters. */
+  const latin = (codePoint: number) => codePoint < 0x100;
+
+  it("keeps a text the main font can write in one run", () => {
+    expect(splitFontRuns("2 Kiste Nudeln", latin)).toEqual([
+      { text: "2 Kiste Nudeln", fallback: false },
+    ]);
+  });
+
+  it("cuts out the stretches the main font cannot write, in reading order", () => {
+    expect(splitFontRuns("2 箱 面条 (Nudeln)", latin)).toEqual([
+      { text: "2 ", fallback: false },
+      { text: "箱", fallback: true },
+      { text: " ", fallback: false },
+      { text: "面条", fallback: true },
+      { text: " (Nudeln)", fallback: false },
+    ]);
+  });
+
+  it("never cuts a character that needs two code units in half", () => {
+    expect(splitFontRuns("a\u{20000}b", latin)).toEqual([
+      { text: "a", fallback: false },
+      { text: "\u{20000}", fallback: true },
+      { text: "b", fallback: false },
+    ]);
+  });
+
+  it("returns no runs for an empty text", () => {
+    expect(splitFontRuns("", latin)).toEqual([]);
   });
 });

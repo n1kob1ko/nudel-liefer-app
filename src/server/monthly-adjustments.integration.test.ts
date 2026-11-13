@@ -218,6 +218,7 @@ describe.skipIf(!process.env.DATABASE_URL)("monthly bill corrections", { timeout
   });
 
   it("answers not_found when the correction is unknown or already removed", async () => {
+    await order(c1, "2099-05-04", 5000);
     const added = await add({});
     if (!added.ok) throw new Error("setup");
     await removeMonthlyAdjustment(db(), adminId, { adjustmentId: added.id });
@@ -237,6 +238,7 @@ describe.skipIf(!process.env.DATABASE_URL)("monthly bill corrections", { timeout
   });
 
   it("audits adding and removing with the amount and without the typed text", async () => {
+    await order(c1, "2099-05-04", 5000);
     const added = await add({ label: "Gutschrift Frau Huber" });
     if (!added.ok) throw new Error("setup");
     await removeMonthlyAdjustment(db(), adminId, { adjustmentId: added.id });
@@ -261,7 +263,55 @@ describe.skipIf(!process.env.DATABASE_URL)("monthly bill corrections", { timeout
   });
 
   it("a correction can be added while the month is still running", async () => {
+    await order(c1, "2099-06-02", 5000);
     expect(await add({ month: "2099-06" })).toMatchObject({ ok: true });
-    expect((await bill(c1, "2099-06"))?.totalCents).toBe(-1000);
+    expect((await bill(c1, "2099-06"))?.totalCents).toBe(4000);
+  });
+
+  it("refuses a correction in a month without orders on monthly bill", async () => {
+    // Such a month has no bill: it is not listed as open and cannot be marked paid, so a
+    // correction on it would be money nobody ever sees again.
+    await order(c1, "2099-04-04", 3000);
+    expect(await add({})).toEqual({ ok: false, error: "no_orders" });
+
+    const cancelled = await order(c1, "2099-05-04", 5000);
+    await db().order.update({ where: { id: cancelled.id }, data: { status: "CANCELLED" } });
+    const cash = await order(c1, "2099-05-05", 700);
+    await db().order.update({ where: { id: cash.id }, data: { paymentTerm: "ON_DELIVERY" } });
+    expect(await add({})).toEqual({ ok: false, error: "no_orders" });
+    expect(await db().monthlyAdjustment.count()).toBe(0);
+  });
+
+  it("never snapshots a total that misses a correction added at the same moment", async () => {
+    await order(c1, "2099-05-04", 5000);
+    for (let round = 0; round < 8; round++) {
+      await db().monthlyPayment.deleteMany();
+      await db().monthlyAdjustment.deleteMany();
+      const [, marked] = await Promise.all([
+        add({ amount: "1,00" }),
+        markMonthlyPaid(db(), adminId, { customerId: c1, month: "2099-05" }, TODAY),
+      ]);
+      if (!marked.ok) throw new Error("expected the month to be marked");
+      const active = await db().monthlyAdjustment.aggregate({
+        where: { customerId: c1, voidedAt: null },
+        _sum: { amountCents: true },
+      });
+      // Whoever came first: the snapshot is the orders plus exactly the corrections that exist.
+      expect(marked.amountCents, `round ${round}`).toBe(5000 + (active._sum.amountCents ?? 0));
+    }
+  });
+
+  it("the database itself refuses a correction of zero", async () => {
+    await expect(
+      db().monthlyAdjustment.create({
+        data: {
+          customerId: c1,
+          periodStart: new Date("2099-05-01T00:00:00Z"),
+          label: "Null",
+          amountCents: 0,
+          createdById: adminId,
+        },
+      }),
+    ).rejects.toThrow(/MonthlyAdjustment_amountCents_nonzero/);
   });
 });

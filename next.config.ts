@@ -75,6 +75,10 @@ const nextConfig: NextConfig = {
   // NUD-094: the Sentry SDK patches Node internals at run time and must be loaded from
   // node_modules, not bundled (bundling breaks its own hooks and prints a warning at start).
   serverExternalPackages: ["@sentry/nextjs"],
+  // NUD-198: the bill PDF reads its fonts from `assets/fonts` at run time. The server at
+  // /opt/delivery-app has the whole project folder; a traced deployment (Vercel, a standalone
+  // build) only gets the folder through this line.
+  outputFileTracingIncludes: { "/api/admin/payments/export": ["./assets/fonts/*"] },
   // NUD-094: the browser needs the DSN (public by design: it only allows sending events). It is
   // inlined at build time; an empty value removes the Sentry code from the client bundle.
   env: {

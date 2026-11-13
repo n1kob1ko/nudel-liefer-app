@@ -1,8 +1,15 @@
 "use client";
 
-import { DownloadIcon, FileSpreadsheetIcon, FileTextIcon } from "lucide-react";
+import {
+  DownloadIcon,
+  FileSpreadsheetIcon,
+  FileTextIcon,
+  Loader2Icon,
+  type LucideIcon,
+} from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useId, useState } from "react";
+import { type ComponentProps, type MouseEvent, useId, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -15,12 +22,75 @@ import {
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { billExportHref } from "@/domain/bill-export";
+import { withBasePath } from "@/lib/base-path";
+
+/** The file name of `Content-Disposition: attachment; filename="..."`. */
+function fileNameOf(response: Response): string {
+  return /filename="([^"]+)"/.exec(response.headers.get("content-disposition") ?? "")?.[1] ?? "";
+}
+
+/** Hands a fetched file to the browser's "save" through a temporary link. */
+function saveFile(file: Blob, name: string) {
+  const url = URL.createObjectURL(file);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  link.click();
+  // Not in the same tick: some browsers start reading the file only after the click returned.
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
 
 /**
- * Downloads of a monthly bill (NUD-198). Plain links to `GET /api/admin/payments/export`: the
- * server answers with an attachment, so the browser saves the file and the page stays where it is.
- * The file is written in the language of the screen (`locale`), which also decides how a CSV
- * writes numbers and dates.
+ * A link to a download that tells the office when the download fails. A plain `<a download>` would
+ * save the server's error answer as a file (or do nothing at all) once the session has run out, so
+ * a normal click fetches the file first and reports a failure as a toast. The `href` stays: a
+ * click with a modifier key and "save link as" keep working.
+ */
+function DownloadAnchor({
+  href,
+  icon: Icon,
+  children,
+  onClick,
+  ...props
+}: ComponentProps<"a"> & { href: string; icon: LucideIcon }) {
+  const t = useTranslations("admin.payments.export");
+  const running = useRef(false);
+  const [busy, setBusy] = useState(false);
+
+  async function download(event: MouseEvent<HTMLAnchorElement>) {
+    onClick?.(event);
+    if (event.defaultPrevented) return;
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+      return;
+    event.preventDefault();
+    if (running.current) return;
+    running.current = true;
+    setBusy(true);
+    try {
+      const response = await fetch(href, { credentials: "same-origin", cache: "no-store" });
+      if (!response.ok) throw new Error(`download failed: ${response.status}`);
+      saveFile(await response.blob(), fileNameOf(response));
+    } catch {
+      toast.error(t("failed"));
+    } finally {
+      running.current = false;
+      setBusy(false);
+    }
+  }
+
+  return (
+    <a {...props} href={href} download onClick={download} aria-busy={busy || undefined}>
+      {busy ? <Loader2Icon className="animate-spin" aria-hidden /> : <Icon aria-hidden />}
+      {children}
+    </a>
+  );
+}
+
+/**
+ * Downloads of a monthly bill (NUD-198), from `GET /api/admin/payments/export`: the server answers
+ * with an attachment, the browser saves the file and the page stays where it is. The file is
+ * written in the language of the screen (`locale`), which also decides how a CSV writes numbers
+ * and dates.
  */
 export function BillDownloadButtons({
   customerId,
@@ -39,19 +109,18 @@ export function BillDownloadButtons({
 
   return (
     <TooltipProvider>
-      {files.map(({ format, icon: Icon, text, label }) => (
+      {files.map(({ format, icon, text, label }) => (
         <Tooltip key={format}>
           <TooltipTrigger asChild>
             <Button asChild variant="outline">
-              <a
-                href={billExportHref({ month, customerId, format, locale })}
-                download
+              <DownloadAnchor
+                href={withBasePath(billExportHref({ month, customerId, format, locale }))}
+                icon={icon}
                 aria-label={label}
                 data-testid={`bill-export-${format}`}
               >
-                <Icon aria-hidden />
                 {text}
-              </a>
+              </DownloadAnchor>
             </Button>
           </TooltipTrigger>
           <TooltipContent>{label}</TooltipContent>
@@ -98,14 +167,13 @@ export function MonthExportForm({
         </Select>
       </div>
       <Button asChild variant="outline">
-        <a
-          href={billExportHref({ month, format: "csv", locale })}
-          download
+        <DownloadAnchor
+          href={withBasePath(billExportHref({ month, format: "csv", locale }))}
+          icon={DownloadIcon}
           data-testid="month-export-download"
         >
-          <DownloadIcon aria-hidden />
           {t("allCsv")}
-        </a>
+        </DownloadAnchor>
       </Button>
     </div>
   );

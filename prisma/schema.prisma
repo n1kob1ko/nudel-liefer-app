@@ -254,7 +254,7 @@ model MonthlyAdjustment {
   periodStart DateTime  @db.Date
   /// What the correction is for, typed by the office (max 120 characters).
   label       String
-  /// Euro cents with a sign: negative = deduction, positive = surcharge, never 0.
+  /// Euro cents with a sign: negative = deduction, positive = surcharge, never 0 (CHECK in the migration).
   amountCents Int
   createdAt   DateTime  @default(now())
   createdById String

@@ -20,6 +20,7 @@ const labels: ExportLabels = {
     amount: "Betrag (EUR)",
     status: "Status",
     paidOn: "Bezahlt am",
+    paidAmount: "Bezahlt gesamt (EUR)",
   },
   order: "Bestellung",
   adjustment: "Korrektur",
@@ -38,10 +39,11 @@ const row = (extra: Partial<BillExportRow> = {}): BillExportRow => ({
   amountCents: 5515,
   state: "open",
   paidOn: null,
+  paidCents: null,
   ...extra,
 });
 
-const lines = (csv: string) => csv.replace(/^﻿/, "").split("\r\n");
+const lines = (csv: string) => csv.replace(/^\uFEFF/, "").split("\r\n");
 
 describe("csv style per language", () => {
   it("German gets what a German Excel opens: semicolon, decimal comma, day first", () => {
@@ -57,9 +59,9 @@ describe("csv style per language", () => {
 describe("buildBillCsv", () => {
   it("starts with a byte order mark and a header line, and ends every line with CRLF", () => {
     const csv = buildBillCsv([row()], labels, csvStyleFor("de"));
-    expect(csv.startsWith("﻿")).toBe(true);
+    expect(csv.startsWith("\uFEFF")).toBe(true);
     expect(lines(csv)[0]).toBe(
-      "Monat;Kundennummer;Kunde;Datum;Art;Beschreibung;Betrag (EUR);Status;Bezahlt am",
+      "Monat;Kundennummer;Kunde;Datum;Art;Beschreibung;Betrag (EUR);Status;Bezahlt am;Bezahlt gesamt (EUR)",
     );
     expect(csv.endsWith("\r\n")).toBe(true);
     expect(csv.replace(/\r\n/g, "")).not.toContain("\n");
@@ -68,18 +70,18 @@ describe("buildBillCsv", () => {
   it("writes an order in the German style", () => {
     const csv = buildBillCsv([row()], labels, csvStyleFor("de"));
     expect(lines(csv)[1]).toBe(
-      "2026-10;D-001;Trattoria Il Gelso Nero;06.10.2026;Bestellung;1 Sackerl Nudeln, 2 Kiste Nudeln;55,15;Offen;",
+      "2026-10;D-001;Trattoria Il Gelso Nero;06.10.2026;Bestellung;1 Sackerl Nudeln, 2 Kiste Nudeln;55,15;Offen;;",
     );
   });
 
   it("writes the same order in the English style, quoting the text that holds a comma", () => {
     const csv = buildBillCsv([row()], labels, csvStyleFor("en"));
     expect(lines(csv)[1]).toBe(
-      '2026-10,D-001,Trattoria Il Gelso Nero,2026-10-06,Bestellung,"1 Sackerl Nudeln, 2 Kiste Nudeln",55.15,Offen,',
+      '2026-10,D-001,Trattoria Il Gelso Nero,2026-10-06,Bestellung,"1 Sackerl Nudeln, 2 Kiste Nudeln",55.15,Offen,,',
     );
   });
 
-  it("writes a correction without a date and with its sign, and the paid day of a paid month", () => {
+  it("writes a correction without a date and with its sign, and the paid day and total of a paid month", () => {
     const csv = buildBillCsv(
       [
         row({
@@ -89,13 +91,14 @@ describe("buildBillCsv", () => {
           amountCents: -1000,
           state: "paid",
           paidOn: "2026-11-03",
+          paidCents: 26550,
         }),
       ],
       labels,
       csvStyleFor("de"),
     );
     expect(lines(csv)[1]).toBe(
-      "2026-10;D-001;Trattoria Il Gelso Nero;;Korrektur;Rabatt Stammkunde;-10,00;Bezahlt;03.11.2026",
+      "2026-10;D-001;Trattoria Il Gelso Nero;;Korrektur;Rabatt Stammkunde;-10,00;Bezahlt;03.11.2026;265,50",
     );
   });
 

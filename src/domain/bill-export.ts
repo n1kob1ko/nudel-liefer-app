@@ -21,6 +21,11 @@ export type BillExportRow = {
   state: MonthlyState;
   /** `YYYY-MM-DD` the month was marked paid, when it is. */
   paidOn: string | null;
+  /**
+   * What was paid for the whole month (the snapshot of the paid note), repeated on every line of
+   * that month. It can differ from the sum of the lines when an order was changed afterwards.
+   */
+  paidCents: number | null;
 };
 
 export type ExportLabels = {
@@ -33,7 +38,8 @@ export type ExportLabels = {
     | "description"
     | "amount"
     | "status"
-    | "paidOn",
+    | "paidOn"
+    | "paidAmount",
     string
   >;
   order: string;
@@ -105,6 +111,7 @@ export function buildBillCsv(
     labels.columns.amount,
     labels.columns.status,
     labels.columns.paidOn,
+    labels.columns.paidAmount,
   ].map(text);
   const body = rows.map((row) => [
     text(row.monthKey),
@@ -116,8 +123,9 @@ export function buildBillCsv(
     csvAmount(row.amountCents, style),
     text(labels[row.state]),
     csvDate(row.paidOn, style),
+    csvAmount(row.paidCents, style),
   ]);
-  return `﻿${[header, ...body].map((cells) => `${cells.join(style.delimiter)}\r\n`).join("")}`;
+  return `\uFEFF${[header, ...body].map((cells) => `${cells.join(style.delimiter)}\r\n`).join("")}`;
 }
 
 /**

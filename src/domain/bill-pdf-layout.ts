@@ -100,6 +100,39 @@ export function wrapText(
   return lines.length > 0 ? lines : [""];
 }
 
+/** A one-line text cut to `maxWidth`, ending in "…" when something had to go. */
+export function fitText(
+  text: string,
+  maxWidth: number,
+  size: number,
+  bold: boolean,
+  measure: Measure,
+): string {
+  if (measure(text, size, bold) <= maxWidth) return text;
+  let cut = text.length - 1;
+  while (cut > 0 && measure(`${text.slice(0, cut).trimEnd()}…`, size, bold) > maxWidth) cut--;
+  return `${text.slice(0, cut).trimEnd()}…`;
+}
+
+/**
+ * Cuts a text into stretches the main font can write and stretches it cannot (Chinese in a
+ * customer or product name), in reading order. The painter writes the second kind with its
+ * fallback font. Walks code points, so a character of two code units stays whole.
+ */
+export function splitFontRuns(
+  text: string,
+  inMainFont: (codePoint: number) => boolean,
+): Array<{ text: string; fallback: boolean }> {
+  const runs: Array<{ text: string; fallback: boolean }> = [];
+  for (const character of text) {
+    const fallback = !inMainFont(character.codePointAt(0)!);
+    const last = runs.at(-1);
+    if (last && last.fallback === fallback) last.text += character;
+    else runs.push({ text: character, fallback });
+  }
+  return runs;
+}
+
 export function layoutBillPdf(model: BillPdfModel, measure: Measure): PdfOp[][] {
   const pages: PdfOp[][] = [];
   let ops: PdfOp[] = [];
@@ -141,26 +174,38 @@ export function layoutBillPdf(model: BillPdfModel, measure: Measure): PdfOp[][] 
     if (withTableHeader) tableHeader();
   };
 
-  // Letterhead: sender on the left, title and month on the right.
-  text(model.sender.name, LEFT, y, { bold: true });
+  // Letterhead: sender on the left, title and month on the right. The sender wraps in the space
+  // the title leaves, so a long company name or address never runs into it.
   text(model.title, RIGHT, y - 6, { size: 20, bold: true, align: "right" });
-  let senderY = y - LINE;
-  for (const line of model.sender.addressLines) {
-    text(line, LEFT, senderY, { size: SMALL, tone: "muted" });
-    senderY -= 12;
-  }
   text(model.monthLabel, RIGHT, y - 26, { size: 12, tone: "muted", align: "right" });
+  const titleWidth = Math.max(measure(model.title, 20, true), measure(model.monthLabel, 12, false));
+  const senderWidth = Math.max(120, RIGHT - LEFT - titleWidth - 24);
+  let senderY = y;
+  for (const line of wrapText(model.sender.name, senderWidth, BODY, true, measure)) {
+    text(line, LEFT, senderY, { bold: true });
+    senderY -= LINE;
+  }
+  for (const address of model.sender.addressLines) {
+    for (const line of wrapText(address, senderWidth, SMALL, false, measure)) {
+      text(line, LEFT, senderY, { size: SMALL, tone: "muted" });
+      senderY -= 12;
+    }
+  }
   y = Math.min(senderY, y - 26) - 34;
 
   // Recipient.
-  model.recipient.forEach((line, index) => {
-    text(line, LEFT, y, { size: 11, bold: index === 0 });
-    y -= 15;
+  model.recipient.forEach((entry, index) => {
+    for (const line of wrapText(entry, RIGHT - LEFT, 11, index === 0, measure)) {
+      text(line, LEFT, y, { size: 11, bold: index === 0 });
+      y -= 15;
+    }
   });
   y -= 3;
-  for (const line of model.meta) {
-    text(line, LEFT, y, { size: SMALL, tone: "muted" });
-    y -= 12;
+  for (const entry of model.meta) {
+    for (const line of wrapText(entry, RIGHT - LEFT, SMALL, false, measure)) {
+      text(line, LEFT, y, { size: SMALL, tone: "muted" });
+      y -= 12;
+    }
   }
   y -= 26;
 
@@ -175,11 +220,22 @@ export function layoutBillPdf(model: BillPdfModel, measure: Measure): PdfOp[][] 
     const lines = wrapText(order.items, itemsWidth, BODY, false, measure);
     const height = lines.length * LINE + ROW_GAP;
     // A row is never split across pages: its amount would lose its products.
-    if (y - height + LINE < BOTTOM) newPage(true);
+    const fits = () => y - height + LINE >= BOTTOM;
+    if (!fits()) newPage(true);
     text(order.date, LEFT, y);
     text(order.amount, RIGHT, y, { align: "right" });
-    lines.forEach((line, index) => text(line, LEFT + DATE_COLUMN, y - index * LINE));
-    y -= height;
+    if (fits()) {
+      lines.forEach((line, index) => text(line, LEFT + DATE_COLUMN, y - index * LINE));
+      y -= height;
+      continue;
+    }
+    // The one exception: a product list longer than a whole page continues on the next one.
+    for (const line of lines) {
+      if (y < BOTTOM) newPage(true);
+      text(line, LEFT + DATE_COLUMN, y);
+      y -= LINE;
+    }
+    y -= ROW_GAP;
   }
 
   // Foot: subtotal, corrections, total. Kept together so the total never stands alone.
@@ -195,9 +251,14 @@ export function layoutBillPdf(model: BillPdfModel, measure: Measure): PdfOp[][] 
     10,
   );
   if (y - footHeight < BOTTOM) newPage(false);
+  // A foot taller than a whole page (dozens of corrections) cannot be kept together: its rows
+  // then continue on further pages.
+  const splitFoot = y - footHeight < BOTTOM;
   rule(y + 4);
   y -= 14;
   for (const { row, total, size, lines } of footRows) {
+    const rowHeight = lines.length * (total ? 17 : LINE) + (total ? 9 : 0) + 3;
+    if (splitFoot && y - rowHeight < BOTTOM) newPage(false);
     if (total) {
       rule(y + 9, footLeft, RIGHT, "ink");
       y -= 9;
@@ -227,8 +288,13 @@ export function layoutBillPdf(model: BillPdfModel, measure: Measure): PdfOp[][] 
   pages.forEach((page, index) => {
     ops = page;
     rule(FOOTER_Y + 12);
-    text(model.footerLeft, LEFT, FOOTER_Y, { size: 8, tone: "muted" });
-    text(model.pageLabel(index + 1, pages.length), RIGHT, FOOTER_Y, {
+    const label = model.pageLabel(index + 1, pages.length);
+    const room = RIGHT - LEFT - measure(label, 8, false) - 16;
+    text(fitText(model.footerLeft, room, 8, false, measure), LEFT, FOOTER_Y, {
+      size: 8,
+      tone: "muted",
+    });
+    text(label, RIGHT, FOOTER_Y, {
       size: 8,
       tone: "muted",
       align: "right",

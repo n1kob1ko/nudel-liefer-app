@@ -2050,8 +2050,10 @@
           "invalid": "Die Eingabe ist ungültig. Bitte Text und Betrag prüfen.",
           "not_found": "Die Korrektur gibt es nicht mehr. Bitte die Seite neu laden.",
           "locked": "Der Monat wurde inzwischen als bezahlt markiert. Zum Ändern zuerst die Bezahlt-Markierung zurücknehmen.",
-          "generic": "Das hat nicht geklappt. Bitte erneut versuchen."
-        }
+          "generic": "Das hat nicht geklappt. Bitte erneut versuchen.",
+          "no_orders": "In diesem Monat gibt es keine Bestellungen auf Monatsrechnung, deshalb kann hier keine Korrektur eingetragen werden."
+        },
+        "noOrders": "Korrekturen gehen nur in einem Monat mit Bestellungen auf Monatsrechnung."
       },
       "export": {
         "pdf": "PDF",
@@ -2073,7 +2075,8 @@
           "description": "Beschreibung",
           "amount": "Betrag (EUR)",
           "status": "Status",
-          "paidOn": "Bezahlt am"
+          "paidOn": "Bezahlt am",
+          "paidAmount": "Bezahlt gesamt (EUR)"
         },
         "document": {
           "title": "Monatsrechnung",
@@ -2081,12 +2084,14 @@
           "vatId": "UID {vatId}",
           "open": "Offen",
           "current": "Der Monat läuft noch, die Aufstellung ist vorläufig.",
-          "paidOn": "Bezahlt am {date}",
+          "paidOn": "Bezahlt am {date} über {amount}",
           "note": "Notiz: {note}",
           "noAmountNotice": "{count, plural, one {# Bestellung ohne Betrag ist} other {# Bestellungen ohne Betrag sind}} in der Summe nicht enthalten.",
           "empty": "Keine Bestellungen auf Monatsrechnung in diesem Monat.",
-          "page": "Seite {page} von {pages}"
-        }
+          "page": "Seite {page} von {pages}",
+          "paidDiffers": "Der bezahlte Betrag weicht von der Summe oben ab, weil nach dem Vermerk noch etwas an den Bestellungen geändert wurde."
+        },
+        "failed": "Der Download hat nicht geklappt. Bitte die Seite neu laden und noch einmal versuchen."
       },
       "history": {
         "title": "Bezahlt-Historie",

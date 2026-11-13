@@ -39,6 +39,7 @@ function renderBill(props: Partial<Parameters<typeof MonthlyBillAdjustments>[0]>
         customerId="c1"
         month="2099-05"
         locked={false}
+        hasOrders
         adjustments={lines}
         ordersTotalText="75,00 €"
         totalText="67,50 €"
@@ -132,6 +133,55 @@ describe("MonthlyBillAdjustments", () => {
       "Bezahlt-Markierung zurücknehmen",
     );
     expect(screen.getByTestId("adjustment-a1")).toBeTruthy();
+  });
+
+  it("offers no form in a month without orders and says why", () => {
+    renderBill({ adjustments: [], hasOrders: false });
+    expect(screen.queryByTestId("adjustment-add")).toBeNull();
+    expect(screen.getByTestId("adjustment-no-orders").textContent).toContain(
+      "nur in einem Monat mit Bestellungen",
+    );
+  });
+
+  it("still lets the office remove a correction that lost its orders", () => {
+    renderBill({ hasOrders: false });
+    expect(screen.getByTestId("adjustment-remove-a1")).toBeTruthy();
+  });
+
+  it("does not send a second correction while the first is still being saved", async () => {
+    let finish: (value: { ok: true; id: string; amountCents: number }) => void = () => {};
+    addMonthlyAdjustmentAction.mockImplementationOnce(
+      () => new Promise((resolve) => (finish = resolve)),
+    );
+    renderBill();
+    fill("adjustment-label", "Rabatt");
+    fill("adjustment-amount", "5");
+    fireEvent.click(screen.getByTestId("adjustment-add"));
+    fireEvent.submit(screen.getByTestId("adjustment-add").closest("form")!);
+    await waitFor(() => expect(addMonthlyAdjustmentAction).toHaveBeenCalledTimes(1));
+    expect((screen.getByTestId("adjustment-add") as HTMLButtonElement).disabled).toBe(true);
+    finish({ ok: true, id: "a-new", amountCents: -500 });
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+    expect(addMonthlyAdjustmentAction).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the add button as busy again after a correction was removed before", async () => {
+    renderBill();
+    fireEvent.click(screen.getByTestId("adjustment-remove-a1"));
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+
+    let finish: (value: { ok: true; id: string; amountCents: number }) => void = () => {};
+    addMonthlyAdjustmentAction.mockImplementationOnce(
+      () => new Promise((resolve) => (finish = resolve)),
+    );
+    fill("adjustment-label", "Rabatt");
+    fill("adjustment-amount", "5");
+    fireEvent.click(screen.getByTestId("adjustment-add"));
+    await waitFor(() =>
+      expect(screen.getByTestId("adjustment-add").getAttribute("aria-busy")).toBe("true"),
+    );
+    finish({ ok: true, id: "a-new", amountCents: -500 });
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(2));
   });
 
   it("shows the server's answer when the month was marked paid in the meantime", async () => {

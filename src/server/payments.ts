@@ -51,12 +51,15 @@ const MAX_NOTE = 200;
  * a month paid and adding or removing a correction take this row lock first, inside their
  * transaction. Without it a correction could slip in between reading the total and writing the
  * "paid" snapshot, and the snapshot would be wrong from its first second.
+ *
+ * `FOR NO KEY UPDATE`: the callers exclude each other, but creating an order or a stop for the
+ * same customer (which only needs the customer row to stay) is not held up.
  */
 export async function lockCustomerBilling(
   tx: Pick<Prisma.TransactionClient, "$queryRaw">,
   customerId: string,
 ): Promise<void> {
-  await tx.$queryRaw`SELECT 1 FROM "Customer" WHERE "id" = ${customerId} FOR UPDATE`;
+  await tx.$queryRaw`SELECT 1 FROM "Customer" WHERE "id" = ${customerId} FOR NO KEY UPDATE`;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -489,19 +492,19 @@ export async function markMonthlyPaid(
   });
   if (!customer) return { ok: false, error: "not_found" };
 
-  const orders = await db.order.findMany({
-    where: {
-      customerId: customer.id,
-      status: "CONFIRMED",
-      paymentTerm: "MONTHLY",
-      deliveryDate: { gte: period, lt: nextMonthStart(period) },
-    },
-    select: { amountCents: true },
-  });
-  if (orders.length === 0) return { ok: false, error: "nothing_to_pay" };
-
   return db.$transaction(async (tx): Promise<MonthlyMarkResult> => {
     await lockCustomerBilling(tx, customer.id);
+    // Read after the lock: the snapshot is the orders and corrections as they stand right now.
+    const orders = await tx.order.findMany({
+      where: {
+        customerId: customer.id,
+        status: "CONFIRMED",
+        paymentTerm: "MONTHLY",
+        deliveryDate: { gte: period, lt: nextMonthStart(period) },
+      },
+      select: { amountCents: true },
+    });
+    if (orders.length === 0) return { ok: false, error: "nothing_to_pay" };
     const adjustments = await tx.monthlyAdjustment.findMany({
       where: { customerId: customer.id, periodStart: period, voidedAt: null },
       select: { amountCents: true },

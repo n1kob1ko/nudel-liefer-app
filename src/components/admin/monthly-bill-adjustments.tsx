@@ -2,7 +2,7 @@
 
 import { PlusIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { type FormEvent, useState, useTransition } from "react";
+import { type FormEvent, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ export function MonthlyBillAdjustments({
   customerId,
   month,
   locked,
+  hasOrders,
   adjustments,
   ordersTotalText,
   totalText,
@@ -46,6 +47,11 @@ export function MonthlyBillAdjustments({
   /** `YYYY-MM` */
   month: string;
   locked: boolean;
+  /**
+   * Whether the month has orders on monthly bill. Without them there is no bill to correct (the
+   * server refuses too), so the form is replaced by a sentence; existing lines can still go.
+   */
+  hasOrders: boolean;
   adjustments: BillAdjustmentLine[];
   ordersTotalText: string;
   totalText: string;
@@ -59,6 +65,9 @@ export function MonthlyBillAdjustments({
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // Set at once, not with the next render: a double click must not send the correction twice.
+  const sending = useRef(false);
+  const [adding, setAdding] = useState(false);
   // Lines that were on the bill when the page opened stay still; only a line the office adds now
   // slides in, so the eye lands on what just changed.
   const [initialIds] = useState(() => new Set(adjustments.map((line) => line.id)));
@@ -72,28 +81,35 @@ export function MonthlyBillAdjustments({
       amount: cents === null || cents === 0 ? t("errors.amountInvalid") : undefined,
     };
     setFieldErrors(nextErrors);
-    if (nextErrors.label || nextErrors.amount) return;
+    if (nextErrors.label || nextErrors.amount || sending.current) return;
 
+    sending.current = true;
+    setAdding(true);
     startTransition(async () => {
-      let result;
       try {
-        result = await addMonthlyAdjustmentAction({
-          customerId,
-          month,
-          kind,
-          label: label.trim(),
-          amount: amount.trim(),
-        });
-      } catch {
-        return setError(t("errors.generic"));
+        let result;
+        try {
+          result = await addMonthlyAdjustmentAction({
+            customerId,
+            month,
+            kind,
+            label: label.trim(),
+            amount: amount.trim(),
+          });
+        } catch {
+          return setError(t("errors.generic"));
+        }
+        if (!result.ok) return setError(t(`errors.${result.error}`));
+        setLabel("");
+        setAmount("");
+        // Back to the common case, so a surcharge is never added twice by habit.
+        setKind("deduction");
+        toast.success(t("toast.added"));
+        router.refresh();
+      } finally {
+        sending.current = false;
+        setAdding(false);
       }
-      if (!result.ok) return setError(t(`errors.${result.error}`));
-      setLabel("");
-      setAmount("");
-      // Back to the common case, so a surcharge is never added twice by habit.
-      setKind("deduction");
-      toast.success(t("toast.added"));
-      router.refresh();
     });
   }
 
@@ -182,6 +198,13 @@ export function MonthlyBillAdjustments({
           <p className="text-sm text-muted-foreground print:hidden" data-testid="adjustment-locked">
             {t("locked")}
           </p>
+        ) : !hasOrders ? (
+          <p
+            className="text-sm text-muted-foreground print:hidden"
+            data-testid="adjustment-no-orders"
+          >
+            {t("noOrders")}
+          </p>
         ) : (
           <form
             onSubmit={add}
@@ -239,7 +262,8 @@ export function MonthlyBillAdjustments({
                   even when an error text makes a neighbouring field taller. */}
               <Button
                 type="submit"
-                loading={pending && removingId === null}
+                loading={adding}
+                disabled={pending}
                 className="sm:mt-7.5"
                 data-testid="adjustment-add"
               >

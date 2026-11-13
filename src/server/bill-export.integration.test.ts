@@ -157,10 +157,10 @@ describe.skipIf(!process.env.DATABASE_URL)("monthly bill export", { timeout: 60_
     expect(result.fileName).toBe("monatsrechnung-E1-2099-05.csv");
     expect(result.contentType).toBe("text/csv; charset=utf-8");
     expect(csvLines(result.body)).toEqual([
-      "Monat;Kundennummer;Kunde;Liefertag;Art;Beschreibung;Betrag (EUR);Status;Bezahlt am",
-      "2099-05;E1;Trattoria Gelso;04.05.2099;Bestellung;3 Kiste Nudeln;50,00;Offen;",
-      "2099-05;E1;Trattoria Gelso;18.05.2099;Bestellung;2 Kiste Nudeln;25,00;Offen;",
-      "2099-05;E1;Trattoria Gelso;;Korrektur;Rabatt Stammkunde;-10,00;Offen;",
+      "Monat;Kundennummer;Kunde;Liefertag;Art;Beschreibung;Betrag (EUR);Status;Bezahlt am;Bezahlt gesamt (EUR)",
+      "2099-05;E1;Trattoria Gelso;04.05.2099;Bestellung;3 Kiste Nudeln;50,00;Offen;;",
+      "2099-05;E1;Trattoria Gelso;18.05.2099;Bestellung;2 Kiste Nudeln;25,00;Offen;;",
+      "2099-05;E1;Trattoria Gelso;;Korrektur;Rabatt Stammkunde;-10,00;Offen;;",
     ]);
   });
 
@@ -172,7 +172,25 @@ describe.skipIf(!process.env.DATABASE_URL)("monthly bill export", { timeout: 60_
 
     const result = await run({ month: "2099-05", customer: c1, format: "csv", locale: "de" });
     if (!result.ok) throw new Error("expected a file");
-    expect(csvLines(result.body)[1]).toMatch(/;Bezahlt;10\.06\.2099$/);
+    // The amount that was marked as paid: 50,00 + 25,00 - 10,00.
+    expect(csvLines(result.body)[1]).toMatch(/;Bezahlt;10\.06\.2099;65,00$/);
+  });
+
+  it("keeps saying what was paid when an order of the paid month is changed afterwards", async () => {
+    await seedMay();
+    await markMonthlyPaid(db(), adminId, { customerId: c1, month: "2099-05" }, TODAY);
+    await db().order.updateMany({
+      where: { customerId: c1, deliveryDate: day("2099-05-04") },
+      data: { amountCents: 9000 },
+    });
+
+    const single = await run({ month: "2099-05", customer: c1, format: "csv", locale: "de" });
+    const all = await run({ month: "2099-05", format: "csv", locale: "de" });
+    if (!single.ok || !all.ok) throw new Error("expected files");
+    for (const body of [single.body, all.body]) {
+      // The line shows today's amount of the order, the last cell the total that was paid.
+      expect(csvLines(body)[1]).toMatch(/;90,00;Bezahlt;\d\d\.\d\d\.\d{4};65,00$/);
+    }
   });
 
   it("exports all customers of a month in one CSV, by customer number, monthly orders only", async () => {
@@ -183,13 +201,13 @@ describe.skipIf(!process.env.DATABASE_URL)("monthly bill export", { timeout: 60_
     expect(result.fileName).toBe("monatsrechnungen-2099-05.csv");
     const lines = csvLines(result.body);
     expect(lines[0]).toBe(
-      "Month,Customer number,Customer,Delivery day,Kind,Description,Amount (EUR),Status,Paid on",
+      "Month,Customer number,Customer,Delivery day,Kind,Description,Amount (EUR),Status,Paid on,Paid total (EUR)",
     );
     expect(lines.slice(1)).toEqual([
-      "2099-05,E1,Trattoria Gelso,2099-05-04,Order,3 Carton Noodles,50.00,Open,",
-      "2099-05,E1,Trattoria Gelso,2099-05-18,Order,2 Carton Noodles,25.00,Open,",
-      "2099-05,E1,Trattoria Gelso,,Correction,Rabatt Stammkunde,-10.00,Open,",
-      "2099-05,E2,Beisl Zum Baum,2099-05-11,Order,2 Carton Noodles,,Open,",
+      "2099-05,E1,Trattoria Gelso,2099-05-04,Order,3 Carton Noodles,50.00,Open,,",
+      "2099-05,E1,Trattoria Gelso,2099-05-18,Order,2 Carton Noodles,25.00,Open,,",
+      "2099-05,E1,Trattoria Gelso,,Correction,Rabatt Stammkunde,-10.00,Open,,",
+      "2099-05,E2,Beisl Zum Baum,2099-05-11,Order,2 Carton Noodles,,Open,,",
     ]);
   });
 
@@ -326,12 +344,57 @@ describe("bill PDF model", () => {
       ["Rabatt Stammkunde", "-10,00 €", "plain"],
       ["Summe", "40,00 €", "total"],
     ]);
-    expect(model.notes).toEqual([
-      "Bezahlt am 03.06.2099",
+    expect(model.notes.map(plain)).toEqual([
+      "Bezahlt am 03.06.2099 über 40,00 €",
       "Notiz: Überweisung am 3.",
       "1 Bestellung ohne Betrag ist in der Summe nicht enthalten.",
     ]);
     expect(model.footerLeft).toBe("Nudelfabrik Wien · Monatsrechnung Mai 2099 · E1");
     expect(model.pageLabel(1, 2)).toBe("Seite 1 von 2");
+  });
+
+  it("says so when the paid amount is not today's total any more", async () => {
+    const { billPdfModel } = await import("./bill-export");
+    const model = billPdfModel(
+      {
+        customer: {
+          id: "c",
+          customerNumber: "E1",
+          name: "Trattoria Gelso",
+          city: "Wien",
+          street: "Hauptstraße 1",
+          postalCode: "1010",
+          companyName: null,
+          vatId: null,
+          billingStreet: null,
+          billingPostalCode: null,
+          billingCity: null,
+        },
+        periodStart: "2099-05-01",
+        monthKey: "2099-05",
+        closed: true,
+        orders: [],
+        adjustments: [],
+        ordersTotalCents: 9000,
+        totalCents: 9000,
+        noAmountCount: 0,
+        state: "paid",
+        payment: {
+          amountCents: 6500,
+          orderCount: 2,
+          paidAt: "2099-06-03T10:00:00.000Z",
+          paidByName: "Office",
+          note: null,
+        },
+      },
+      { locale: "de", timezone: "Europe/Vienna", depot: null, texts: await texts("de") },
+    );
+    expect(model.notes.map((note) => note.replace(/\u00a0/g, " "))).toEqual([
+      "Bezahlt am 03.06.2099 über 65,00 €",
+      "Der bezahlte Betrag weicht von der Summe oben ab, weil nach dem Vermerk noch etwas an den Bestellungen geändert wurde.",
+    ]);
+    // No company, no billing address: the shop at its delivery address.
+    expect(model.recipient).toEqual(["Trattoria Gelso", "Hauptstraße 1", "1010 Wien"]);
+    expect(model.meta).toEqual(["Kundennummer E1"]);
   });
 });

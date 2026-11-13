@@ -216,6 +216,7 @@ async function Guarded({
             customerId={bill.customer.id}
             month={bill.monthKey}
             locked={bill.payment !== null}
+            hasOrders={bill.orders.length > 0}
             adjustments={bill.adjustments.map((adjustment) => ({
               id: adjustment.id,
               label: adjustment.label,

@@ -49,7 +49,8 @@ export type ExportTexts = {
     vatId: (vatId: string) => string;
     open: string;
     current: string;
-    paidOn: (date: string) => string;
+    paidOn: (date: string, amount: string) => string;
+    paidDiffers: string;
     note: (note: string) => string;
     noAmount: string;
     noAmountNotice: (count: number) => string;
@@ -82,6 +83,7 @@ export function exportTextsFrom(t: unknown, tc: unknown): ExportTexts {
         amount: column("amount"),
         status: column("status"),
         paidOn: column("paidOn"),
+        paidAmount: column("paidAmount"),
       },
       order: payments("export.kindOrder"),
       adjustment: payments("export.kindAdjustment"),
@@ -101,7 +103,8 @@ export function exportTextsFrom(t: unknown, tc: unknown): ExportTexts {
       vatId: (vatId) => payments("export.document.vatId", { vatId }),
       open: payments("export.document.open"),
       current: payments("export.document.current"),
-      paidOn: (date) => payments("export.document.paidOn", { date }),
+      paidOn: (date, amount) => payments("export.document.paidOn", { date, amount }),
+      paidDiffers: payments("export.document.paidDiffers"),
       note: (note) => payments("export.document.note", { note }),
       noAmount: payments("bill.noAmount"),
       noAmountNotice: (count) => payments("export.document.noAmountNotice", { count }),
@@ -194,8 +197,13 @@ export function billPdfModel(
   const notes: string[] = [];
   if (bill.payment) {
     notes.push(
-      doc.paidOn(writtenDay(dayIn(new Date(bill.payment.paidAt), options.timezone), locale)),
+      doc.paidOn(
+        writtenDay(dayIn(new Date(bill.payment.paidAt), options.timezone), locale),
+        money(bill.payment.amountCents),
+      ),
     );
+    // The paid note is a snapshot; orders of a paid month can still be edited (D33).
+    if (bill.payment.amountCents !== bill.totalCents) notes.push(doc.paidDiffers);
     if (bill.payment.note) notes.push(doc.note(bill.payment.note));
   } else {
     notes.push(bill.state === "current" ? doc.current : doc.open);
@@ -247,6 +255,7 @@ type RowSource = {
   adjustments: ReadonlyArray<{ label: string; amountCents: number }>;
   state: MonthlyState;
   paidOn: string | null;
+  paidCents: number | null;
 };
 
 /** The lines of one customer's month: the orders by day, then the corrections. */
@@ -257,6 +266,7 @@ function exportRows(source: RowSource, locale: AppLocale, texts: ExportTexts): B
     customerName: source.customerName,
     state: source.state,
     paidOn: source.paidOn,
+    paidCents: source.paidCents,
   };
   return [
     ...source.orders.map((order) => ({
@@ -310,7 +320,7 @@ async function allCustomersRows(
     }),
     db.monthlyPayment.findMany({
       where: { periodStart: period, voidedAt: null },
-      select: { customerId: true, paidAt: true },
+      select: { customerId: true, paidAt: true, amountCents: true },
     }),
   ]);
 
@@ -320,14 +330,16 @@ async function allCustomersRows(
     where: { id: { in: customerIds } },
     select: { id: true, customerNumber: true, name: true },
   });
-  const paidAt = new Map(payments.map((payment) => [payment.customerId, payment.paidAt]));
+  const payment = new Map(payments.map((entry) => [entry.customerId, entry]));
+  const ordersOf = Map.groupBy(orders, (order) => order.customerId);
+  const adjustmentsOf = Map.groupBy(adjustments, (entry) => entry.customerId);
   const byNumber = new Intl.Collator("de", { numeric: true });
 
   return customers
     .sort((a, b) => byNumber.compare(a.customerNumber, b.customerNumber))
     .flatMap((customer) => {
-      const own = orders.filter((order) => order.customerId === customer.id);
-      const paid = paidAt.get(customer.id);
+      const own = ordersOf.get(customer.id) ?? [];
+      const paid = payment.get(customer.id);
       return exportRows(
         {
           monthKey: monthKey(period),
@@ -342,14 +354,15 @@ async function allCustomersRows(
               quantity: item.quantity,
             })),
           })),
-          adjustments: adjustments.filter((entry) => entry.customerId === customer.id),
+          adjustments: adjustmentsOf.get(customer.id) ?? [],
           state: monthlyState({
             periodStart: period,
             today: options.today,
             paid: paid !== undefined,
             orderCount: own.length,
           }),
-          paidOn: paid ? dayIn(paid, options.timezone) : null,
+          paidOn: paid ? dayIn(paid.paidAt, options.timezone) : null,
+          paidCents: paid ? paid.amountCents : null,
         },
         options.locale,
         options.texts,
@@ -446,6 +459,7 @@ export async function createBillExport(
       adjustments: bill.adjustments,
       state: bill.state,
       paidOn: bill.payment ? dayIn(new Date(bill.payment.paidAt), ctx.timezone) : null,
+      paidCents: bill.payment ? bill.payment.amountCents : null,
     },
     locale,
     texts,
