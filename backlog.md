@@ -4521,6 +4521,7 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 | 2026-11-13 | NUD-203 | The visiting order stays the local heuristic; Google gets at most 10 stops between the ends of a request | Waypoint optimization, more than 10 intermediates and traffic each move a request into a price class with half the free amount and twice the price; the heuristic is what the self-hosted setup used too |
 | 2026-11-13 | NUD-203 | No cache table for route results; standing tours stay templates | Google's terms allow no stored routes, and the owner said a template that asks Google again on use is what he wants |
 | 2026-11-13 | NUD-203 | `maps:check` runs before every deploy but never stops one (`--warn-only`) | It is the only place where a real answer of Google can be seen without anyone but the app holding the key. The app keeps working on its estimate while Google is down, so a deploy should not wait for Google |
+| 2026-11-13 | NUD-201 | Deleting paid orders is switched on on Railway (`ORDER_RETENTION_MODE=delete`, 17:21 UTC); the other two deletion jobs stay `dry-run` | The owner's word ("löschregel soll an sein"). The counting run on the moved data just before reported 0 orders and 0 stops, so the first run deletes nothing |
 
 ## 10. Open questions for the client (do not block on these – use placeholders)
 
