@@ -70,4 +70,5 @@
 - [x] Docs: variables, the terms summary above, costs, how to create and restrict the key, known limits (stored tours and customer pins).
 - [x] The owner entered the key on Railway (2026-11-13); `/api/health` shows `google`.
 - [x] `pnpm maps:check` (`scripts/check-google-maps.ts`, `scripts/lib/maps-check.ts`): one fixed address, one fixed route, `ok` / `FAIL` lines without the key; last pre-deploy step of `app` with `--warn-only`.
-- [ ] The deploy log shows both checks as `ok`, a geocode and a tour work in the app; then remove `ors`, `photon`, their volumes and `ORS_BASE_URL` / `PHOTON_URL` / `PHOTON_LANG`, and delete `deploy/railway/ors` and `deploy/railway/photon` with their documentation.
+- [x] The deploy log shows both checks as `ok` (2026-11-13 17:06 UTC); `deploy/railway/ors` and `deploy/railway/photon` are deleted with their documentation.
+- [ ] Owner, in the Railway dashboard: remove `ors`, `photon`, their volumes and `ORS_BASE_URL` / `PHOTON_URL` / `PHOTON_LANG`.

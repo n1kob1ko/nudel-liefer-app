@@ -4024,7 +4024,8 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 - [x] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm i18n:check` green.
 - [x] 👤 HUMAN: create the key in Google Cloud (Geocoding API + Routes API, restricted to those two) and enter it on Railway as `GOOGLE_MAPS_SERVER_KEY` of `app`. Done 2026-11-13; `/api/health` on Railway reports `google` for both.
 - [x] `pnpm maps:check` asks Google for one fixed public address and one fixed route with the app's own provider classes and prints `ok` / `FAIL` with the reason, never the key or a text Google sent; it runs with `--warn-only` as the last pre-deploy step of `app`, so every deploy log shows whether Google really answers.
-- [ ] After that: the deploy log shows both `maps:check` lines as `ok`, an address and a tour work in the app; then `ors`, `photon`, their volumes and `ORS_BASE_URL` / `PHOTON_URL` / `PHOTON_LANG` are removed on Railway and `deploy/railway/ors`, `deploy/railway/photon` deleted.
+- [x] The deploy log shows both `maps:check` lines as `ok` (deploy of 2026-11-13 17:06 UTC: one candidate within 2 km; 2 legs, 13.8 km, 37 min, a line of 191 points), and `deploy/railway/ors`, `deploy/railway/photon` are deleted with their documentation.
+- [ ] 👤 HUMAN: remove `ors`, `photon`, their volumes `ors-data` / `photon-data` and the variables `ORS_BASE_URL` / `PHOTON_URL` / `PHOTON_LANG` of `app` in the Railway dashboard (the Railway connector cannot confirm a deletion). Never the volume `postgres-data`.
 
 **Implementation notes (NUD-203)**
 - No migration, no UI change, no new dependency, no key in the browser. New: `src/server/geocoder/google.ts`, `src/server/routing/google.ts`; wiring in the two `index.ts`, `src/server/health.ts`, `src/lib/map-config.ts`, `scripts/lib/deploy-env.ts`. Plan: `docs/superpowers/plans/2026-11-13-google-maps-providers.md`.
@@ -4032,6 +4033,7 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 - `scripts/check-google-maps.ts` / `scripts/lib/maps-check.ts` exist because the Railway database was still empty when the key arrived (no login to try the UI with) and nobody but the app may hold the key: the pre-deploy step is the only place where a real answer can be seen without either.
 - `GoogleGeocoder.reverse()` answers `null` without a request: the app does not call it, and its only answer would be address text.
 - A route cache for standing tours was built first (local branch `route-cache`) and dropped: Google allows no such cache, and the owner prefers the template.
+- The first deploy with the key (16:15 UTC) was refused: Geocoding `REQUEST_DENIED`, Routes HTTP 403. A wrong key gives HTTP 400 on Routes, so the key was right and the Google project was not released for billed requests yet. After the owner had dealt with that in the Google Cloud console, the same key answered (17:06 UTC) without a change on our side.
 
 ## 9. Decision log (append-only, one line per decision taken during implementation)
 
@@ -4518,6 +4520,7 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 | 2026-11-13 | NUD-203 | Address candidates are labelled with what the office typed, not with Google's address | The EEA terms still forbid Google's address text next to a map, and the candidates are listed beside the pin map. The office confirms the pin on the map anyway (D9) |
 | 2026-11-13 | NUD-203 | The visiting order stays the local heuristic; Google gets at most 10 stops between the ends of a request | Waypoint optimization, more than 10 intermediates and traffic each move a request into a price class with half the free amount and twice the price; the heuristic is what the self-hosted setup used too |
 | 2026-11-13 | NUD-203 | No cache table for route results; standing tours stay templates | Google's terms allow no stored routes, and the owner said a template that asks Google again on use is what he wants |
+| 2026-11-13 | NUD-203 | `maps:check` runs before every deploy but never stops one (`--warn-only`) | It is the only place where a real answer of Google can be seen without anyone but the app holding the key. The app keeps working on its estimate while Google is down, so a deploy should not wait for Google |
 
 ## 10. Open questions for the client (do not block on these – use placeholders)
 
