@@ -29,7 +29,7 @@ import { setLocaleAction } from "@/server/locale-actions";
 const PIN_PATTERN = /^\d{6}$/;
 
 /**
- * Inline brand mark (re-design.md §7.5/§8.9): wordmark "Nudel Liefer" plus a brand-coloured dot, pure
+ * Inline brand mark (re-design.md §7.5/§8.9): wordmark "Routenplanner" plus a brand-coloured dot, pure
  * CSS — no image file, no external font. The dot flips to the foreground colour on the brand-coloured
  * office panel where a brand-coloured dot would disappear.
  */
@@ -42,7 +42,7 @@ function BrandMark({ onPrimary = false, className }: { onPrimary?: boolean; clas
         className,
       )}
     >
-      <span>Nudel Liefer</span>
+      <span>Routenplanner</span>
       <span
         aria-hidden
         className={cn("size-2.5 rounded-full", onPrimary ? "bg-primary-foreground" : "bg-primary")}
@@ -170,7 +170,7 @@ function DriverLoginForm({ callbackUrl }: { callbackUrl?: string }) {
         <BrandMark />
         {/* Colour scheme (NUD-132): the tablet may be installed before anyone logs in. Icon only
             (review 2026-10-31): the moon/sun says enough, the label made the row look cluttered. */}
-        <ThemeToggle className="size-12 border border-input bg-background" />
+        <ThemeToggle className="size-12 border border-input/60 bg-card" />
       </div>
       <h1 id="driver-login-title" className="text-2xl font-semibold" data-testid="login-title">
         {t("driverLogin.title")}
@@ -328,7 +328,7 @@ function AdminLoginForm({ callbackUrl }: { callbackUrl?: string }) {
             // 48 px: the tablet audit's touch floor also applies to the login screen.
             className="min-h-12"
           />
-          <ThemeToggle className="size-12 border border-input bg-background" />
+          <ThemeToggle className="size-12 border border-input/60 bg-card" />
         </div>
 
         <BrandMark className="lg:hidden" />

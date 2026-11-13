@@ -121,6 +121,8 @@ describe("the generated data and behaviour files", () => {
     expect(css).toContain('body[data-js="1"][data-lang="de"] .lang[data-lang="zh"]');
     expect(css).toContain("@media print");
     expect(handOffScript()).toContain('setAttribute("data-js", "1")');
-    expect(css).toContain("--primary: #2f6b4f");
+    // Redesign RD2: links are ink with a yolk underline; yolk is never a text colour on white.
+    expect(css).toContain("--primary: #15171a");
+    expect(css).toContain("--mark: #ffc72c");
   });
 });

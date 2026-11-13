@@ -165,7 +165,7 @@ export function WorkScheduleDialog({
                     checked={row.active}
                     onChange={(event) => update(row.weekday, { active: event.target.checked })}
                     data-testid={`schedule-day-${row.weekday}`}
-                    className="size-5 accent-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+                    className="size-5 accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
                   />
                   <span className={cn(row.active ? "font-medium" : "text-muted-foreground")}>
                     {names[row.weekday]}

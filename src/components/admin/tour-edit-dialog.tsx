@@ -20,7 +20,7 @@ import { moveItem } from "@/domain/tour-plan";
 import { isReReleasable } from "@/domain/tour-status";
 import type { PlanTour, PlanTourTab, TourPlan } from "@/server/tour-planning";
 
-const selectClass = "h-10 w-full rounded-md border border-input bg-background px-3 text-base";
+const selectClass = "h-10 w-full field rounded-md border border-input bg-card px-3 text-base";
 
 export type TourEditPayload = {
   driverId: string | null;

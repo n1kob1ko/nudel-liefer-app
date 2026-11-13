@@ -48,8 +48,8 @@ function ShareIllustration({ label }: { label: string }) {
         width="318"
         height="148"
         rx="16"
-        fill="var(--muted)"
-        stroke="var(--border)"
+        fill="hsl(var(--muted))"
+        stroke="hsl(var(--border))"
       />
       <rect
         x="16"
@@ -57,12 +57,12 @@ function ShareIllustration({ label }: { label: string }) {
         width="288"
         height="34"
         rx="10"
-        fill="var(--background)"
-        stroke="var(--border)"
+        fill="hsl(var(--background))"
+        stroke="hsl(var(--border))"
       />
       <g
         fill="none"
-        stroke="var(--muted-foreground)"
+        stroke="hsl(var(--muted-foreground))"
         strokeWidth="3"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -76,14 +76,13 @@ function ShareIllustration({ label }: { label: string }) {
         cx="160"
         cy="116"
         r="28"
-        fill="var(--primary)"
-        fillOpacity="0.15"
-        stroke="var(--primary)"
+        fill="hsl(var(--primary))"
+        stroke="hsl(var(--foreground))"
         strokeWidth="3"
       />
       <g
         fill="none"
-        stroke="var(--primary)"
+        stroke="hsl(var(--foreground))"
         strokeWidth="3.5"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -113,21 +112,21 @@ function IosInstructions({
         <ShareIllustration label={t("illustrationLabel")} />
         <ol className="flex flex-col gap-3 text-base">
           <li className="flex items-center gap-3">
-            <ShareIcon className="size-7 shrink-0 text-primary" aria-hidden />
+            <ShareIcon className="size-7 shrink-0 text-foreground" aria-hidden />
             <span>
               <b className="me-1">1.</b>
               {t("step1")}
             </span>
           </li>
           <li className="flex items-center gap-3">
-            <PlusSquareIcon className="size-7 shrink-0 text-primary" aria-hidden />
+            <PlusSquareIcon className="size-7 shrink-0 text-foreground" aria-hidden />
             <span>
               <b className="me-1">2.</b>
               {t("step2")}
             </span>
           </li>
           <li className="flex items-center gap-3">
-            <DownloadIcon className="size-7 shrink-0 text-primary" aria-hidden />
+            <DownloadIcon className="size-7 shrink-0 text-foreground" aria-hidden />
             <span>
               <b className="me-1">3.</b>
               {t("step3")}
@@ -187,7 +186,7 @@ export function InstallHint() {
           className="flex flex-col gap-3 rounded-lg border bg-card p-4 text-card-foreground"
         >
           <div className="flex items-start gap-3">
-            <DownloadIcon className="mt-0.5 size-7 shrink-0 text-primary" aria-hidden />
+            <DownloadIcon className="mt-0.5 size-7 shrink-0 text-foreground" aria-hidden />
             <div className="min-w-0 flex-1">
               <p className="text-lg font-semibold">{t("title")}</p>
               <p className="text-base text-muted-foreground">

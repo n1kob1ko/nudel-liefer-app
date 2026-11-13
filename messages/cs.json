@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Nudel Liefer App",
+    "appName": "Routenplanner",
     "language": "Jazyk",
     "notifications": "Upozornění",
     "theme": {
@@ -124,7 +124,7 @@
     }
   },
   "home": {
-    "title": "Nudel Liefer App",
+    "title": "Routenplanner",
     "placeholder": "Zástupný text"
   },
   "auth": {
@@ -135,7 +135,7 @@
       "password": "Heslo",
       "submit": "Přihlásit se",
       "driverLink": "Přihlášení řidiče",
-      "brandSentence": "Přihlášení do kanceláře – Nudel Liefer App",
+      "brandSentence": "Přihlášení do kanceláře – Routenplanner",
       "showPassword": "Zobrazit",
       "hidePassword": "Skrýt"
     },
@@ -524,8 +524,8 @@
     }
   },
   "pwa": {
-    "name": "Nudel Liefer App",
-    "shortName": "Dodávky",
+    "name": "Routenplanner",
+    "shortName": "Routenplanner",
     "description": "Denní trasa, adresy a množství k doručení pro řidiče",
     "offline": {
       "title": "Žádné připojení",

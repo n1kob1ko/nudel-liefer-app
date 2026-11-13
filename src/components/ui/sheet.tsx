@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Dialog as SheetPrimitive } from "radix-ui";
 import * as React from "react";
 
+import { useSheetDrag } from "@/components/motion/use-sheet-drag";
 import { cn } from "@/lib/utils";
 
 /**
@@ -14,6 +15,9 @@ import { cn } from "@/lib/utils";
  * trigger are handled for us; a `SheetTitle` is still required for the accessible name. `side`
  * keeps the driver's bottom sheet (drag handle, 20 px top radius, safe-area padding) and the admin
  * right drawer apart.
+ *
+ * A bottom sheet can be swiped away by its handle (redesign RD2): it follows the finger, resists
+ * being pulled up, and closes after a long drag or a quick flick. Esc and the close button stay.
  */
 function Sheet(props: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;
@@ -63,25 +67,32 @@ function SheetContent({
 }) {
   const t = useTranslations("common.actions");
   const keyboard = useKeyboardInset(side === "bottom");
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const closeRef = React.useRef<HTMLButtonElement>(null);
+  const dragHandlers = useSheetDrag(
+    () => contentRef.current,
+    () => closeRef.current?.click(),
+  );
   return (
     <SheetPrimitive.Portal>
       <SheetPrimitive.Overlay
         data-slot="sheet-overlay"
-        className="fixed inset-0 z-50 bg-black/60 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0"
+        className="overlay-fade fixed inset-0 z-50 bg-black/55"
       />
       <SheetPrimitive.Content
+        ref={contentRef}
         data-slot="sheet-content"
         data-side={side}
         className={cn(
-          "fixed z-50 flex flex-col gap-4 bg-card text-card-foreground shadow-lg transition ease-out data-[state=closed]:animate-out data-[state=closed]:duration-200 data-[state=open]:animate-in data-[state=open]:duration-220",
+          "fixed z-50 flex flex-col gap-4 bg-card text-card-foreground shadow-lg",
           side === "right" &&
-            "inset-y-0 end-0 h-full w-3/4 rounded-s-xl border-s data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-md",
+            "sheet-x inset-y-0 end-0 h-full w-3/4 rounded-s-xl border-s sm:max-w-md",
           side === "left" &&
-            "inset-y-0 start-0 h-full w-3/4 rounded-e-xl border-e data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-md",
+            "sheet-x inset-y-0 start-0 h-full w-3/4 rounded-e-xl border-e [--sheet-enter:-100%] sm:max-w-md",
           side === "top" &&
-            "inset-x-0 top-0 h-auto rounded-b-xl border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
+            "sheet-y inset-x-0 top-0 h-auto rounded-b-xl border-b [--sheet-enter:-100%]",
           side === "bottom" &&
-            "inset-x-0 bottom-0 h-auto max-h-[92dvh] rounded-t-xl border-t pb-[max(1rem,env(safe-area-inset-bottom))] data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+            "sheet-y inset-x-0 bottom-0 h-auto max-h-[92dvh] rounded-t-xl border-t pb-[max(1rem,env(safe-area-inset-bottom))]",
           className,
         )}
         {...props}
@@ -92,15 +103,26 @@ function SheetContent({
         }
       >
         {side === "bottom" ? (
-          // Drag handle: decorative, the sheet itself is still closed with Esc or the close button.
+          // Drag handle: swipe down to close. A pointer-only extra, so it is hidden from assistive
+          // technology; Esc and the close button close the sheet for everyone. The grab area is the
+          // full width and 28 px high, much bigger than the visible bar.
           <div
-            data-slot="sheet-drag-handle"
+            data-slot="sheet-drag-area"
             aria-hidden
-            className="mx-auto mt-2 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/40"
-          />
+            className="-mb-3 flex shrink-0 cursor-grab touch-none justify-center pt-2 pb-3.5 active:cursor-grabbing"
+            {...dragHandlers}
+          >
+            <div
+              data-slot="sheet-drag-handle"
+              className="h-1.5 w-12 rounded-full bg-muted-foreground/40"
+            />
+          </div>
         ) : null}
         {children}
-        <SheetPrimitive.Close className="absolute end-2 top-2 flex size-12 items-center justify-center rounded-md outline-none transition-colors duration-150 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none">
+        <SheetPrimitive.Close
+          ref={closeRef}
+          className="absolute end-2 top-2 flex size-12 items-center justify-center rounded-md outline-none transition-[background-color,transform] duration-150 ease-out hover:bg-muted active:scale-[.94] focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+        >
           <XIcon className="size-5" aria-hidden />
           <span className="sr-only">{t("close")}</span>
         </SheetPrimitive.Close>

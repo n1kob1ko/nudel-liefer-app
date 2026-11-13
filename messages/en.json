@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Nudel Liefer App",
+    "appName": "Routenplanner",
     "language": "Language",
     "notifications": "Notifications",
     "theme": {
@@ -124,7 +124,7 @@
     }
   },
   "home": {
-    "title": "Nudel Liefer App",
+    "title": "Routenplanner",
     "placeholder": "Placeholder"
   },
   "auth": {
@@ -135,7 +135,7 @@
       "password": "Password",
       "submit": "Log in",
       "driverLink": "Driver login",
-      "brandSentence": "Office login for the Nudel Liefer App",
+      "brandSentence": "Office login for Routenplanner",
       "showPassword": "Show",
       "hidePassword": "Hide"
     },
@@ -2489,8 +2489,8 @@
     }
   },
   "pwa": {
-    "name": "Nudel Liefer App",
-    "shortName": "Deliveries",
+    "name": "Routenplanner",
+    "shortName": "Routenplanner",
     "description": "Daily tour, addresses and delivery quantities for drivers",
     "offline": {
       "title": "No connection",

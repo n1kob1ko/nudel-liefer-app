@@ -13,7 +13,7 @@ const texts = Object.fromEntries(
 ) as Record<(typeof OFFLINE_LOCALES)[number], OfflineTexts>;
 
 describe("buildOfflineHtml", () => {
-  const html = buildOfflineHtml(texts, "#2f6b4f");
+  const html = buildOfflineHtml(texts, "#ffc72c");
 
   it("contains the texts of all four locales, escaped", () => {
     for (const l of OFFLINE_LOCALES) {

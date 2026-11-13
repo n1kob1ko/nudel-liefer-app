@@ -2,9 +2,13 @@
 
 import { withBasePath } from "./base-path";
 
-/** Browser UI / splash colours. Light primary of `globals.css`; background = page background. */
-export const PWA_THEME_COLOR = "#2f6b4f";
-export const PWA_BACKGROUND_COLOR = "#ffffff";
+/**
+ * Browser UI / splash colours (redesign RD2): the yolk `--primary` of `globals.css`, the ink that
+ * goes on top of it (white on yolk is unreadable) and the light page background.
+ */
+export const PWA_THEME_COLOR = "#ffc72c";
+export const PWA_THEME_FOREGROUND = "#15171a";
+export const PWA_BACKGROUND_COLOR = "#f1f2f4";
 
 // Every value below becomes a URL the BROWSER fetches: Next applies `basePath` to `next/link` and
 // `redirect()` only, not to `register()`, `navigator` URLs or the web app manifest, so each one has

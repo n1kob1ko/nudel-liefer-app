@@ -74,4 +74,76 @@ describe("SegmentedControl", () => {
     fireEvent.click(screen.getByTestId("segment-list"));
     expect(onValueChange).not.toHaveBeenCalled();
   });
+
+  it("draws one travelling thumb, inside the selected segment only", () => {
+    const { rerender } = render(
+      <SegmentedControl
+        value="list"
+        onValueChange={() => {}}
+        options={options}
+        ariaLabel="Ansicht"
+      />,
+    );
+    expect(document.querySelectorAll('[data-slot="segmented-thumb"]')).toHaveLength(1);
+    expect(
+      screen.getByTestId("segment-list").querySelector('[data-slot="segmented-thumb"]'),
+    ).not.toBeNull();
+    // Not on page load: the knob only stretches once the user has moved it.
+    expect(document.querySelector(".knob-stretch")).toBeNull();
+
+    rerender(
+      <SegmentedControl
+        value="map"
+        onValueChange={() => {}}
+        options={options}
+        ariaLabel="Ansicht"
+      />,
+    );
+    expect(document.querySelectorAll('[data-slot="segmented-thumb"]')).toHaveLength(1);
+    expect(
+      screen.getByTestId("segment-map").querySelector('[data-slot="segmented-thumb"]'),
+    ).not.toBeNull();
+  });
+
+  it("keeps the thumbs of two controls apart", () => {
+    render(
+      <>
+        <SegmentedControl value="list" onValueChange={() => {}} options={options} ariaLabel="A" />
+        <SegmentedControl
+          value="map"
+          onValueChange={() => {}}
+          options={options.map((option) => ({ ...option, testId: undefined }))}
+          ariaLabel="B"
+        />
+      </>,
+    );
+    expect(document.querySelectorAll('[data-slot="segmented-thumb"]')).toHaveLength(2);
+  });
+
+  it("stretches the thumb after the user picked another segment", () => {
+    const onValueChange = vi.fn();
+    const { rerender } = render(
+      <SegmentedControl
+        value="list"
+        onValueChange={onValueChange}
+        options={options}
+        ariaLabel="Ansicht"
+      />,
+    );
+    fireEvent.click(screen.getByTestId("segment-map"));
+    expect(onValueChange).toHaveBeenCalledWith("map");
+    rerender(
+      <SegmentedControl
+        value="map"
+        onValueChange={onValueChange}
+        options={options}
+        ariaLabel="Ansicht"
+      />,
+    );
+    expect(
+      screen
+        .getByTestId("segment-map")
+        .querySelector('[data-slot="segmented-thumb"] .knob-stretch'),
+    ).not.toBeNull();
+  });
 });

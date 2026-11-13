@@ -1,5 +1,9 @@
 # Redesign — implementation notes, decisions and verification
 
+> **History.** This describes the first redesign (sage green, 2026-10). The current look is the
+> "Dotter" design system in [`DESIGN.md`](../../DESIGN.md) (redesign RD2, 2026-11). The decisions
+> about test ids, map markers and driver sizes below still hold.
+
 Scope: `re-design.md` (driver + office UI redesign) implemented without touching business logic,
 data model, server actions, routing or offline behaviour. This file is the review artefact: what was
 implemented, which trade-offs were taken, how each claim was verified, and what is knowingly open.

@@ -28,7 +28,9 @@ describe("buildManifest", () => {
       expect(m.lang).toBe(locale);
       expect(m.name.length).toBeGreaterThan(0);
       expect(m.short_name.length).toBeGreaterThan(0);
-      expect(m.short_name.length).toBeLessThanOrEqual(12);
+      // Home-screen labels are cut after roughly a dozen characters. The product name "Routenplanner"
+      // is 13 narrow ones and is used as the label on purpose (rename 2026-11-13), hence 13, not 12.
+      expect(m.short_name.length).toBeLessThanOrEqual(13);
       expect(m.theme_color).toMatch(/^#[0-9a-f]{6}$/i);
       expect(m.background_color).toMatch(/^#[0-9a-f]{6}$/i);
     });

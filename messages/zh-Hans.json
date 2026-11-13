@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "面条配送应用",
+    "appName": "Routenplanner",
     "language": "语言",
     "notifications": "通知",
     "theme": {
@@ -124,7 +124,7 @@
     }
   },
   "home": {
-    "title": "面条配送应用",
+    "title": "Routenplanner",
     "placeholder": "占位页面"
   },
   "auth": {
@@ -135,7 +135,7 @@
       "password": "密码",
       "submit": "登录",
       "driverLink": "司机登录",
-      "brandSentence": "Nudel Liefer 应用办公室登录",
+      "brandSentence": "Routenplanner 办公室登录",
       "showPassword": "显示",
       "hidePassword": "隐藏"
     },
@@ -2489,8 +2489,8 @@
     }
   },
   "pwa": {
-    "name": "面条配送",
-    "shortName": "配送",
+    "name": "Routenplanner",
+    "shortName": "Routenplanner",
     "description": "司机每日路线、地址与送货数量",
     "offline": {
       "title": "没有网络连接",

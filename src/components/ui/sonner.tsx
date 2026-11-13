@@ -34,7 +34,8 @@ function Toaster({
         ...toastOptions,
         classNames: {
           toast: "rounded-lg border border-border shadow-md",
-          actionButton: "rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground",
+          actionButton:
+            "btn-edge rounded-md bg-primary px-3 py-1.5 font-semibold text-primary-foreground transition-transform duration-[140ms] ease-out active:scale-[.97]",
           cancelButton: "rounded-md bg-muted px-3 py-1.5 font-medium text-foreground",
           ...toastOptions?.classNames,
         },

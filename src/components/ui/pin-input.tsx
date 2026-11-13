@@ -111,8 +111,8 @@ export function PinInput({
             data-filled={index < digits.length ? "" : undefined}
             data-active={index === active ? "" : undefined}
             className={cn(
-              "flex h-14 w-12 min-w-0 items-center justify-center rounded-md border bg-background text-2xl font-semibold tabular-nums transition-colors duration-150 motion-reduce:transition-none group-focus-within/pin:ring-2 group-focus-within/pin:ring-ring/40",
-              index === active && "border-ring ring-2 ring-ring/40",
+              "flex h-14 w-12 min-w-0 items-center justify-center rounded-md border bg-card text-2xl font-semibold tabular-nums transition-colors duration-150 motion-reduce:transition-none ",
+              index === active && "border-foreground ring-[3px] ring-primary/60",
               invalid ? "border-destructive text-destructive" : "border-input text-foreground",
               cellClassName,
             )}

@@ -6,28 +6,46 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Button (redesign RD-2, re-design.md §5).
+ * Button (redesign RD2 "Dotter", DESIGN.md).
  *
- * Variants: `default` is the brand/primary filled button and `primary` is an alias of it (both are
- * kept so existing callers keep working). `secondary` is the soft *tinted* variant without a border.
- * Sizes: `lg` (48 px) is the driver size, `xl` (56 px) the driver primary size — touch targets
+ * Colour carries the importance, so the action that matters is found without reading:
+ * - `default` / `primary`: yolk fill with ink text. The ONE important action of a view.
+ * - `success`: green fill. "Geliefert" and other "this step is done" confirmations.
+ * - `destructive`: red fill. Delete and other irreversible actions.
+ * - `warning`: soft red fill. "Problem melden": visible, but not competing with the green button.
+ * - `secondary`: pale yolk tint. The second-most important action.
+ * - `outline`: white with a border. Everything else. `ghost` / `link`: toolbars and inline.
+ *
+ * Filled variants carry a tactile edge (`btn-edge`) that flattens while pressed; every variant
+ * scales to 0.97 while pressed (motion rule 4). The focus ring is an outline, so it never fights
+ * the edge's box-shadow, and it is ink in light mode and yolk in dark mode (`--ring`). The base
+ * must NOT carry `outline-none`: in Tailwind v4 that sets `--tw-outline-style: none`, which the
+ * `focus-visible:outline-2` below reads, so the two together switch the focus outline off.
+ *
+ * Sizes: `lg` (48 px) is the driver size, `xl` (56 px) the driver primary size: touch targets
  * >= 48 px stay intact even when callers override `min-h-14 text-lg` (tailwind-merge lets the
  * caller's className win). `icon`/`icon-lg` are icon-only and therefore need an `aria-label`
  * (plus a `Tooltip` in the admin app).
  */
 const buttonVariants = cva(
-  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md text-base font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow,transform] duration-150 ease-out outline-none select-none active:scale-[.97] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5",
+  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md text-base font-semibold whitespace-nowrap select-none transition-[color,background-color,border-color,box-shadow,transform,filter] duration-[140ms] ease-out active:scale-[.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary-hover",
-        primary: "bg-primary text-primary-foreground hover:bg-primary-hover",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-input bg-background hover:bg-muted",
-        secondary: "bg-primary-soft text-primary-soft-foreground hover:bg-primary-soft/70",
-        ghost: "hover:bg-muted",
-        success: "bg-success text-success-foreground hover:brightness-90",
-        link: "text-primary underline-offset-4 hover:underline",
+        default: "btn-edge bg-primary text-primary-foreground hover:bg-primary-hover",
+        primary: "btn-edge bg-primary text-primary-foreground hover:bg-primary-hover",
+        destructive:
+          "btn-edge bg-destructive text-destructive-foreground hover:brightness-110 dark:hover:brightness-105",
+        warning:
+          "border border-destructive/25 bg-destructive-soft text-destructive-soft-foreground hover:border-destructive/45",
+        outline:
+          "border border-input/60 bg-card text-foreground shadow-xs hover:border-input hover:bg-muted/60",
+        secondary:
+          "bg-primary-soft text-primary-soft-foreground hover:brightness-[.97] dark:hover:brightness-125",
+        ghost: "font-medium hover:bg-muted",
+        success:
+          "btn-edge bg-success text-success-foreground hover:brightness-110 dark:hover:brightness-105",
+        link: "link active:scale-100",
       },
       // `lg` / `xl` / `icon-lg` are the driver sizes: touch targets >= 48 px (backlog 4.3).
       size: {

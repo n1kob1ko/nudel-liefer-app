@@ -118,16 +118,21 @@ test.describe("manifest, icons and worker are public", () => {
     });
   }
 
-  test("localized names differ per locale; service worker and offline page need no session", async ({
+  test("the manifest is localized per locale; service worker and offline page need no session", async ({
     playwright,
     baseURL,
   }) => {
     const anon = await playwright.request.newContext({ baseURL });
-    const names = new Set<string>();
+    // Redesign RD2: the product name "Routenplanner" is the same in every language, so the
+    // localized part of the manifest is its description (and `lang`).
+    const descriptions = new Set<string>();
     for (const locale of ["de", "zh-Hans"]) {
-      names.add((await (await anon.get(`/${locale}/manifest.webmanifest`)).json()).name);
+      const manifest = await (await anon.get(`/${locale}/manifest.webmanifest`)).json();
+      expect(manifest.name).toBe("Routenplanner");
+      expect(manifest.lang).toBe(locale);
+      descriptions.add(manifest.description);
     }
-    expect(names.size).toBe(2);
+    expect(descriptions.size).toBe(2);
     const unknown = await anon.get(`/xx/manifest.webmanifest`, { maxRedirects: 0 });
     expect(unknown.status()).toBe(404);
     const sw = await anon.get("/sw.js", { maxRedirects: 0 });

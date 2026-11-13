@@ -21,7 +21,7 @@ describe("HomeContent", () => {
         <HomeContent />
       </NextIntlClientProvider>,
     );
-    expect(screen.getByTestId("title")).toHaveTextContent("Nudel Liefer App");
+    expect(screen.getByTestId("title")).toHaveTextContent("Routenplanner");
     expect(screen.getByText("Platzhalter")).toBeInTheDocument();
   });
 

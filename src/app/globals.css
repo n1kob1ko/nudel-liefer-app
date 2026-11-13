@@ -10,140 +10,164 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Design tokens (redesign RD-1, re-design.md §4; colour refresh 2026-10). shadcn/ui naming kept so
- * existing components keep working; the new tokens are additive. Values are HSL channels consumed
- * through `hsl(var(--x))` in `@theme inline`.
+ * Design tokens (redesign RD2 "Dotter", DESIGN.md). shadcn/ui naming kept so existing components
+ * keep working. Values are HSL channels consumed through `hsl(var(--x))` in `@theme inline`.
  *
- * Light is the default (NUD-132: the office and the drivers asked for the brighter design; a device
- * whose OS prefers dark used to be forced into dark with no way back).
+ * Light is the default (NUD-132: the office and the drivers asked for the brighter design).
  *
- * Palette: calm sage green on green-tinted grey neutrals (the office found the terracotta too loud).
- * Big white cards without borders on a slightly darker page, soft shadows.
+ * Palette: neutral cool-grey surfaces, one accent. Yolk yellow (`--primary`) is a FILL that marks
+ * "this is next": the primary action, the next stop, the active selection. It is never a text
+ * colour on a light surface (1.6:1); text on yolk is ink. Green means delivered/done, red means
+ * problem/destructive, orange means warning (moved away from amber so it cannot be mistaken for
+ * the brand), blue means information.
  *
- * Contrast (WCAG AA needs 4.5:1 for text, 3:1 for UI), measured for both schemes:
- *   light: foreground on background 14.8:1, muted-foreground on background 5.0:1, on card 5.6:1,
- *          primary on card 6.3:1, primary-foreground on primary 6.3:1, primary-soft-foreground on
- *          soft 8.2:1.
- *   dark:  foreground on background 14.9:1, muted-foreground on card 6.9:1, primary on card 6.0:1,
- *          primary-foreground on primary 6.9:1, primary-soft-foreground on soft 8.8:1.
+ * Contrast (WCAG AA: 4.5:1 for text, 3:1 for control boundaries and focus rings) is enforced for
+ * both schemes by `src/lib/design-tokens.test.ts`, which reads this file.
  */
 :root {
   color-scheme: light;
 
-  /* surfaces — green-tinted neutrals, never a warm/cool mix */
-  --background: 140 12% 94.5%;
-  --foreground: 150 14% 11%;
+  /* surfaces: cool neutrals, one temperature */
+  --background: 220 12% 95.1%;
+  --foreground: 216 11% 9.2%;
   --card: 0 0% 100%;
-  --card-foreground: 150 14% 11%;
+  --card-foreground: 216 11% 9.2%;
   --popover: 0 0% 100%;
-  --popover-foreground: 150 14% 11%;
-  --muted: 140 12% 94.5%;
-  --muted-foreground: 150 6% 39.6%;
-  --border: 144 10% 89%;
-  --input: 147 9% 78%;
-  --ring: 152 39% 30.2%;
+  --popover-foreground: 216 11% 9.2%;
+  --muted: 220 13% 91%;
+  --muted-foreground: 218 8% 36%;
+  --border: 218 13% 88.2%;
+  /* Field borders are a control boundary: 3:1 against the card and the page. */
+  --input: 218 8% 54%;
+  /* Focus ring: ink in light mode (a yolk ring would vanish on white). */
+  --ring: 216 11% 9.2%;
 
-  /* brand — sage green */
-  --primary: 152 39% 30.2%;
-  --primary-hover: 152 40% 25.3%;
-  --primary-foreground: 0 0% 100%;
-  --primary-soft: 145 27% 91.4%;
-  --primary-soft-foreground: 151 43% 21.2%;
+  /* brand: yolk fill with ink on top */
+  --primary: 44 100% 58.6%;
+  --primary-hover: 42 100% 52%;
+  --primary-foreground: 216 11% 9.2%;
+  --primary-soft: 48 100% 88.4%;
+  --primary-soft-foreground: 216 11% 9.2%;
 
   /* kept for existing components */
-  --secondary: 140 10% 92%;
-  --secondary-foreground: 150 14% 11%;
-  --accent: 145 27% 91.4%;
-  --accent-foreground: 151 43% 21.2%;
+  --secondary: 220 13% 91%;
+  --secondary-foreground: 216 11% 9.2%;
+  --accent: 220 13% 91%;
+  --accent-foreground: 216 11% 9.2%;
 
-  /* semantic — one vocabulary for badges, rows, map markers, progress */
-  --success: 148 45% 32%;
+  /* semantic: one vocabulary for badges, rows, map markers, progress */
+  --success: 147 72% 27%;
   --success-foreground: 0 0% 100%;
-  --success-soft: 146 40% 92%;
-  --success-soft-foreground: 150 49% 24%;
+  --success-soft: 145 46% 90.6%;
+  --success-soft-foreground: 147 72% 19%;
 
-  --warning: 36 72% 42%;
-  /* Dark text on amber: white on this amber is too weak, dark text is well above 7:1. */
-  --warning-foreground: 30 90% 10%;
-  --warning-soft: 39 80% 92%;
-  --warning-soft-foreground: 35 81% 26%;
+  --warning: 28 92% 34%;
+  --warning-foreground: 0 0% 100%;
+  --warning-soft: 32 92% 91%;
+  --warning-soft-foreground: 26 90% 24%;
 
-  --destructive: 0 62% 45%;
+  --destructive: 4 74% 44%;
   --destructive-foreground: 0 0% 100%;
-  --destructive-soft: 0 70% 96%;
-  --destructive-soft-foreground: 0 62% 32%;
+  --destructive-soft: 6 80% 94%;
+  --destructive-soft-foreground: 4 74% 32%;
 
   --info: 207 48% 36%;
   --info-foreground: 0 0% 100%;
   --info-soft: 207 45% 93%;
   --info-soft-foreground: 207 52% 25%;
 
-  /* map */
-  --map-route: 152 39% 30.2%;
-  --map-depot: 150 14% 11%;
+  /* map: the route is an ink line, the next stop is yolk */
+  --map-route: 216 11% 9.2%;
+  --map-depot: 216 11% 9.2%;
 
-  /* the dashboard's hero tile: deep sage with white text in both schemes */
-  --hero: 152 39% 30.2%;
-  --hero-foreground: 0 0% 100%;
+  /* the one filled highlight surface (stat tile, next stop): yolk with ink text */
+  --hero: 44 100% 58.6%;
+  --hero-foreground: 216 11% 9.2%;
 
   --radius: 0.75rem;
+
+  /*
+   * Motion (the 20 rules, DESIGN.md). Entrances ease out, on-screen movement eases in and out,
+   * exits take 0.8 of their entrance, nothing bounces.
+   */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-press: 140ms;
+  --dur-pop: 200ms;
+  --dur-pop-out: 160ms;
+  --dur-dialog: 240ms;
+  --dur-dialog-out: 190ms;
+  --dur-sheet: 300ms;
+  --dur-sheet-out: 240ms;
+  --dur-move: 260ms;
+  --stagger-step: 30ms;
+
+  /* Tactile edge of filled buttons: top highlight, bottom shade, small drop shadow. */
+  --edge-highlight: rgb(255 255 255 / 0.38);
+  --edge-shade: rgb(0 0 0 / 0.13);
+  --shadow-color: 220 20% 12%;
 }
 
 /*
- * Dark mode (NUD-132). Class-based, selected by the toggle and rendered server-side, so it is a
- * choice rather than an OS preference. Its own tuned steps, not an inversion of the light ones:
- * tinted near-black page, lifted cards, a lighter sage for accents.
+ * Dark mode (NUD-132). Class-based, selected by the toggle and rendered server-side. Its own tuned
+ * steps, not an inversion: near-black page, lifted cards, the same yolk for fills and for the
+ * focus ring (yolk on dark is 10:1).
  */
 .dark {
   color-scheme: dark;
-  --background: 150 5% 10.5%;
-  --foreground: 140 10% 93%;
-  --card: 150 5% 15%;
-  --card-foreground: 140 10% 93%;
-  --popover: 150 5% 15%;
-  --popover-foreground: 140 10% 93%;
-  --muted: 150 5% 19%;
-  --muted-foreground: 145 6% 68%;
-  --border: 150 5% 22%;
-  --input: 150 5% 30%;
-  --ring: 148 32% 56.5%;
+  --background: 220 10% 7.5%;
+  --foreground: 220 10% 93%;
+  --card: 220 9% 11.5%;
+  --card-foreground: 220 10% 93%;
+  --popover: 220 9% 13.5%;
+  --popover-foreground: 220 10% 93%;
+  --muted: 220 8% 16%;
+  --muted-foreground: 218 9% 68%;
+  --border: 220 8% 20%;
+  --input: 220 7% 46%;
+  --ring: 44 100% 58.6%;
 
-  --primary: 148 32% 56.5%;
-  --primary-hover: 148 35% 63.7%;
-  --primary-foreground: 148 38% 8.8%;
-  --primary-soft: 152 23% 15.9%;
-  --primary-soft-foreground: 148 41% 76.1%;
+  --primary: 44 100% 58.6%;
+  --primary-hover: 45 100% 66%;
+  --primary-foreground: 216 11% 9.2%;
+  --primary-soft: 44 60% 14%;
+  --primary-soft-foreground: 46 95% 76%;
 
-  --secondary: 150 7% 16.1%;
-  --secondary-foreground: 144 13% 92.4%;
-  --accent: 152 23% 15.9%;
-  --accent-foreground: 148 41% 76.1%;
+  --secondary: 220 8% 16%;
+  --secondary-foreground: 220 10% 93%;
+  --accent: 220 8% 16%;
+  --accent-foreground: 220 10% 93%;
 
-  --success: 148 40% 55%;
-  --success-foreground: 148 60% 8%;
-  --success-soft: 148 28% 15%;
-  --success-soft-foreground: 148 45% 78%;
+  --success: 147 50% 52%;
+  --success-foreground: 147 60% 7%;
+  --success-soft: 147 32% 14%;
+  --success-soft-foreground: 147 50% 76%;
 
-  --warning: 37 70% 60%;
-  --warning-foreground: 30 90% 8%;
-  --warning-soft: 37 45% 15%;
-  --warning-soft-foreground: 39 78% 77%;
+  --warning: 26 90% 62%;
+  --warning-foreground: 26 90% 8%;
+  --warning-soft: 26 50% 15%;
+  --warning-soft-foreground: 30 88% 78%;
 
-  --destructive: 0 66% 65%;
-  --destructive-foreground: 0 40% 8%;
-  --destructive-soft: 0 35% 17%;
-  --destructive-soft-foreground: 0 75% 85%;
+  --destructive: 6 82% 66%;
+  --destructive-foreground: 6 50% 8%;
+  --destructive-soft: 6 40% 16%;
+  --destructive-soft-foreground: 6 85% 85%;
 
   --info: 207 50% 64%;
   --info-foreground: 207 60% 8%;
   --info-soft: 207 30% 17%;
   --info-soft-foreground: 207 60% 82%;
 
-  --map-route: 148 32% 56.5%;
-  --map-depot: 140 10% 93%;
+  --map-route: 220 10% 93%;
+  --map-depot: 220 10% 93%;
 
-  --hero: 152 36% 27%;
-  --hero-foreground: 0 0% 100%;
+  --hero: 44 100% 58.6%;
+  --hero-foreground: 216 11% 9.2%;
+
+  --edge-highlight: rgb(255 255 255 / 0.3);
+  --edge-shade: rgb(0 0 0 / 0.2);
+  --shadow-color: 220 40% 2%;
 }
 
 @theme inline {
@@ -188,38 +212,317 @@
   --color-hero: hsl(var(--hero));
   --color-hero-foreground: hsl(var(--hero-foreground));
 
-  /* radius scale (re-design.md §4.3): inputs/buttons 10, cards 16, sheets 20, pills 999 */
+  /* radius scale: fields and buttons 12, cards 16, sheets 20, pills 999 */
   --radius-sm: 0.5rem; /* 8 */
-  --radius-md: 0.625rem; /* 10 */
+  --radius-md: 0.75rem; /* 12 */
   --radius-lg: 1rem; /* 16 */
   --radius-xl: 1.25rem; /* 20 */
   --radius-2xl: 1.5rem; /* 24 */
 
-  /* elevation (re-design.md §4.1) */
-  --shadow-sm: 0 1px 2px 0 rgb(20 32 26 / 0.05), 0 1px 3px 0 rgb(20 32 26 / 0.04);
-  --shadow-md: 0 4px 12px -2px rgb(20 32 26 / 0.1), 0 1px 2px 0 rgb(20 32 26 / 0.06);
-  --shadow-lg: 0 16px 40px -12px rgb(20 32 26 / 0.22), 0 2px 8px rgb(20 32 26 / 0.06);
+  /* elevation: neutral, always with an offset and a blur; cards rely on their hairline border */
+  --shadow-xs: 0 1px 2px 0 hsl(var(--shadow-color) / 0.05);
+  --shadow-sm:
+    0 1px 2px 0 hsl(var(--shadow-color) / 0.06), 0 1px 3px 0 hsl(var(--shadow-color) / 0.05);
+  --shadow-md:
+    0 6px 16px -4px hsl(var(--shadow-color) / 0.12), 0 2px 4px -1px hsl(var(--shadow-color) / 0.07);
+  --shadow-lg:
+    0 20px 44px -12px hsl(var(--shadow-color) / 0.26),
+    0 4px 10px -2px hsl(var(--shadow-color) / 0.08);
+
+  /* Tailwind's `ease-out` / `ease-in-out` utilities use the strong curves (same values as :root). */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
 }
 
 /*
- * Brand-filled surface of the dashboard's hero tile: a soft radial light from the top-right corner
- * instead of a flat fill. Its own `--hero` token: deep sage with white text in both schemes (the
- * light sage of the dark-mode `--primary` made the white-on-green tile hard to read).
+ * The filled highlight surface (dashboard hero tile): yolk with a soft light from the top-right
+ * corner. No dark mix: yolk plus black turns into a muddy brass.
  */
 .bg-hero {
   background: radial-gradient(
     120% 140% at 100% 0%,
-    color-mix(in oklab, hsl(var(--hero)) 88%, white) 0%,
-    hsl(var(--hero)) 50%,
-    color-mix(in oklab, hsl(var(--hero)) 80%, black) 100%
+    color-mix(in oklab, hsl(var(--hero)) 78%, white) 0%,
+    hsl(var(--hero)) 55%
   );
 }
 
 /* "Not yet / still open" fill for charts (upcoming days, open stops): hatched, so it never relies on colour alone. */
 .bg-hatch {
   background: repeating-linear-gradient(135deg, hsl(var(--input)) 0 2px, hsl(var(--muted)) 2px 7px);
+}
+
+/*
+ * Links: ink text with an underline, never brand-coloured text (yolk on white is unreadable). The
+ * underline turns into a yolk marker stroke on hover.
+ */
+@utility link {
+  color: hsl(var(--foreground));
+  font-weight: 500;
+  text-decoration-line: underline;
+  text-decoration-color: color-mix(in oklab, currentColor 55%, transparent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+  transition:
+    text-decoration-color 150ms var(--ease-out),
+    text-decoration-thickness 150ms var(--ease-out);
+  &:hover {
+    text-decoration-color: hsl(var(--primary));
+    text-decoration-thickness: 3px;
+  }
+}
+
+/*
+ * Text fields, selects and textareas: white with a visible border. Hover darkens the border, focus
+ * turns it ink and adds a yolk halo (the border change alone already passes 3:1), an invalid field
+ * turns red. One utility so `Input`, `Textarea`, `SelectTrigger` and native controls stay in step.
+ */
+@utility field {
+  transition:
+    border-color 150ms var(--ease-out),
+    box-shadow 150ms var(--ease-out),
+    background-color 150ms var(--ease-out);
+  &:hover:not(:disabled):not(:focus-visible) {
+    border-color: hsl(var(--foreground) / 0.6);
+  }
+  &:focus-visible {
+    border-color: hsl(var(--foreground));
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.6);
+  }
+  &[aria-invalid="true"] {
+    border-color: hsl(var(--destructive));
+  }
+  &[aria-invalid="true"]:focus-visible {
+    box-shadow: 0 0 0 3px hsl(var(--destructive) / 0.3);
+  }
+}
+
+/*
+ * Tactile edge of filled buttons: a light upper lip, a darker lower lip and a small drop shadow.
+ * Pressing flattens it, together with the 0.97 scale (motion rule 4).
+ */
+@utility btn-edge {
+  box-shadow:
+    inset 0 1px 0 var(--edge-highlight),
+    inset 0 -2px 0 var(--edge-shade),
+    0 1px 2px hsl(var(--shadow-color) / 0.14);
+  &:active:not(:disabled) {
+    box-shadow:
+      inset 0 2px 3px var(--edge-shade),
+      0 0 0 transparent;
+  }
+}
+
+/*
+ * Motion building blocks (the 20 rules, DESIGN.md). Everything here is predetermined, so it is CSS
+ * and runs off the main thread; only shared-layout animation uses the `motion` library.
+ */
+
+/* Rules 1, 2, 10, 11, 12, 15: popovers, menus, selects and tooltips grow out of their trigger. */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(var(--pop-from, 0.95));
+  }
+}
+@keyframes pop-out {
+  to {
+    opacity: 0;
+    transform: scale(var(--pop-from, 0.95));
+  }
+}
+@utility pop {
+  transform-origin: var(--pop-origin, center);
+  &[data-state="open"],
+  &[data-state="delayed-open"] {
+    animation: pop-in var(--dur-pop) var(--ease-out);
+  }
+  &[data-state="closed"] {
+    animation: pop-out var(--dur-pop-out) var(--ease-out) forwards;
+  }
+}
+
+/* Dialogs are not anchored to a trigger: they keep the centre as origin and start a little closer. */
+@utility dialog-pop {
+  --pop-from: 0.96;
+  transform-origin: center;
+  &[data-state="open"] {
+    animation: pop-in var(--dur-dialog) var(--ease-out);
+  }
+  &[data-state="closed"] {
+    animation: pop-out var(--dur-dialog-out) var(--ease-out) forwards;
+  }
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes overlay-out {
+  to {
+    opacity: 0;
+  }
+}
+@utility overlay-fade {
+  &[data-state="open"] {
+    animation: overlay-in var(--dur-dialog) var(--ease-out);
+  }
+  &[data-state="closed"] {
+    animation: overlay-out var(--dur-dialog-out) var(--ease-out) forwards;
+  }
+}
+
+/*
+ * Rule 6: once a dialog or sheet has landed, its content settles in one piece after the other
+ * (never more than five steps, so a long form is not kept waiting).
+ */
+@keyframes settle-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@utility settle {
+  &[data-state="open"] > * {
+    animation: settle-in 240ms var(--ease-out) both;
+    animation-delay: calc(50ms + min(var(--i, 0), 5) * var(--stagger-step));
+  }
+  &[data-state="open"] > :nth-child(2) {
+    --i: 1;
+  }
+  &[data-state="open"] > :nth-child(3) {
+    --i: 2;
+  }
+  &[data-state="open"] > :nth-child(4) {
+    --i: 3;
+  }
+  &[data-state="open"] > :nth-child(n + 5) {
+    --i: 4;
+  }
+}
+
+/* Sheets slide on the drawer curve; `--sheet-from` lets a dragged sheet leave from where it was let go. */
+@keyframes sheet-in-y {
+  from {
+    transform: translateY(var(--sheet-enter, 100%));
+  }
+}
+@keyframes sheet-out-y {
+  from {
+    transform: translateY(var(--sheet-from, 0px));
+  }
+  to {
+    transform: translateY(var(--sheet-enter, 100%));
+  }
+}
+@keyframes sheet-in-x {
+  from {
+    transform: translateX(var(--sheet-enter, 100%));
+  }
+}
+@keyframes sheet-out-x {
+  to {
+    transform: translateX(var(--sheet-enter, 100%));
+  }
+}
+@utility sheet-y {
+  &[data-state="open"] {
+    animation: sheet-in-y var(--dur-sheet) var(--ease-drawer);
+  }
+  &[data-state="closed"] {
+    animation: sheet-out-y var(--dur-sheet-out) var(--ease-drawer) forwards;
+  }
+}
+@utility sheet-x {
+  &[data-state="open"] {
+    animation: sheet-in-x var(--dur-sheet) var(--ease-drawer);
+  }
+  &[data-state="closed"] {
+    animation: sheet-out-x var(--dur-sheet-out) var(--ease-drawer) forwards;
+  }
+}
+
+/* Rule 3: list rows arrive 30 ms apart. `--i` is the row index (set by <Stagger>), capped at 12. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@utility stagger-item {
+  animation: rise-in 320ms var(--ease-out) both;
+  animation-delay: calc(min(var(--i, 0), 12) * var(--stagger-step));
+}
+
+/* Rule 8: one short ring that expands and fades, as the confirmation of a completed action. */
+@keyframes pulse-ring {
+  from {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(var(--pulse-scale, 1.18));
+  }
+}
+@utility pulse-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 2px solid hsl(var(--pulse-color, var(--success)));
+  pointer-events: none;
+  animation: pulse-ring 520ms var(--ease-out) both;
+}
+
+/* Rule 18: icons change by crossfading through a little blur instead of cutting. */
+@keyframes icon-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+    filter: blur(3px);
+  }
+}
+@keyframes icon-out {
+  to {
+    opacity: 0;
+    transform: scale(0.6);
+    filter: blur(3px);
+  }
+}
+@utility icon-enter {
+  animation: icon-in 200ms var(--ease-out) both;
+}
+@utility icon-exit {
+  animation: icon-out 160ms var(--ease-out) both;
+}
+
+/* Rule 5: a knob that travels stretches by 12 % on the way (set while `data-moving` is present). */
+@keyframes knob-stretch {
+  50% {
+    transform: scaleX(1.12);
+  }
+}
+@utility knob-stretch {
+  animation: knob-stretch var(--dur-move) var(--ease-in-out);
+}
+
+/* Loading placeholder: a light band travels across instead of the whole block blinking. */
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+@utility shimmer {
+  background-image: linear-gradient(
+    100deg,
+    hsl(var(--muted)) 40%,
+    color-mix(in oklab, hsl(var(--muted)) 55%, hsl(var(--card))) 50%,
+    hsl(var(--muted)) 60%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
 }
 
 /*
@@ -267,7 +570,10 @@
   }
 }
 
-/* Reduced motion (NUD-095): no slide / fade animations; spinners keep turning (they show progress). */
+/*
+ * Reduced motion (NUD-095): nothing slides, grows or travels. Overlays still fade briefly so a
+ * change of state is not abrupt; spinners keep turning (they show progress).
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   ::before,
@@ -279,6 +585,7 @@
   *:not(.animate-spin)::before,
   *:not(.animate-spin)::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
   }
 }
@@ -287,6 +594,39 @@
 @layer base {
   * {
     border-color: hsl(var(--border));
+  }
+  /* The parts the browser draws carry the palette too. */
+  ::selection {
+    background: hsl(var(--primary) / 0.55);
+    color: hsl(var(--foreground));
+  }
+  .dark ::selection {
+    background: hsl(var(--primary) / 0.4);
+  }
+  input,
+  textarea,
+  [contenteditable] {
+    caret-color: hsl(var(--foreground));
+  }
+  * {
+    scrollbar-color: hsl(var(--input) / 0.7) transparent;
+  }
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+  /* Headlines break into lines of similar length; paragraphs avoid a lonely last word. */
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  a,
+  button,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
   }
 }
 

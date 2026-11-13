@@ -48,7 +48,7 @@ import {
 const STORAGE_KEY = "nudel.customerImport.mapping.v1";
 const PREVIEW_LIMIT = 300;
 const selectClass =
-  "h-10 w-full max-w-xs rounded-md border border-input bg-background px-3 text-base";
+  "h-10 w-full max-w-xs field rounded-md border border-input bg-card px-3 text-base";
 
 type Upload = {
   filename: string;
@@ -246,7 +246,7 @@ export function CustomerImport({ initialQueueCount }: { initialQueueCount: numbe
               id="imp-file"
               type="file"
               accept=".csv,.tsv,.txt,.xlsx,text/csv"
-              className="rounded-md border border-input bg-background p-2 text-base file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-base"
+              className="field rounded-md border border-input bg-card p-2 text-base file:mr-3 file:rounded-md file:border-0 file:bg-muted file:font-medium file:px-3 file:py-1.5 file:text-base"
               disabled={busy}
               onChange={(e) => void onFile(e.target.files?.[0])}
               data-testid="import-file"
@@ -608,7 +608,7 @@ function PreviewStep({
         <Label htmlFor="prev-filter">{t("preview.filter")}</Label>
         <select
           id="prev-filter"
-          className="h-10 rounded-md border border-input bg-background px-3 text-base"
+          className="h-10 field rounded-md border border-input bg-card px-3 text-base"
           value={filter}
           onChange={(e) => onFilter(e.target.value as Filter)}
           data-testid="preview-filter"

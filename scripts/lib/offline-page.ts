@@ -72,6 +72,8 @@ export function buildOfflineScript(): string {
 export function buildOfflineHtml(
   texts: Record<OfflineLocale, OfflineTexts>,
   themeColor: string,
+  /** Text colour on `themeColor`. The brand fill is a light yolk, so the default is ink. */
+  onThemeColor = "#15171a",
 ): string {
   const sections = OFFLINE_LOCALES.map((locale) => {
     const t = texts[locale];
@@ -99,7 +101,7 @@ export function buildOfflineHtml(
       .icon { display: block; margin: 0 auto 1rem; }
       h1 { font-size: 1.5rem; margin: 0 0 .5rem; }
       p { margin: 0 0 1.5rem; }
-      button { min-height: 48px; min-width: 48px; padding: 0 1.5rem; font: inherit; font-weight: 600; border: 0; border-radius: 8px; color: #fff; background: ${themeColor}; }
+      button { min-height: 48px; min-width: 48px; padding: 0 1.5rem; font: inherit; font-weight: 600; border: 0; border-radius: 12px; color: ${onThemeColor}; background: ${themeColor}; }
     </style>
   </head>
   <body>

@@ -116,7 +116,7 @@ export function ImageUploader({
           compact
             ? "flex flex-wrap items-center gap-3 p-3 text-start"
             : "flex flex-col items-center gap-3 p-6 text-center",
-          dragging && "border-primary bg-primary-soft",
+          dragging && "border-foreground bg-primary-soft",
           disabled && "opacity-50",
         )}
       >
@@ -182,6 +182,7 @@ export function ImageUploader({
           className="sr-only"
           tabIndex={-1}
           data-testid="image-uploader-input"
+          aria-label={t("choose")}
           disabled={disabled}
           onChange={(e) => {
             void start(e.target.files?.[0]);
@@ -196,6 +197,7 @@ export function ImageUploader({
             capture="environment"
             className="sr-only"
             tabIndex={-1}
+            aria-label={t("camera")}
             disabled={disabled}
             onChange={(e) => {
               void start(e.target.files?.[0]);

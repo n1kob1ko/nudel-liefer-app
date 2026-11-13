@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Nudel Liefer App",
+    "appName": "Routenplanner",
     "language": "Jezik",
     "notifications": "Obaveštenja",
     "theme": {
@@ -124,7 +124,7 @@
     }
   },
   "home": {
-    "title": "Nudel Liefer App",
+    "title": "Routenplanner",
     "placeholder": "Rezervisano mesto"
   },
   "auth": {
@@ -135,7 +135,7 @@
       "password": "Lozinka",
       "submit": "Prijavi se",
       "driverLink": "Prijava vozača",
-      "brandSentence": "Prijava za kancelariju – Nudel Liefer App",
+      "brandSentence": "Prijava za kancelariju – Routenplanner",
       "showPassword": "Prikaži",
       "hidePassword": "Sakrij"
     },
@@ -524,8 +524,8 @@
     }
   },
   "pwa": {
-    "name": "Nudel Liefer App",
-    "shortName": "Isporuke",
+    "name": "Routenplanner",
+    "shortName": "Routenplanner",
     "description": "Dnevna tura, adrese i količine za isporuku za vozače",
     "offline": {
       "title": "Nema veze",

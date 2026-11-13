@@ -99,7 +99,7 @@ export function OrderTotals({
                     {tourId ? (
                       <Link
                         href={{ pathname: `/admin/tours/${tourId}/print`, query: { locale } }}
-                        className="inline-flex items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline"
+                        className="inline-flex items-center gap-1.5 link text-sm"
                         data-testid="totals-print"
                       >
                         <PrinterIcon className="size-4" aria-hidden />

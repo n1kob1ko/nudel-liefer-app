@@ -8,9 +8,9 @@ import { cn } from "@/lib/utils";
  * Hierarchy comes from spacing and type, not from boxes inside boxes: **cards are never nested.**
  * A card may contain lists, rows or tables separated by hairlines, never another `Card`.
  *
- * Surface rules (§4.1, colour refresh 2026-10): cards are white surfaces on the tinted page with a
- * soft `shadow-sm` and no visible border; interactive cards lift to `shadow-md` on hover. The
- * transparent border keeps the box size identical to bordered elements next to them.
+ * Surface rules (redesign RD2, DESIGN.md): cards are white surfaces on the grey page with a hairline
+ * border and next to no shadow; interactive cards lift to `shadow-md` on hover and give way a little
+ * while pressed.
  */
 function Card({
   className,
@@ -25,9 +25,9 @@ function Card({
       data-slot="card"
       data-interactive={interactive ? "" : undefined}
       className={cn(
-        "flex flex-col gap-4 rounded-xl border border-transparent bg-card py-5 text-card-foreground shadow-sm",
+        "flex flex-col gap-4 rounded-xl border border-border bg-card py-5 text-card-foreground shadow-xs",
         interactive
-          ? "cursor-pointer transition-shadow duration-150 ease-out hover:shadow-md motion-reduce:transition-none"
+          ? "cursor-pointer transition-[box-shadow,border-color,transform] duration-150 ease-out hover:border-input/60 hover:shadow-md active:scale-[.99] motion-reduce:transition-none"
           : undefined,
         className,
       )}
