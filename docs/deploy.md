@@ -366,45 +366,39 @@ What to know:
 
 ## 13. Backups (NUD-094, NUD-200)
 
-The production database is PostgreSQL on `127.0.0.1` of the dedicated server, so the backup runs **on the server**: a systemd timer starts `pnpm backup:db` every night at 02:23 UTC. GitHub cannot reach the database; its workflow only checks the off-site copy. (Until 2026-11-13 the workflow tried to take the dump itself, which needed a database reachable from the internet - the Neon setup of sections 2-9. It never produced a backup.)
+The production database is PostgreSQL on `127.0.0.1` of the dedicated server, so the backup runs **on the server**: a systemd timer starts `pnpm backup:db` every night at 02:23 UTC and stores the dump in `/var/backups/nudel/db/`. Nothing leaves the server. (Until 2026-11-13 a GitHub workflow tried to take the dump itself, which needed a database reachable from the internet - the Neon setup of sections 2-9. It never produced a backup.)
 
-| Layer                     | What                                                                                           | Where                                                             | Retention                                       |
-| ------------------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------- |
-| Nightly dump              | `pg_dump` of the whole database, checked with `pg_restore --list` before it counts as a backup | `/var/backups/nudel/db/` on the server                            | 8 weeks; the newest 4 backups are never deleted |
-| Off-site copy             | the same file, copied by the same run                                                          | private bucket, configured in `/etc/nudel-backup.env`             | the same                                        |
-| Daily check, test restore | newest off-site backup must be younger than 50 hours and restore into an empty PostgreSQL      | GitHub Action `.github/workflows/backup.yml` (04:23 UTC, e-mails) | -                                               |
+**A backup holds master data only** (decision of the owner, 2026-11-13): the dump carries the complete schema but rows only for
 
-**The off-site copy is the one that matters when the server is lost, sold or replaced**; the folder on the server only protects against mistakes in the app (a bad migration, deleted data). Restore: `runbook.md` section 5.
+| Kept (`BACKED_UP_TABLES` in `scripts/lib/backup.ts`) | Never in a backup |
+| --- | --- |
+| settings, users and working hours, vehicles, products, customers with parking spots and photo records, standing tours, standing (recurring) orders | orders and their items, order screenshots, tours, stops, payments and monthly invoices, the change history (audit log), login attempts |
 
-Photos and screenshots are objects in the photo bucket (MinIO on the same server) and are **not** part of the backup. Acceptable for v1: photos can be taken again; losing the database cannot be repaired that way.
+A table added later is left out until it is put on the list of kept tables (a test makes that a decision). After a restore the app works with its settings, people, customers and standing tours, and **without any order, tour or payment**. Retention: 8 weeks, the newest 4 backups are never deleted. Restore: `runbook.md` section 5.
+
+The backups are on the same machine as the database: they protect against mistakes in the app (a bad migration, deleted customers), **not against the loss of the server**. Photos and screenshots are objects in the photo bucket (MinIO on the same server) and are not part of the backup.
 
 ### 13.1 One-time setup (human)
 
-1. **Backup on the server** (works without any account). As root on the server, after the app with NUD-200 is deployed (section 13.0):
+As root on the server, after the app with NUD-200 is deployed (section 13.0):
 
-   ```bash
-   bash /opt/delivery-app/deploy/backup/install.sh
-   ```
+```bash
+bash /opt/delivery-app/deploy/backup/install.sh
+```
 
-   It creates `/var/backups/nudel/db` (owner `deliveryapp`, `0700`), `/etc/nudel-backup.env` (root, `0600`, everything commented out), installs `nudel-backup.service` + `nudel-backup.timer`, takes the first backup and lists it. It can be run again at any time. The job uses the app's own `DATABASE_URL` from `/etc/delivery-app.env` (`BACKUP_DATABASE_URL` in `/etc/nudel-backup.env` wins if you prefer a read-only role: `CREATE ROLE backup_reader LOGIN PASSWORD '...'; GRANT pg_read_all_data TO backup_reader;`).
+It creates `/var/backups/nudel/db` (owner `deliveryapp`, `0700`), `/etc/nudel-backup.env` (root, `0600`, everything commented out, nothing in it is needed), installs `nudel-backup.service` + `nudel-backup.timer`, takes the first backup and lists it. It can be run again at any time. The job uses the app's own `DATABASE_URL` from `/etc/delivery-app.env` (`BACKUP_DATABASE_URL` in `/etc/nudel-backup.env` wins if you prefer a read-only role: `CREATE ROLE backup_reader LOGIN PASSWORD '...'; GRANT pg_read_all_data TO backup_reader;`).
 
-2. **Backup bucket** (Cloudflare R2, or any S3-compatible storage **outside this server**): create bucket `nudel-backups` in the **EU jurisdiction**, keep it private. No CORS rule (nothing in a browser touches it), no lifecycle rule (the script prunes; a bucket rule could delete everything if the schedule ever stalls). Never use the photo bucket or the MinIO on the server.
-3. **Token:** R2 > Manage API tokens > Create API token: name `nudel-backups`, permission **Object Read & Write**, specify bucket `nudel-backups` only. Copy Access Key ID and Secret Access Key (shown once). Never reuse the photo token.
-4. **On the server:** `nano /etc/nudel-backup.env`, fill in the four `BACKUP_S3_*` lines and remove their `#`, then `systemctl start nudel-backup && journalctl -u nudel-backup -n 20 --no-pager`. The log must show `bucket nudel-backups: stored db/nudel-<time>.dump`.
-5. **GitHub environment** (for the daily check): repository > **Settings > Environments > New environment**, name **`backup`**. Under _Environment secrets_ add the same four values:
+Nothing watches the job: `systemctl status nudel-backup` and `ls -l /var/backups/nudel/db` show the last run (`runbook.md` section 5.5).
 
-   | Secret                                                    | Value                                              |
-   | --------------------------------------------------------- | -------------------------------------------------- |
-   | `BACKUP_S3_ENDPOINT`                                      | `https://<ACCOUNT_ID>.eu.r2.cloudflarestorage.com` |
-   | `BACKUP_S3_BUCKET`                                        | `nudel-backups`                                    |
-   | `BACKUP_S3_ACCESS_KEY_ID` / `BACKUP_S3_SECRET_ACCESS_KEY` | the `nudel-backups` token (a second, read-only token is enough here) |
+**Moving to another server:** deploy the app there and run `install.sh` again. To bring **all** data over (orders included) do not use these backups; take a one-off full dump by hand (`runbook.md` section 5.1).
 
-6. **First check:** repository > **Actions > Database backup check > Run workflow**. It must be green; the summary names the backup it restored and its age.
-7. `PG_MAJOR` at the top of `.github/workflows/backup.yml` must be at least the PostgreSQL major version of the server (18). Raise it when the server is upgraded; the check fails loudly otherwise.
+### 13.2 Optional: a second copy outside the server
 
-A failed check sends GitHub's standard e-mail to the people who watch the repository's Actions; check that your address receives them (GitHub > Settings > Notifications > Actions). Until step 5 is done the check fails every day on purpose: there is no off-site backup to check. Nothing watches the folder on the server on its own - `systemctl status nudel-backup` and `ls -l /var/backups/nudel/db` show the last run.
+Not set up, on purpose (the owner wants the data on the server only). The code for it exists and is off until somebody fills in the keys:
 
-**Moving to another server:** deploy the app there, copy `/etc/nudel-backup.env`, run `install.sh`. The bucket and the GitHub check stay as they are; the newest dump is also the way to bring the data over (`runbook.md` section 5.2).
+1. A private bucket for backups only (for example Cloudflare R2, EU jurisdiction), never the photo bucket or the MinIO on the server, and a token limited to it (Object Read & Write). No lifecycle rule (the script prunes).
+2. On the server: fill in the four `BACKUP_S3_*` lines in `/etc/nudel-backup.env`, then `systemctl start nudel-backup && journalctl -u nudel-backup -n 20 --no-pager`. The log must show `bucket <name>: stored db/nudel-<time>.dump`.
+3. For a daily check of that copy: GitHub > **Settings > Environments** > environment **`backup`** with the same four values as secrets. The workflow `.github/workflows/backup.yml` (04:23 UTC) then downloads the newest backup, fails when it is older than 50 hours and restores it into an empty PostgreSQL. **Without these secrets every run is skipped and stays green.** `PG_MAJOR` at the top of the workflow must be at least the PostgreSQL major version of the server (18).
 
 ---
 

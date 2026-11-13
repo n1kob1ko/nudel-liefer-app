@@ -2,12 +2,13 @@
 #
 # The backup itself does NOT run here. The production database listens on 127.0.0.1 of the
 # dedicated server, so a GitHub runner cannot reach it: `pnpm backup:db` runs on the server every
-# night (systemd timer, deploy/backup/) and copies the dump to the private backup bucket.
+# night (systemd timer, deploy/backup/) and stores the dump in /var/backups/nudel/db on the server.
 #
-# This workflow is the watchdog and the test restore: it downloads the newest backup from the
+# An off-site copy in a private bucket is OPTIONAL (docs/deploy.md section 13.2). Only when it is
+# configured does this workflow have something to do: it downloads the newest backup from the
 # bucket, fails when it is older than BACKUP_MAX_AGE_HOURS (the job on the server has stopped or
 # cannot reach the bucket), restores it into a scratch PostgreSQL and checks the data. A failed run
-# e-mails the repository admins (GitHub default).
+# e-mails the repository admins (GitHub default). Without a bucket every run is skipped (green).
 #
 # Secrets live in the GitHub *environment* "backup" (Settings > Environments), not in the
 # repository secrets: BACKUP_S3_ENDPOINT, BACKUP_S3_BUCKET, BACKUP_S3_ACCESS_KEY_ID,
@@ -58,21 +59,33 @@ jobs:
       BACKUP_DATABASE_URL: postgresql://unused:unused@localhost/unused
       RESTORE_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/restore_check
     steps:
-      - name: The bucket secrets must be set
+      - name: Is an off-site bucket configured?
+        id: bucket
         run: |
-          missing=""
-          [ -n "$BACKUP_S3_BUCKET" ] || missing="$missing BACKUP_S3_BUCKET"
-          [ -n "$BACKUP_S3_ACCESS_KEY_ID" ] || missing="$missing BACKUP_S3_ACCESS_KEY_ID"
-          [ -n "$BACKUP_S3_SECRET_ACCESS_KEY" ] || missing="$missing BACKUP_S3_SECRET_ACCESS_KEY"
-          if [ -n "$missing" ]; then
-            echo "::error::No off-site backup can be checked: these secrets are missing in the GitHub environment \"backup\":$missing. See docs/runbook.md section 5.5."
+          set=""; missing=""
+          for name in BACKUP_S3_BUCKET BACKUP_S3_ACCESS_KEY_ID BACKUP_S3_SECRET_ACCESS_KEY; do
+            if [ -n "${!name}" ]; then set="$set $name"; else missing="$missing $name"; fi
+          done
+          if [ -z "$set" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No off-site bucket is configured (environment \"backup\" has no BACKUP_S3_* secrets): the backups exist on the server only and there is nothing to check here."
+            echo "### Database backup check: skipped" >> "$GITHUB_STEP_SUMMARY"
+            echo "No off-site bucket is configured. The nightly backups are stored on the server only (\`/var/backups/nudel/db\`); this check starts working once the bucket secrets are set (docs/deploy.md section 13.2)." >> "$GITHUB_STEP_SUMMARY"
+          elif [ -n "$missing" ]; then
+            echo "::error::The off-site bucket is half-configured: these secrets are missing in the GitHub environment \"backup\":$missing. See docs/runbook.md section 5.5."
             exit 1
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
       - uses: actions/checkout@v4
+        if: steps.bucket.outputs.configured == 'true'
       - uses: pnpm/action-setup@v4
+        if: steps.bucket.outputs.configured == 'true'
       - uses: actions/setup-node@v4
+        if: steps.bucket.outputs.configured == 'true'
         with: { node-version: 22, cache: pnpm }
       - name: Install PostgreSQL client ${{ env.PG_MAJOR }}
+        if: steps.bucket.outputs.configured == 'true'
         # From the PostgreSQL project's own apt repository: Ubuntu ships an older major version.
         run: |
           sudo install -d /usr/share/postgresql-common/pgdg
@@ -83,6 +96,8 @@ jobs:
           sudo apt-get install -y -qq "postgresql-client-${PG_MAJOR}"
           echo "/usr/lib/postgresql/${PG_MAJOR}/bin" >> "$GITHUB_PATH"
       - name: Install dependencies
+        if: steps.bucket.outputs.configured == 'true'
         run: pnpm install --frozen-lockfile
       - name: Newest backup is fresh and restores
+        if: steps.bucket.outputs.configured == 'true'
         run: pnpm backup:verify --max-age-hours "$BACKUP_MAX_AGE_HOURS"

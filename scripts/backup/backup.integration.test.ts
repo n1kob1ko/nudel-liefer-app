@@ -97,6 +97,23 @@ describe.skipIf(!process.env.DATABASE_URL || !haveTools)(
         `INSERT INTO "Customer" (id, "customerNumber", name, street, "postalCode", city, "updatedAt") VALUES ('c1','K-1','Trattoria','Straße 1','1010','Wien',now())`,
       );
       await db.query(`INSERT INTO "LoginAttempt" (id, key) VALUES ('l1','ip:203.0.113.9')`);
+      // Master data that a backup keeps ...
+      await db.query(
+        `INSERT INTO "StandingTour" (id, name, "updatedAt") VALUES ('st1','Innenstadt',now())`,
+      );
+      await db.query(
+        `INSERT INTO "StandingTourCustomer" ("standingTourId", "customerId") VALUES ('st1','c1')`,
+      );
+      // ... and what it must never hold (NUD-200): orders, payments, the change history.
+      await db.query(
+        `INSERT INTO "Order" (id, "customerId", "deliveryDate", "createdById", "updatedAt", "windowFrom", "windowTo") VALUES ('o1','c1','2026-10-17','u1',now(),'2026-10-17','2026-10-17')`,
+      );
+      await db.query(
+        `INSERT INTO "MonthlyPayment" (id, "customerId", "periodStart", "amountCents", "orderCount", "paidById") VALUES ('m1','c1','2026-09-01',4250,1,'u1')`,
+      );
+      await db.query(
+        `INSERT INTO "AuditLog" (id, "actorId", entity, "entityId", action, diff) VALUES ('a1','u1','Order','o1','order.create','{"amountCents":4250}')`,
+      );
       await db.end();
       config = {
         databaseUrl: urlFor(base, source),
@@ -146,7 +163,17 @@ describe.skipIf(!process.env.DATABASE_URL || !haveTools)(
       expect(store.objects.has("db/README.txt")).toBe(true);
       expect(store.objects.has(summary.key)).toBe(true);
       expect(lines.join("\n")).not.toMatch(/postgres(ql)?:\/\//);
-      expect(summary.dataTables).toBeGreaterThanOrEqual(4);
+      expect(summary.dataTables).toBeGreaterThanOrEqual(6);
+      expect(summary.withoutData).toEqual(
+        expect.arrayContaining([
+          "Order",
+          "OrderItem",
+          "Tour",
+          "Stop",
+          "MonthlyPayment",
+          "AuditLog",
+        ]),
+      );
 
       // The dump is a real archive with data for the core tables and without login attempts.
       const dumpFile = path.join(process.cwd(), `.tmp-backup-${suffix}.dump`);
@@ -156,14 +183,22 @@ describe.skipIf(!process.env.DATABASE_URL || !haveTools)(
         const toc = await run("pg_restore", ["--list", dumpFile], {});
         const tables = tocDataTables(toc.stdout);
         expect(tables).toEqual(
-          expect.arrayContaining(["User", "Settings", "Customer", "_prisma_migrations"]),
+          expect.arrayContaining([
+            "User",
+            "Settings",
+            "Customer",
+            "StandingTour",
+            "StandingTourCustomer",
+            "_prisma_migrations",
+          ]),
         );
-        expect(tables).not.toContain("LoginAttempt");
+        for (const left of ["LoginAttempt", "Order", "MonthlyPayment", "AuditLog"])
+          expect(tables).not.toContain(left);
       } finally {
         fs.rmSync(dumpFile, { force: true });
       }
 
-      // Test restore into a new database: counts equal to the source (except LoginAttempt).
+      // Test restore into a new database: master data as in the source, everything else empty.
       const verify = await runRestoreVerify({
         targetUrl: urlFor(base, scratch),
         store,
@@ -176,7 +211,15 @@ describe.skipIf(!process.env.DATABASE_URL || !haveTools)(
       await src.connect();
       const original = await countRows(src);
       await src.end();
-      expect({ ...verify.rowCounts }).toEqual({ ...original, LoginAttempt: 0 });
+      expect(original).toMatchObject({ Order: 1, MonthlyPayment: 1, AuditLog: 1, LoginAttempt: 1 });
+      expect({ ...verify.rowCounts }).toEqual({
+        ...original,
+        LoginAttempt: 0,
+        Order: 0,
+        MonthlyPayment: 0,
+        AuditLog: 0,
+      });
+      expect(verify.rowCounts).toMatchObject({ Customer: 1, StandingTour: 1, User: 1 });
       const dst = new Client({ connectionString: urlFor(base, scratch) });
       await dst.connect();
       const user = await dst.query(`SELECT "displayName" FROM "User" WHERE id='u1'`);

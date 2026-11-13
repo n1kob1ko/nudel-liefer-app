@@ -23,6 +23,54 @@ export type BackupConfig = {
   keepNewest: number;
 };
 
+/**
+ * What a backup holds (NUD-200, decision of the owner): master data only - the settings, the
+ * people, the customers with their parking spots and photo records, the products, the vehicles,
+ * the standing tours and the standing (recurring) orders. The dump carries the complete schema,
+ * but ROWS only for these tables.
+ */
+export const BACKED_UP_TABLES = [
+  "_prisma_migrations",
+  "Settings",
+  "User",
+  "WorkSchedule",
+  "Vehicle",
+  "Product",
+  "Customer",
+  "ParkingSpot",
+  "Photo",
+  "StandingTour",
+  "StandingTourCustomer",
+  "RecurringOrder",
+  "RecurringOrderDayItem",
+  "RecurringOrderItem",
+] as const;
+
+/**
+ * What a backup never holds: orders, tours, stops, payments and invoices, order screenshots, the
+ * change history (it quotes orders and amounts) and login attempts (IP addresses). Listed so that
+ * a new model has to be put on one of the two lists (backup.test.ts); at run time every table that
+ * is not in BACKED_UP_TABLES is left out, classified or not.
+ */
+export const NOT_BACKED_UP_TABLES = [
+  "Order",
+  "OrderItem",
+  "Screenshot",
+  "Tour",
+  "Stop",
+  "StopMutation",
+  "StopOrder",
+  "MonthlyPayment",
+  "AuditLog",
+  "LoginAttempt",
+] as const;
+
+/** Of the tables that exist in the database: those whose rows stay out of the dump. */
+export function tablesWithoutData(existing: string[]): string[] {
+  const kept: readonly string[] = BACKED_UP_TABLES;
+  return existing.filter((table) => !kept.includes(table));
+}
+
 export const DEFAULT_RETENTION_WEEKS = 8;
 export const DEFAULT_KEEP_NEWEST = 4;
 

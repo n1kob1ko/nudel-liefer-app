@@ -1,8 +1,10 @@
 /**
  * Database backup (NUD-094, NUD-200): `pnpm backup:db`. Runs where the database is reachable: on
  * the production server, started every night by the systemd timer of deploy/backup/. Dumps the
- * database with pg_dump, checks the dump, copies it to a folder on the server (BACKUP_LOCAL_DIR)
- * and/or to an off-site bucket (BACKUP_S3_*) and prunes backups older than 8 weeks in each.
+ * MASTER DATA of the database with pg_dump (settings, users, customers, products, standing tours,
+ * standing orders - never orders, tours, payments or the change history; scripts/lib/backup.ts),
+ * checks the dump, stores it in a folder on the server (BACKUP_LOCAL_DIR) and, only if someone
+ * configures one, in a bucket (BACKUP_S3_*), and prunes backups older than 8 weeks in each.
  * Never prints connection strings or keys. Exit code 1 on any problem. See docs/runbook.md.
  */
 import { readBackupConfig, redactSecrets } from "../lib/backup";
@@ -42,8 +44,8 @@ async function main() {
     console.log(`[backup] ${d.name}: ${d.remaining} backups kept, ${d.pruned.length} pruned`);
   }
   if (!config.s3) {
-    console.warn(
-      "[backup] WARNING: no off-site copy (BACKUP_S3_* is not set). These backups are on the same machine as the database and are lost together with it.",
+    console.log(
+      "[backup] note: stored on this machine only (no BACKUP_S3_* bucket is configured); the backups are lost together with the server.",
     );
   }
 }

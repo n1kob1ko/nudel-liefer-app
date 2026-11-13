@@ -1,7 +1,6 @@
-# Starts nudel-backup.service every night (NUD-200). The GitHub workflow "Database backup check"
-# runs two hours later and fails when the newest off-site backup is older than two days.
+# Starts nudel-backup.service every night (NUD-200).
 [Unit]
-Description=Nudel Liefer App: nightly database backup
+Description=Nudel Liefer App: nightly backup of the master data
 
 [Timer]
 # 02:23 UTC = 03:23 / 04:23 in Vienna: nobody plans or drives at that time.

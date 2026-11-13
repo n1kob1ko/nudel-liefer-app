@@ -1,15 +1,21 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
+  BACKED_UP_TABLES,
   backupAgeHours,
   backupFileName,
   databaseIdentity,
+  NOT_BACKED_UP_TABLES,
   parseBackupTime,
   parseToolMajor,
   pgEnvFromUrl,
   readBackupConfig,
   redactSecrets,
   selectExpiredBackups,
+  tablesWithoutData,
 } from "./backup";
 
 const env = {
@@ -172,6 +178,59 @@ describe("backup names and retention", () => {
       keepNewest: 4,
     });
     expect(expired).toEqual([weekly(30)]);
+  });
+});
+
+describe("what a backup holds: master data only (NUD-200)", () => {
+  const models = [
+    ...readFileSync(path.join(process.cwd(), "prisma", "schema.prisma"), "utf8").matchAll(
+      /^model (\w+) \{/gm,
+    ),
+  ].map((m) => m[1]!);
+
+  it("keeps settings, people, customers, standing tours, products and standing orders", () => {
+    expect(tablesWithoutData([...models, "_prisma_migrations"]).sort()).toEqual(
+      [
+        "AuditLog",
+        "LoginAttempt",
+        "MonthlyPayment",
+        "Order",
+        "OrderItem",
+        "Screenshot",
+        "Stop",
+        "StopMutation",
+        "StopOrder",
+        "Tour",
+      ].sort(),
+    );
+  });
+
+  it("leaves out the data of a table nobody has classified yet", () => {
+    expect(tablesWithoutData(["User", "Settings", "SomethingNew"])).toEqual(["SomethingNew"]);
+  });
+
+  it("every model of the Prisma schema is classified, exactly once", () => {
+    // A new model must be put on one of the two lists on purpose: "is this kept in a backup?"
+    const classified = [...BACKED_UP_TABLES, ...NOT_BACKED_UP_TABLES];
+    expect(new Set(classified).size).toBe(classified.length);
+    expect([...classified].filter((t) => t !== "_prisma_migrations").sort()).toEqual(
+      [...models].sort(),
+    );
+  });
+
+  it("no kept table points at a table that is left out", () => {
+    // Otherwise the foreign key could not be created when a backup is restored.
+    const schema = readFileSync(path.join(process.cwd(), "prisma", "schema.prisma"), "utf8");
+    const broken: string[] = [];
+    for (const block of schema.split(/^model /m).slice(1)) {
+      const model = /^(\w+)/.exec(block)![1]!;
+      if (!(BACKED_UP_TABLES as readonly string[]).includes(model)) continue;
+      for (const m of block.matchAll(/^\s+\w+\s+(\w+)\??\s+@relation\([^)]*fields:/gm)) {
+        if ((NOT_BACKED_UP_TABLES as readonly string[]).includes(m[1]!))
+          broken.push(`${model} -> ${m[1]}`);
+      }
+    }
+    expect(broken).toEqual([]);
   });
 });
 

@@ -16,6 +16,7 @@ import {
   pgEnvFromUrl,
   redactSecrets,
   selectExpiredBackups,
+  tablesWithoutData,
 } from "../lib/backup";
 import type { BackupStore } from "./store";
 
@@ -84,6 +85,8 @@ export type BackupSummary = {
   bytes: number;
   sha256: string;
   dataTables: number;
+  /** Tables whose rows were left out on purpose (everything that is not master data). */
+  withoutData: string[];
   /** Per destination: the backups pruned by this run and how many it holds now. */
   destinations: Array<{ name: string; pruned: string[]; remaining: number }>;
 };
@@ -124,10 +127,15 @@ export async function runBackup(
     });
     await server.connect();
     let serverMajor: number;
+    let withoutData: string[];
     try {
       serverMajor = Math.floor(
         Number((await server.query("SHOW server_version_num")).rows[0].server_version_num) / 10000,
       );
+      const existing = await server.query<{ table_name: string }>(
+        `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY 1`,
+      );
+      withoutData = tablesWithoutData(existing.rows.map((r) => r.table_name));
     } finally {
       await server.end();
     }
@@ -138,8 +146,11 @@ export async function runBackup(
     }
     log(`server PostgreSQL ${serverMajor}, pg_dump ${clientMajor}`);
 
-    // 2. Dump. LoginAttempt rows (IP addresses) are not kept longer than 24 h anywhere, backups
-    //    included. No owner / privileges: a restore must work with any role.
+    // 2. Dump the whole schema, but rows of the master data only (NUD-200): orders, tours,
+    //    payments, the change history and login attempts never get into a backup. The list is
+    //    built from the tables that exist, so a table added later is left out until somebody
+    //    puts it on the list of kept tables. No owner / privileges: a restore must work with
+    //    any role.
     const dump = await run(
       "pg_dump",
       [
@@ -147,7 +158,7 @@ export async function runBackup(
         "--compress=6",
         "--no-owner",
         "--no-privileges",
-        '--exclude-table-data="LoginAttempt"',
+        ...withoutData.map((table) => `--exclude-table-data="${table.replace(/"/g, '""')}"`),
         `--file=${file}`,
       ],
       pgEnv,
@@ -169,10 +180,13 @@ export async function runBackup(
       if (!tables.includes(required))
         throw new Error(`dump has no data entry for table ${required}`);
     }
-    if (tables.includes("LoginAttempt"))
-      throw new Error("dump contains LoginAttempt data (must be excluded)");
+    const leaked = tablesWithoutData(tables);
+    if (leaked.length > 0)
+      throw new Error(`dump contains data that must be left out: ${leaked.join(", ")}`);
     const sha256 = await sha256File(file);
-    log(`dump ok: ${bytes} bytes, ${tables.length} tables with data`);
+    log(
+      `dump ok: ${bytes} bytes, ${tables.length} tables with data, ${withoutData.length} left out (${withoutData.join(", ")})`,
+    );
 
     // 4. Copy to every destination and check what arrived; 5. prune there (only names this
     //    script makes; the newest backups are always kept).
@@ -210,7 +224,7 @@ export async function runBackup(
       }
     }
     if (failures.length > 0) throw new Error(failures.join("; "));
-    return { key, bytes, sha256, dataTables: tables.length, destinations: done };
+    return { key, bytes, sha256, dataTables: tables.length, withoutData, destinations: done };
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
