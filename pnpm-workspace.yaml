@@ -14,6 +14,11 @@ allowBuilds:
   "@swc/core": false
 overrides:
   uuid: ">=11.1.1"
+  # `@serwist/build` 9.5.13 (the latest release) pins `zod` to exactly 4.6.5, which is affected by
+  # GHSA-mrhx-c7xc-m3w5 (memory exhaustion on oversized constrained collections, fixed in 4.6.6).
+  # Resolve it to the same range the app itself depends on (keep in step with `zod` in package.json).
+  # Remove this entry when a `@serwist/build` release depends on zod >= 4.6.6.
+  "@serwist/build>zod": "^4.6.7"
 # NUD-093: `braces` <= 3.0.3 (ReDoS on deeply nested patterns, GHSA-vfj7-8cjw-p6xm) has no patched
 # release. It is only reachable through dev tooling (eslint-config-next -> fast-glob), which globs
 # the repository's own files and never untrusted patterns. Not part of the production bundle
