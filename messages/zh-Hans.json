@@ -2051,6 +2051,41 @@
           "locked": "本月刚刚被标记为已付。如需修改，请先撤销已付标记。",
           "generic": "操作未成功，请重试。"
         }
+      },
+      "export": {
+        "pdf": "PDF",
+        "csv": "CSV",
+        "pdfLabel": "下载月度账单（PDF）",
+        "csvLabel": "下载月度账单（CSV，可用 Excel 打开）",
+        "allTitle": "导出给会计",
+        "allBody": "将某个月的全部月度账单导出为一个 CSV 文件（可用 Excel 打开），每个订单和每个调整项各占一行。",
+        "month": "月份",
+        "allCsv": "下载 CSV",
+        "kindOrder": "订单",
+        "kindAdjustment": "调整项",
+        "columns": {
+          "month": "月份",
+          "customerNumber": "客户编号",
+          "customer": "客户",
+          "date": "送货日",
+          "kind": "类型",
+          "description": "说明",
+          "amount": "金额（欧元）",
+          "status": "状态",
+          "paidOn": "付款日期"
+        },
+        "document": {
+          "title": "月度账单",
+          "customerNumber": "客户编号 {number}",
+          "vatId": "增值税号 {vatId}",
+          "open": "未结",
+          "current": "本月尚未结束，此清单为暂定。",
+          "paidOn": "已于 {date} 付款",
+          "note": "备注：{note}",
+          "noAmountNotice": "{count, plural, other {# 个无金额的订单}}未计入合计。",
+          "empty": "本月没有月度账单订单。",
+          "page": "第 {page} 页，共 {pages} 页"
+        }
       }
     }
   },

@@ -5,13 +5,14 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { BillDownloadButtons } from "@/components/admin/bill-export";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "@/i18n/navigation";
 import { markMonthlyBillPaidAction, unmarkMonthlyBillPaidAction } from "@/server/payment-actions";
 
 /**
- * "Mark that month as paid" / take it back / print (D33, NUD-196). The office decides; the server
+ * "Mark that month as paid" / take it back / print or download (D33, NUD-196, NUD-198). The office decides; the server
  * snapshots the total and the number of orders so a later order edit cannot silently change what
  * was paid.
  */
@@ -61,6 +62,22 @@ export function MonthlyBillActions({
     });
   }
 
+  // The bill on paper or as a file: print, PDF, CSV. The same three in both states.
+  const files = (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => window.print()}
+        data-testid="monthly-print"
+      >
+        <PrinterIcon aria-hidden />
+        {t("print")}
+      </Button>
+      <BillDownloadButtons customerId={customerId} month={month} />
+    </>
+  );
+
   return (
     <div className="flex flex-col gap-3" data-testid="monthly-actions">
       {paid ? (
@@ -75,15 +92,7 @@ export function MonthlyBillActions({
             <Undo2Icon aria-hidden />
             {t("unmark")}
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => window.print()}
-            data-testid="monthly-print"
-          >
-            <PrinterIcon aria-hidden />
-            {t("print")}
-          </Button>
+          {files}
         </div>
       ) : (
         <div className="flex flex-wrap items-end gap-2">
@@ -104,15 +113,7 @@ export function MonthlyBillActions({
             <CheckIcon aria-hidden />
             {pending ? t("marking") : t("mark")}
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => window.print()}
-            data-testid="monthly-print"
-          >
-            <PrinterIcon aria-hidden />
-            {t("print")}
-          </Button>
+          {files}
         </div>
       )}
       {error ? (

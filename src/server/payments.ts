@@ -283,7 +283,20 @@ export type MonthlyBillAdjustment = {
 };
 
 export type MonthlyBill = {
-  customer: { id: string; customerNumber: string; name: string; city: string };
+  customer: {
+    id: string;
+    customerNumber: string;
+    name: string;
+    street: string;
+    postalCode: string;
+    city: string;
+    /** Legal entity, VAT id and billing address, when the office filled them in (NUD-198). */
+    companyName: string | null;
+    vatId: string | null;
+    billingStreet: string | null;
+    billingPostalCode: string | null;
+    billingCity: string | null;
+  };
   /** `YYYY-MM-DD` of the first day. */
   periodStart: string;
   monthKey: string;
@@ -322,7 +335,19 @@ export async function monthlyBillQuery(
   if (!customerId.success || !period) return null;
   const customer = await db.customer.findUnique({
     where: { id: customerId.data },
-    select: { id: true, customerNumber: true, name: true, city: true },
+    select: {
+      id: true,
+      customerNumber: true,
+      name: true,
+      street: true,
+      postalCode: true,
+      city: true,
+      companyName: true,
+      vatId: true,
+      billingStreet: true,
+      billingPostalCode: true,
+      billingCity: true,
+    },
   });
   if (!customer) return null;
 

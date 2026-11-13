@@ -2051,6 +2051,41 @@
           "locked": "Der Monat wurde inzwischen als bezahlt markiert. Zum Ändern zuerst die Bezahlt-Markierung zurücknehmen.",
           "generic": "Das hat nicht geklappt. Bitte erneut versuchen."
         }
+      },
+      "export": {
+        "pdf": "PDF",
+        "csv": "CSV",
+        "pdfLabel": "Monatsrechnung als PDF herunterladen",
+        "csvLabel": "Monatsrechnung als CSV für Excel herunterladen",
+        "allTitle": "Export für die Buchhaltung",
+        "allBody": "Alle Monatsrechnungen eines Monats in einer CSV-Datei für Excel, mit einer Zeile je Bestellung und je Korrektur.",
+        "month": "Monat",
+        "allCsv": "CSV herunterladen",
+        "kindOrder": "Bestellung",
+        "kindAdjustment": "Korrektur",
+        "columns": {
+          "month": "Monat",
+          "customerNumber": "Kundennummer",
+          "customer": "Kunde",
+          "date": "Liefertag",
+          "kind": "Art",
+          "description": "Beschreibung",
+          "amount": "Betrag (EUR)",
+          "status": "Status",
+          "paidOn": "Bezahlt am"
+        },
+        "document": {
+          "title": "Monatsrechnung",
+          "customerNumber": "Kundennummer {number}",
+          "vatId": "UID {vatId}",
+          "open": "Offen",
+          "current": "Der Monat läuft noch, die Aufstellung ist vorläufig.",
+          "paidOn": "Bezahlt am {date}",
+          "note": "Notiz: {note}",
+          "noAmountNotice": "{count, plural, one {# Bestellung ohne Betrag ist} other {# Bestellungen ohne Betrag sind}} in der Summe nicht enthalten.",
+          "empty": "Keine Bestellungen auf Monatsrechnung in diesem Monat.",
+          "page": "Seite {page} von {pages}"
+        }
       }
     }
   },

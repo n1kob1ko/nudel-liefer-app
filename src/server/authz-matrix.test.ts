@@ -426,6 +426,14 @@ const MATRIX: Record<string, Row> = {
         post("/api/admin/customers/import/parse"),
       ),
   },
+  "src/app/api/admin/payments/export/route.ts#GET": {
+    note: "monthly bill as PDF or CSV",
+    expect: ADMIN_ONLY,
+    call: async () =>
+      (await import("@/app/api/admin/payments/export/route")).GET(
+        get("/api/admin/payments/export?month=2099-05"),
+      ),
+  },
   "src/app/api/driver/tour/today/route.ts#GET": {
     note: "offline copy of the driver's tour",
     expect: DRIVER_ONLY,

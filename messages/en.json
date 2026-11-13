@@ -2051,6 +2051,41 @@
           "locked": "The month has been marked paid in the meantime. To change it, take the paid note back first.",
           "generic": "That did not work. Please try again."
         }
+      },
+      "export": {
+        "pdf": "PDF",
+        "csv": "CSV",
+        "pdfLabel": "Download the monthly bill as a PDF",
+        "csvLabel": "Download the monthly bill as a CSV file for Excel",
+        "allTitle": "Export for the accounting",
+        "allBody": "All monthly bills of one month in one CSV file for Excel, with one line per order and per correction.",
+        "month": "Month",
+        "allCsv": "Download CSV",
+        "kindOrder": "Order",
+        "kindAdjustment": "Correction",
+        "columns": {
+          "month": "Month",
+          "customerNumber": "Customer number",
+          "customer": "Customer",
+          "date": "Delivery day",
+          "kind": "Kind",
+          "description": "Description",
+          "amount": "Amount (EUR)",
+          "status": "Status",
+          "paidOn": "Paid on"
+        },
+        "document": {
+          "title": "Monthly bill",
+          "customerNumber": "Customer number {number}",
+          "vatId": "VAT ID {vatId}",
+          "open": "Open",
+          "current": "The month is still running, this statement is preliminary.",
+          "paidOn": "Paid on {date}",
+          "note": "Note: {note}",
+          "noAmountNotice": "{count, plural, one {# order without an amount is} other {# orders without an amount are}} not included in the total.",
+          "empty": "No orders on a monthly bill in this month.",
+          "page": "Page {page} of {pages}"
+        }
       }
     }
   },

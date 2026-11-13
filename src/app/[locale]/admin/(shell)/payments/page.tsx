@@ -1,7 +1,8 @@
-import { ArrowRightIcon, BanknoteIcon, ReceiptTextIcon } from "lucide-react";
+import { ArrowRightIcon, BanknoteIcon, FileSpreadsheetIcon, ReceiptTextIcon } from "lucide-react";
 import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense } from "react";
 
+import { MonthExportForm } from "@/components/admin/bill-export";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState, LoadingSkeleton } from "@/components/shared/states";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { parseCalendarDate } from "@/domain/order";
+import { addMonths, monthKey, monthStart } from "@/domain/payment";
 import { Link } from "@/i18n/navigation";
 import { createAppFormatters } from "@/lib/format";
 import { requirePageActor } from "@/server/auth/page-guards";
@@ -43,6 +45,14 @@ async function Guarded({ locale }: { locale: string }) {
   const paidMonthly = monthly.filter((row) => row.state === "paid").slice(0, 20);
   const cashTotal = cash.reduce((sum, row) => sum + (row.dueCents - (row.collectedCents ?? 0)), 0);
   const monthlyTotal = openMonthly.reduce((sum, row) => sum + row.amountCents, 0);
+  // Months offered for the accounting export: the running month and the twelve before it.
+  const exportMonths = Array.from({ length: 13 }, (_, index) => {
+    const period = addMonths(monthStart(today), -index);
+    return {
+      value: monthKey(period),
+      label: formatter.dateTime(period, { month: "long", year: "numeric", timeZone: "UTC" }),
+    };
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -220,6 +230,19 @@ async function Guarded({ locale }: { locale: string }) {
               </Table>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card data-testid="month-export">
+        <CardHeader>
+          <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+            <FileSpreadsheetIcon className="size-5" aria-hidden />
+            {t("export.allTitle")}
+          </h2>
+          <CardDescription>{t("export.allBody")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <MonthExportForm months={exportMonths} defaultMonth={exportMonths[1]?.value} />
         </CardContent>
       </Card>
 

@@ -356,7 +356,7 @@ Read rule: `pick(text, locale)` returns the requested locale; if empty, the clos
 | NUD-195 | Fahrer: „Geliefert" direkt auf der Karte des nächsten Stopps | M2.7 | – | done |
 | NUD-196 | Zahlungen: Bar bei Lieferung oder Monatsrechnung, kassierter Betrag, Monatsrechnung mit Bezahlt-Vermerk | M2.7 | 033 | done |
 | NUD-197 | Monatsrechnung: Korrekturzeile (Rabatt, Gutschrift, Zuschlag) | M2.8 | 196 | done |
-| NUD-198 | Monatsrechnung: Export als PDF und CSV für die Buchhaltung | M2.8 | 197 | todo |
+| NUD-198 | Monatsrechnung: Export als PDF und CSV für die Buchhaltung | M2.8 | 197 | done |
 | NUD-199 | Zahlungen: Bezahlt-Historie als eigene Seite | M2.8 | 196 | todo |
 | NUD-100 | AI screenshot extraction (review required) | M3 | 031 | superseded → NUD-150 |
 | NUD-101 | Recurring / standing orders | M3 | 032 | superseded → NUD-149 |
@@ -3889,16 +3889,23 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 - Tests: `payment.test.ts` (Summenformel), `monthly-adjustments.integration.test.ts` (12 Fälle: Summe, Monat/Kunde, Validierung, Liste, Snapshot, Sperre, Soft delete, Audit), `monthly-bill-adjustments.test.tsx` (8 Fälle), Autorisierungs-Matrix, `format.test.ts`.
 
 #### NUD-198 · Monatsrechnung: Export als PDF und CSV für die Buchhaltung
-**Status:** todo · **depends_on:** 197 · Quelle: Übergabe-Protokoll 7.2.
+**Status:** done · **depends_on:** 197 · Quelle: Übergabe-Protokoll 7.2.
 
 **Goal:** Die Monatsrechnung eines Kunden lässt sich als Datei herunterladen: als PDF (dasselbe wie die Druckansicht, aber als fertige Datei) und als CSV (für Excel und die Buchhaltung). Dazu eine CSV mit allen Kunden eines Monats, damit die Buchhaltung nicht jede Rechnung einzeln holen muss.
 
 **Acceptance criteria**
-- [ ] `GET /api/admin/payments/export?month=YYYY-MM&customer=<id>&format=pdf|csv&locale=<de|en|zh-Hans>`: nur ADMIN (401/403 sonst), `Cache-Control: private, no-store`, `Content-Disposition: attachment` mit Dateiname `monatsrechnung-<Kundennummer>-<YYYY-MM>.<pdf|csv>`. Ohne `customer` nur CSV: alle Kunden mit Bestellungen auf Monatsrechnung in diesem Monat (`monatsrechnungen-<YYYY-MM>.csv`). Ungültige Parameter → 400, unbekannter Kunde → 404.
-- [ ] CSV: eine Zeile je Bestellung und je Korrektur mit Monat, Kundennummer, Kunde, Datum, Art, Beschreibung, Betrag, Status des Monats und Bezahlt-Datum. UTF-8 mit BOM, CRLF. Format nach Sprache: `de` → Trenner `;`, `42,50`, `31.10.2026` (deutsches Excel); `en` und `zh-Hans` → Trenner `,`, `42.50`, `2026-10-31`. Bestellung ohne Betrag → leere Zelle. Textzellen, die mit `=`, `+`, `-`, `@` beginnen, bekommen ein `'` davor (CSV-Injection).
-- [ ] PDF (A4): Absender (Depot aus den Einstellungen), Empfänger (Firma oder Name, Rechnungsadresse falls gepflegt, UID), Monat, Tabelle Datum / Produkte / Betrag, Zwischensumme, Korrekturen, Summe, Status (offen oder „Bezahlt am …"), Hinweis auf Bestellungen ohne Betrag, Seitenzahlen; lange Monate brechen sauber auf Folgeseiten um.
-- [ ] Monatsseite: „PDF" und „CSV" neben „Drucken". Zahlungsseite: Monat wählen und „Alle Kunden als CSV".
-- [ ] Zeile in der Autorisierungs-Matrix; keine neuen Umgebungsvariablen.
+- [x] `GET /api/admin/payments/export?month=YYYY-MM&customer=<id>&format=pdf|csv&locale=<de|en|zh-Hans>`: nur ADMIN (401/403 sonst), `Cache-Control: private, no-store`, `Content-Disposition: attachment` mit Dateiname `monatsrechnung-<Kundennummer>-<YYYY-MM>.<pdf|csv>`. Ohne `customer` nur CSV: alle Kunden mit Bestellungen auf Monatsrechnung in diesem Monat (`monatsrechnungen-<YYYY-MM>.csv`). Ungültige Parameter → 400, unbekannter Kunde → 404.
+- [x] CSV: eine Zeile je Bestellung und je Korrektur mit Monat, Kundennummer, Kunde, Datum, Art, Beschreibung, Betrag, Status des Monats und Bezahlt-Datum. UTF-8 mit BOM, CRLF. Format nach Sprache: `de` → Trenner `;`, `42,50`, `31.10.2026` (deutsches Excel); `en` und `zh-Hans` → Trenner `,`, `42.50`, `2026-10-31`. Bestellung ohne Betrag → leere Zelle. Textzellen, die mit `=`, `+`, `-`, `@` beginnen, bekommen ein `'` davor (CSV-Injection).
+- [x] PDF (A4): Absender (Depot aus den Einstellungen), Empfänger (Firma oder Name, Rechnungsadresse falls gepflegt, UID), Monat, Tabelle Datum / Produkte / Betrag, Zwischensumme, Korrekturen, Summe, Status (offen oder „Bezahlt am …"), Hinweis auf Bestellungen ohne Betrag, Seitenzahlen; lange Monate brechen sauber auf Folgeseiten um.
+- [x] Monatsseite: „PDF" und „CSV" neben „Drucken". Zahlungsseite: Monat wählen und „Alle Kunden als CSV".
+- [x] Zeile in der Autorisierungs-Matrix; keine neuen Umgebungsvariablen.
+
+**Implementation notes**
+- Aufbau in drei Schichten, jede für sich getestet: `src/domain/bill-export.ts` (CSV-Text, Dateiname, Download-Adresse), `src/domain/bill-pdf-layout.ts` (Seitenaufbau als Zeichenanweisungen, ohne PDF-Bibliothek), `src/server/bill-pdf.ts` (malt die Anweisungen mit `pdf-lib`). `src/server/bill-export.ts` holt die Daten (dieselbe Abfrage wie die Monatsseite) und `src/server/bill-export-api.ts` ist der Route-Handler mit `requireRole("ADMIN")`.
+- Schrift im PDF: DejaVu Sans aus `assets/fonts` (freie Lizenz liegt daneben), als Teilmenge eingebettet. Die Dateien werden zur Laufzeit aus dem Projektordner gelesen; der Ordner `assets/` muss also mit auf den Server (das Deploy packt den ganzen Projektordner).
+- Neue Abhängigkeiten: `pdf-lib`, `@pdf-lib/fontkit`. Keine neuen Umgebungsvariablen, keine Migration.
+- Die Datei ist eine Aufstellung für Büro und Kunde, keine Rechnung im Sinn des Umsatzsteuergesetzes: sie hat keine Rechnungsnummer und weist keine Umsatzsteuer aus. Ob das gebraucht wird, ist eine offene Frage an den Kunden.
+- Der Download wird nicht ins Audit-Log geschrieben (wie das Ansehen der Monatsseite auch nicht).
 
 #### NUD-199 · Zahlungen: Bezahlt-Historie als eigene Seite
 **Status:** todo · **depends_on:** 196 · Quelle: Übergabe-Protokoll 7.2.
@@ -4362,6 +4369,10 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 | 2026-11-02 | NUD-196 | „Bezahlt" einer Monatsrechnung ist ein Snapshot (Summe + Anzahl Bestellungen) mit `voidedAt` statt Löschen; ein Monat ist erst nach seinem Ende markierbar | Bestellungen können später noch geändert werden; die Historie bleibt im Audit-Log, und der laufende Monat ist noch nicht abzurechnen |
 | 2026-11-13 | NUD-197 | Korrekturen sind feste Euro-Beträge mit Text, keine Prozent-Rabatte | Es gibt keine Katalogpreise (D33); ein Prozentsatz würde sich mit jeder nachträglich geänderten Bestellung verschieben, ein fester Betrag bleibt, was vereinbart wurde |
 | 2026-11-13 | NUD-197 | Korrekturen sind gesperrt, solange der Monat als bezahlt markiert ist | Der Bezahlt-Vermerk ist ein Snapshot der Summe; eine spätere Korrektur würde ihn still falsch machen. Zurücknehmen, korrigieren, neu markieren hält die Historie ehrlich |
+| 2026-11-13 | NUD-198 | CSV richtet sich nach der Sprache des Bildschirms: `de` mit `;`, `42,50` und `31.10.2026`, sonst `,`, `42.50` und ISO-Datum | Eine CSV trägt kein Format in sich, Excel rät nach der Sprache des Rechners; so öffnet ein Doppelklick die Datei richtig |
+| 2026-11-13 | NUD-198 | PDF wird auf Deutsch oder Englisch geschrieben, für `zh-Hans` auf Deutsch | Die eingebettete Schrift (DejaVu Sans) hat keine chinesischen Zeichen; eine CJK-Schrift wären mehrere MB je Datei, und der Empfänger der Rechnung liest Deutsch |
+| 2026-11-13 | NUD-198 | PDF mit `pdf-lib` auf dem Server gezeichnet statt über einen Browser gedruckt | Kein Chromium auf dem Server nötig, gleiche Datei für alle, in Tests prüfbar |
+| 2026-11-13 | NUD-198 | Export ist eine Aufstellung ohne Rechnungsnummer und Umsatzsteuer | Die App kennt weder Steuersätze noch Nummernkreise; eine echte Rechnung braucht eine fachliche Entscheidung des Kunden |
 
 ## 10. Open questions for the client (do not block on these – use placeholders)
 
