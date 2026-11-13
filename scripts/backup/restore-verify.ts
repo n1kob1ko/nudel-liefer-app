@@ -1,5 +1,5 @@
 /**
- * Test restore (NUD-094, NUD-197):
+ * Test restore (NUD-094, NUD-200):
  * `pnpm backup:verify [--key <object key>] [--file <local dump>] [--max-age-hours <n>]`.
  * Restores a backup (default: the newest in the backup bucket, without a bucket the newest in
  * BACKUP_LOCAL_DIR; or a local file) into an EMPTY scratch database and checks the data. With

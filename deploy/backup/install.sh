@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installs the nightly database backup on the production server (NUD-197). Run as root ON THE
+# Installs the nightly database backup on the production server (NUD-200). Run as root ON THE
 # SERVER, from the deployed app:
 #
 #   bash /opt/delivery-app/deploy/backup/install.sh
@@ -31,7 +31,7 @@ id "$APP_USER" >/dev/null 2>&1 || die "the user $APP_USER does not exist: is thi
 [ -f "$APP_ENV" ] || die "$APP_ENV is missing: is this the app server?"
 [ -f "$APP_DIR/scripts/backup/pg-backup.ts" ] || die "$APP_DIR/scripts/backup/pg-backup.ts is missing: deploy the app first"
 grep -q "BACKUP_LOCAL_DIR" "$APP_DIR/scripts/lib/backup.ts" \
-  || die "the app in $APP_DIR is older than NUD-197 (no BACKUP_LOCAL_DIR): deploy the current version first"
+  || die "the app in $APP_DIR is older than NUD-200 (no BACKUP_LOCAL_DIR): deploy the current version first"
 [ -f "$APP_DIR/node_modules/tsx/dist/cli.mjs" ] || die "$APP_DIR/node_modules/tsx is missing: run 'pnpm install --frozen-lockfile' in $APP_DIR (docs/deploy.md 13.0)"
 [ -x /usr/bin/node ] || die "/usr/bin/node is missing"
 command -v pg_dump >/dev/null || die "pg_dump is missing: apt install postgresql-client"
@@ -46,7 +46,7 @@ if [ -e "$BACKUP_ENV" ]; then
   echo "exists, left as it is"
 else
   ( umask 077; cat > "$BACKUP_ENV" <<'ENV'
-# Off-site copy of the nightly database backup (NUD-197). Read by nudel-backup.service only.
+# Off-site copy of the nightly database backup (NUD-200). Read by nudel-backup.service only.
 # Without these four lines the backups exist only on this server, in /var/backups/nudel/db.
 # Fill them in (no quotes, no spaces around "="), remove the "#", then run:
 #   systemctl start nudel-backup && journalctl -u nudel-backup -n 20 --no-pager

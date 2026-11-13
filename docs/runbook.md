@@ -42,7 +42,7 @@ Use for "someone deleted data / a migration went wrong a few hours or days ago".
 
 ## 5. Restore from the nightly backup
 
-Backups are custom-format dumps `nudel-<UTC timestamp>.dump`, made every night at 02:23 UTC **on the production server** by the systemd timer `nudel-backup.timer` (`deploy/backup/`, NUD-197). Each run writes the dump to `/var/backups/nudel/db/` on the server and, when `/etc/nudel-backup.env` holds the `BACKUP_S3_*` keys, copies it to the off-site bucket `nudel-backups` under `db/`. Both places keep 8 weeks (the newest 4 never expire). The dumps hold the database only, not photos. Setup: `deploy.md` section 13.1.
+Backups are custom-format dumps `nudel-<UTC timestamp>.dump`, made every night at 02:23 UTC **on the production server** by the systemd timer `nudel-backup.timer` (`deploy/backup/`, NUD-200). Each run writes the dump to `/var/backups/nudel/db/` on the server and, when `/etc/nudel-backup.env` holds the `BACKUP_S3_*` keys, copies it to the off-site bucket `nudel-backups` under `db/`. Both places keep 8 weeks (the newest 4 never expire). The dumps hold the database only, not photos. Setup: `deploy.md` section 13.1.
 
 ### 5.1 Take a backup now
 

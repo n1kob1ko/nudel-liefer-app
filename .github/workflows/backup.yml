@@ -1,4 +1,4 @@
-# Daily check of the off-site database backup (NUD-094, NUD-197).
+# Daily check of the off-site database backup (NUD-094, NUD-200).
 #
 # The backup itself does NOT run here. The production database listens on 127.0.0.1 of the
 # dedicated server, so a GitHub runner cannot reach it: `pnpm backup:db` runs on the server every

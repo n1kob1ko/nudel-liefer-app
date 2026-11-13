@@ -1,5 +1,5 @@
 /**
- * Database backup (NUD-094, NUD-197): `pnpm backup:db`. Runs where the database is reachable: on
+ * Database backup (NUD-094, NUD-200): `pnpm backup:db`. Runs where the database is reachable: on
  * the production server, started every night by the systemd timer of deploy/backup/. Dumps the
  * database with pg_dump, checks the dump, copies it to a folder on the server (BACKUP_LOCAL_DIR)
  * and/or to an off-site bucket (BACKUP_S3_*) and prunes backups older than 8 weeks in each.

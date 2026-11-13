@@ -1,4 +1,4 @@
-# Nightly database backup of the Nudel Liefer App (NUD-197). Installed by deploy/backup/install.sh
+# Nightly database backup of the Nudel Liefer App (NUD-200). Installed by deploy/backup/install.sh
 # together with nudel-backup.timer; kept in the repo so that a new server gets the same job.
 #
 # Runs `pnpm backup:db` (scripts/backup/pg-backup.ts) as the app user, next to the database:

@@ -80,7 +80,7 @@ call is answered with 401).
 - The run is not written to the audit log (no user action); the counts are in the cron response and
   the Vercel function log.
 
-### Backups (NUD-094, NUD-197)
+### Backups (NUD-094, NUD-200)
 
 A job on the production server (`nudel-backup.timer`, `deploy/backup/`) copies the whole database
 every night into the folder `/var/backups/nudel/db/` on that server (readable by the app user and

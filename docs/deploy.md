@@ -364,7 +364,7 @@ What to know:
 
 `GET https://<production-url>/api/health` answers 200 when database and storage work and 503 otherwise (section 9). Point an external monitor at it: e.g. UptimeRobot (free plan, 5-minute interval) or Better Stack, alert by e-mail/SMS after 2 failed checks. Optionally add the keyword `"status":"ok"` as the expected content. Vercel's own status page and Neon's/Cloudflare's status pages are linked in `runbook.md` section 9.
 
-## 13. Backups (NUD-094, NUD-197)
+## 13. Backups (NUD-094, NUD-200)
 
 The production database is PostgreSQL on `127.0.0.1` of the dedicated server, so the backup runs **on the server**: a systemd timer starts `pnpm backup:db` every night at 02:23 UTC. GitHub cannot reach the database; its workflow only checks the off-site copy. (Until 2026-11-13 the workflow tried to take the dump itself, which needed a database reachable from the internet - the Neon setup of sections 2-9. It never produced a backup.)
 
@@ -380,7 +380,7 @@ Photos and screenshots are objects in the photo bucket (MinIO on the same server
 
 ### 13.1 One-time setup (human)
 
-1. **Backup on the server** (works without any account). As root on the server, after the app with NUD-197 is deployed (section 13.0):
+1. **Backup on the server** (works without any account). As root on the server, after the app with NUD-200 is deployed (section 13.0):
 
    ```bash
    bash /opt/delivery-app/deploy/backup/install.sh

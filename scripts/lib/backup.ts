@@ -1,5 +1,5 @@
 /**
- * Pure helpers of the database backup (NUD-094, NUD-197): configuration, object names, retention
+ * Pure helpers of the database backup (NUD-094, NUD-200): configuration, object names, retention
  * and the PG* environment for the child processes. No I/O here, so everything is unit-tested.
  */
 
