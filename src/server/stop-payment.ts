@@ -157,3 +157,83 @@ export async function applyDriverPayment(
     throw error;
   }
 }
+
+/**
+ * The office settles open cash itself (NUD-209): the driver handed the money in but did not type it
+ * into the app, or the customer paid later at the factory. Same columns and the same audit action as
+ * the driver's entry, with `via: "office"`; the amount is the stop's total taken, not a top-up.
+ * Without this an open cash row could never leave "Offen in bar".
+ *
+ * No `StopMutation` row: that table is the driver's offline queue. Setting the same amount twice is
+ * harmless, so no idempotency key is needed.
+ */
+const officeSchema = z.strictObject({
+  stopId: z.string().min(1).max(64),
+  collectedCents: z.number().int().min(0).max(MAX_AMOUNT_CENTS),
+});
+
+export type OfficeCashError =
+  "invalid" | "forbidden" | "not_found" | "not_completed" | "tour_not_active";
+
+export type OfficeCashResult =
+  { ok: true; stopId: string; collectedCents: number } | { ok: false; error: OfficeCashError };
+
+export async function applyOfficeCashReceipt(
+  db: Pick<PrismaClient, "stop" | "auditLog" | "$transaction">,
+  actor: Pick<Actor, "id" | "role">,
+  rawInput: unknown,
+  now: Date = new Date(),
+): Promise<OfficeCashResult> {
+  if (actor.role !== "ADMIN") return { ok: false, error: "forbidden" };
+  const parsed = officeSchema.safeParse(rawInput);
+  if (!parsed.success) return { ok: false, error: "invalid" };
+  const input = parsed.data;
+
+  return db.$transaction(async (tx): Promise<OfficeCashResult> => {
+    const stop = await tx.stop.findUnique({
+      where: { id: input.stopId },
+      select: {
+        id: true,
+        status: true,
+        customerId: true,
+        collectedCents: true,
+        tour: { select: { id: true, status: true } },
+        orders: {
+          select: { order: { select: { status: true, paymentTerm: true, amountCents: true } } },
+        },
+      },
+    });
+    if (!stop) return { ok: false, error: "not_found" };
+    if (stop.tour.status === "DRAFT" || stop.tour.status === "OPTIMIZED") {
+      return { ok: false, error: "tour_not_active" };
+    }
+    if (stop.status !== "DELIVERED") return { ok: false, error: "not_completed" };
+
+    const dueCents = cashDueCents(
+      stop.orders
+        .map((link) => link.order)
+        .filter((order) => order.status === "CONFIRMED")
+        .map((order) => ({ paymentTerm: order.paymentTerm, amountCents: order.amountCents })),
+    );
+    await tx.stop.update({
+      where: { id: stop.id },
+      data: { collectedCents: input.collectedCents, collectedAt: now, collectedById: actor.id },
+      select: { id: true },
+    });
+    await recordAudit(tx, {
+      actorId: actor.id,
+      entity: "Stop",
+      entityId: stop.id,
+      action: "stop.payment",
+      diff: {
+        tourId: stop.tour.id,
+        customerId: stop.customerId,
+        from: stop.collectedCents,
+        to: input.collectedCents,
+        dueCents,
+        via: "office",
+      },
+    });
+    return { ok: true, stopId: stop.id, collectedCents: input.collectedCents };
+  });
+}

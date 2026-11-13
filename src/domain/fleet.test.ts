@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  attachToNearestGroup,
   computeTripSchedule,
   groupByTrip,
   groupChainsByDriver,
@@ -10,6 +11,7 @@ import {
   pickStopsWithinLimit,
   RELOAD_SECONDS,
   splitByCapacity,
+  splitByStandingTours,
   sweepOrder,
   tripLoadsKg,
   tripPausesS,
@@ -335,5 +337,55 @@ describe("vehicle switch between trips (NUD-158)", () => {
       pausesS: [VEHICLE_SWITCH_SECONDS],
     });
     expect(schedule.totalDurationS).toBe(400 + VEHICLE_SWITCH_SECONDS);
+  });
+});
+
+describe("splitByStandingTours (NUD-209)", () => {
+  const stops = ["a", "b", "c", "d", "e"].map((id) => ({ id }));
+
+  it("gives each available standing driver his customers and leaves the rest loose", () => {
+    const result = splitByStandingTours(
+      stops,
+      [
+        { driverId: "anna", customerIds: ["c", "a"] },
+        { driverId: "bruno", customerIds: ["b"] },
+        { driverId: "cem", customerIds: ["d"] },
+        { driverId: null, customerIds: ["e"] },
+      ],
+      ["bruno", "anna"],
+    );
+    expect(result.groups).toEqual([
+      { driverId: "bruno", stops: [{ id: "b" }] },
+      { driverId: "anna", stops: [{ id: "a" }, { id: "c" }] },
+    ]);
+    // Cem is not working today and "e" has no driver: both are planned freely.
+    expect(result.loose).toEqual([{ id: "d" }, { id: "e" }]);
+  });
+
+  it("merges two standing tours of one driver; a customer in two belongs to the first available", () => {
+    const result = splitByStandingTours(
+      stops.slice(0, 3),
+      [
+        { driverId: "cem", customerIds: ["a"] },
+        { driverId: "anna", customerIds: ["a", "b"] },
+        { driverId: "anna", customerIds: ["c"] },
+      ],
+      ["anna"],
+    );
+    expect(result).toEqual({
+      groups: [{ driverId: "anna", stops: [{ id: "a" }, { id: "b" }, { id: "c" }] }],
+      loose: [],
+    });
+  });
+});
+
+describe("attachToNearestGroup (NUD-209)", () => {
+  it("adds each loose stop to the group with the nearest stop", () => {
+    const at = (id: string, lat: number) => ({ id, location: { lat, lng: 16 } });
+    const north = { stops: [at("n1", 48.3)] };
+    const south = { stops: [at("s1", 48.1)] };
+    attachToNearestGroup([north, south], [at("x", 48.28), at("y", 48.12)]);
+    expect(north.stops.map((s) => s.id)).toEqual(["n1", "x"]);
+    expect(south.stops.map((s) => s.id)).toEqual(["s1", "y"]);
   });
 });

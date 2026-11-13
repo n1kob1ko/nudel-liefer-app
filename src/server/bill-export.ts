@@ -19,7 +19,13 @@ import {
 import { ADMIN_LOCALES, type AppLocale, localizedTextSchema, pick } from "@/lib/localized-text";
 
 import { renderBillPdf } from "./bill-pdf";
-import { idSchema, type MonthlyBill, monthlyBillQuery, type PaymentsDb } from "./payments";
+import {
+  BILLED_MONTHLY_ORDER,
+  idSchema,
+  type MonthlyBill,
+  monthlyBillQuery,
+  type PaymentsDb,
+} from "./payments";
 
 /**
  * The monthly bill as a file (NUD-198): one customer's month as PDF or CSV, or every customer of a
@@ -298,8 +304,7 @@ async function allCustomersRows(
   const [orders, adjustments, payments] = await Promise.all([
     db.order.findMany({
       where: {
-        status: "CONFIRMED",
-        paymentTerm: "MONTHLY",
+        ...BILLED_MONTHLY_ORDER,
         deliveryDate: { gte: period, lt: nextMonthStart(period) },
       },
       orderBy: [{ deliveryDate: "asc" }, { createdAt: "asc" }, { id: "asc" }],
