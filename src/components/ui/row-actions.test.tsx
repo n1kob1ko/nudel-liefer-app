@@ -1,8 +1,9 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { PencilIcon } from "lucide-react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DropdownMenuItem } from "./dropdown-menu";
-import { RowActions } from "./row-actions";
+import { RowActions, RowButton, RowButtons } from "./row-actions";
 
 describe("RowActions", () => {
   afterEach(cleanup);
@@ -33,5 +34,41 @@ describe("RowActions", () => {
     const item = screen.getByRole("menuitem", { name: "Bearbeiten" });
     fireEvent.click(item);
     expect(onSelect).toHaveBeenCalled();
+  });
+});
+
+describe("RowButtons", () => {
+  afterEach(cleanup);
+
+  it("shows each action as a button with its word, no menu to open", () => {
+    const onClick = vi.fn();
+    render(
+      <RowButtons>
+        <RowButton icon={PencilIcon} label="Bearbeiten" onClick={onClick} />
+      </RowButtons>,
+    );
+    const button = screen.getByRole("button", { name: "Bearbeiten" });
+    expect(button).toHaveTextContent("Bearbeiten");
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    fireEvent.click(button);
+    expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  it("adds the subject of the row to the accessible name", () => {
+    render(
+      <RowButtons>
+        <RowButton icon={PencilIcon} label="Bearbeiten" subject="Transporter 1" />
+      </RowButtons>,
+    );
+    expect(screen.getByRole("button", { name: "Bearbeiten: Transporter 1" })).toBeInTheDocument();
+  });
+
+  it("marks a destructive action in red", () => {
+    render(
+      <RowButtons>
+        <RowButton icon={PencilIcon} label="Löschen" destructive />
+      </RowButtons>,
+    );
+    expect(screen.getByRole("button", { name: "Löschen" })).toHaveClass("text-destructive");
   });
 });

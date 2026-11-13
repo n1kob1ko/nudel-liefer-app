@@ -140,26 +140,31 @@ describe("UsersManager", () => {
     expect(within(screen.getByTestId("driver-row-neu")).getByText("Noch nie")).toBeInTheDocument();
   });
 
-  it("keeps the overflow actions: PIN reset, language edit, deactivate/reactivate", () => {
+  it("shows the row actions as direct buttons, no menu to open first", () => {
     renderManager();
     const activeRow = screen.getByTestId("driver-row-mira");
     const inactiveRow = screen.getByTestId("driver-row-neu");
-    expect(within(activeRow).getByLabelText(/Aktionen für Mira Fahrer/)).toBeInTheDocument();
-    expect(within(inactiveRow).getByLabelText(/Aktionen für Neu Fahrer/)).toBeInTheDocument();
-    // The admin row of the signed-in user has no deactivate action.
+    for (const id of ["reset-pin", "edit-login", "edit-schedule", "deactivate", "delete-user"]) {
+      expect(within(activeRow).getByTestId(id)).toBeInTheDocument();
+    }
+    // The name carries the driver, so five rows of "Neue PIN" stay distinguishable.
+    expect(
+      within(activeRow).getByRole("button", { name: "Neue PIN: Mira Fahrer" }),
+    ).toBeInTheDocument();
+    // An inactive driver can only be switched on again or deleted.
+    expect(within(inactiveRow).getByTestId("reactivate")).toBeInTheDocument();
+    expect(within(inactiveRow).getByTestId("delete-user")).toBeInTheDocument();
+    expect(within(inactiveRow).queryByTestId("reset-pin")).not.toBeInTheDocument();
+    // The admin row of the signed-in user has no action at all: nobody locks themselves out.
     const adminRow = screen.getByTestId("admin-row-admin@example.com");
-    expect(within(adminRow).getByLabelText(/Aktionen für Adele Admin/)).toBeInTheDocument();
+    expect(within(adminRow).queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Aktionen für/)).not.toBeInTheDocument();
   });
 
   it("moves the language edit into a dialog and calls the same action", async () => {
     renderManager();
     const row = screen.getByTestId("driver-row-mira");
-    fireEvent.pointerDown(within(row).getByLabelText(/Aktionen für Mira Fahrer/), {
-      button: 0,
-      ctrlKey: false,
-    });
-    const edit = await screen.findByTestId("edit-login");
-    fireEvent.click(edit);
+    fireEvent.click(within(row).getByTestId("edit-login"));
     const dialog = await screen.findByTestId("edit-driver-form");
     expect(await screen.findByText("Sprache von Mira Fahrer")).toBeInTheDocument();
     const submit = await within(dialog).findByTestId("edit-submit");
@@ -170,11 +175,7 @@ describe("UsersManager", () => {
   it("offers the PIN reset through the existing confirm flow", async () => {
     renderManager();
     const row = screen.getByTestId("driver-row-mira");
-    fireEvent.pointerDown(within(row).getByLabelText(/Aktionen für Mira Fahrer/), {
-      button: 0,
-      ctrlKey: false,
-    });
-    fireEvent.click(await screen.findByTestId("reset-pin"));
+    fireEvent.click(within(row).getByTestId("reset-pin"));
     fireEvent.click(await screen.findByTestId("confirm-submit"));
     await vi.waitFor(() => expect(resetDriverPinAction).toHaveBeenCalledWith("u1"));
     expect(await screen.findByTestId("pin-dialog")).toBeInTheDocument();

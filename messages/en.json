@@ -400,7 +400,6 @@
       "empty": "No drivers added yet.",
       "columns": {
         "name": "Name",
-        "username": "Username",
         "language": "Language",
         "status": "Status",
         "lastLogin": "Last login",
@@ -440,7 +439,12 @@
         "editLogin": "Edit language",
         "editSchedule": "Edit working time",
         "delete": "Delete",
-        "deleteConfirm": "Delete for good"
+        "deleteConfirm": "Delete for good",
+        "short": {
+          "resetPin": "New PIN",
+          "editLogin": "Language",
+          "editSchedule": "Hours"
+        }
       },
       "confirm": {
         "resetTitle": "Reset PIN of {name}?",
@@ -482,9 +486,6 @@
       "login": {
         "title": "Language of {name}",
         "description": "The driver sees the app in this language. The change applies immediately."
-      },
-      "rowMenu": {
-        "label": "Actions for {name}"
       },
       "utilization": {
         "percent": "{percent} %",
@@ -1905,12 +1906,8 @@
         "inactive": "Inactive"
       },
       "toggleStatus": "Toggle status of {name}",
-      "rowMenu": {
-        "label": "Actions for {name}"
-      },
       "edit": "Edit",
       "deactivate": "Deactivate",
-      "activate": "Activate",
       "deactivated": "Vehicle deactivated. It can no longer be assigned to a new tour.",
       "activated": "Vehicle activated again.",
       "confirm": {

@@ -75,8 +75,7 @@ test("admin manages a driver: create, PIN shown once, reset, deactivate -> logge
   await expect(admin.getByTestId(`driver-row-${username}`)).not.toContainText("Noch nie");
 
   // reset PIN: the old PIN is invalid immediately, the new one works
-  await admin.getByTestId(`driver-row-${username}`).getByRole("button").last().click(); // row menu (portal)
-  await admin.getByTestId("reset-pin").click();
+  await admin.getByTestId(`driver-row-${username}`).getByTestId("reset-pin").click();
   await admin.getByTestId("confirm-submit").click();
   await expect(pinValue).toBeVisible();
   const newPin = (await pinValue.textContent())?.trim() ?? "";
@@ -92,8 +91,7 @@ test("admin manages a driver: create, PIN shown once, reset, deactivate -> logge
   }
 
   // deactivate: the driver's existing session is logged out on his next request
-  await admin.getByTestId(`driver-row-${username}`).getByRole("button").last().click(); // row menu (portal)
-  await admin.getByTestId("deactivate").click();
+  await admin.getByTestId(`driver-row-${username}`).getByTestId("deactivate").click();
   await admin.getByTestId("confirm-submit").click();
   await expect(admin.getByTestId(`driver-row-${username}`)).toContainText("Deaktiviert");
   await driver.goto("/sr-Latn/driver");
@@ -108,15 +106,13 @@ test("admin manages a driver: create, PIN shown once, reset, deactivate -> logge
   await expect(fresh.getByTestId("login-error")).toBeVisible();
 
   // reactivate: login works again
-  await admin.getByTestId(`driver-row-${username}`).getByRole("button").last().click(); // row menu (portal)
-  await admin.getByTestId("reactivate").click();
+  await admin.getByTestId(`driver-row-${username}`).getByTestId("reactivate").click();
   await expect(admin.getByTestId(`driver-row-${username}`)).toContainText("Aktiv");
   await driverLogin(fresh, username, newPin);
   await expect(fresh).toHaveURL(/\/sr-Latn\/driver$/);
 
   // delete for good (NUD-206): the office is asked first, then the row is gone and the login refused
-  await admin.getByTestId(`driver-row-${username}`).getByRole("button").last().click(); // row menu (portal)
-  await admin.getByTestId("delete-user").click();
+  await admin.getByTestId(`driver-row-${username}`).getByTestId("delete-user").click();
   await expect(admin.getByTestId("confirm-submit")).toHaveText("Endgültig löschen");
   await admin.getByTestId("confirm-submit").click();
   await expect(admin.getByTestId(`driver-row-${username}`)).toHaveCount(0);

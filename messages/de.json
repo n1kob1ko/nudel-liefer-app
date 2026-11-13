@@ -400,7 +400,6 @@
       "empty": "Noch keine Fahrer angelegt.",
       "columns": {
         "name": "Name",
-        "username": "Benutzername",
         "language": "Sprache",
         "schedule": "Arbeitszeit",
         "utilization": "Auslastung",
@@ -458,7 +457,12 @@
         "editLogin": "Sprache bearbeiten",
         "editSchedule": "Arbeitszeit bearbeiten",
         "delete": "Löschen",
-        "deleteConfirm": "Endgültig löschen"
+        "deleteConfirm": "Endgültig löschen",
+        "short": {
+          "resetPin": "Neue PIN",
+          "editLogin": "Sprache",
+          "editSchedule": "Arbeitszeit"
+        }
       },
       "confirm": {
         "resetTitle": "PIN von {name} zurücksetzen?",
@@ -500,9 +504,6 @@
       "login": {
         "title": "Sprache von {name}",
         "description": "Der Fahrer sieht die App in dieser Sprache. Die Änderung gilt sofort."
-      },
-      "rowMenu": {
-        "label": "Aktionen für {name}"
       }
     },
     "customers": {
@@ -1958,12 +1959,8 @@
         "inactive": "Inaktiv"
       },
       "toggleStatus": "Status von {name} umschalten",
-      "rowMenu": {
-        "label": "Aktionen für {name}"
-      },
       "edit": "Bearbeiten",
       "deactivate": "Deaktivieren",
-      "activate": "Aktivieren",
       "deactivated": "Fahrzeug deaktiviert. Es kann keiner neuen Tour mehr zugewiesen werden.",
       "activated": "Fahrzeug wieder aktiviert.",
       "confirm": {

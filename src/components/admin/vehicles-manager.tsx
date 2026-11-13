@@ -1,6 +1,6 @@
 "use client";
 
-import { BanIcon, CheckCircle2Icon, PencilIcon, PlusIcon } from "lucide-react";
+import { BanIcon, PencilIcon, PlusIcon } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -17,12 +17,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { RowActions } from "@/components/ui/row-actions";
+import { RowButton, RowButtons } from "@/components/ui/row-actions";
 import { Switch } from "@/components/ui/switch";
 import {
+  stackedTable,
   Table,
   TableBody,
   TableCell,
@@ -148,8 +148,8 @@ export function VehiclesManager({ rows }: { rows: VehicleRow[] }) {
       ) : (
         <Card>
           <CardContent>
-            <Table data-testid="vehicles-table">
-              <TableHeader data-sticky>
+            <Table data-testid="vehicles-table" className={stackedTable.table}>
+              <TableHeader data-sticky className={stackedTable.header}>
                 <TableRow>
                   <TableHead>{t("columns.name")}</TableHead>
                   <TableHead className="max-sm:hidden">{t("columns.plate")}</TableHead>
@@ -160,27 +160,30 @@ export function VehiclesManager({ rows }: { rows: VehicleRow[] }) {
                   </TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              <TableBody className={stackedTable.body}>
                 {rows.map((v) => (
                   <TableRow
                     key={v.id}
                     data-testid="vehicle-row"
                     data-vehicle-id={v.id}
-                    className={cn(!v.active && "text-muted-foreground")}
+                    className={cn(stackedTable.row, !v.active && "text-muted-foreground")}
                   >
-                    <TableCell className="py-1.5 font-medium" data-testid="vehicle-name">
+                    <TableCell
+                      className={cn("py-1.5 font-medium", stackedTable.cell)}
+                      data-testid="vehicle-name"
+                    >
                       {v.name}
                     </TableCell>
                     <TableCell className="py-1.5 tabular-nums max-sm:hidden">
                       {v.plate ?? "–"}
                     </TableCell>
                     <TableCell
-                      className="py-1.5 text-end tabular-nums"
+                      className={cn("py-1.5 text-end tabular-nums", stackedTable.cell)}
                       data-testid="vehicle-capacity"
                     >
                       {t("capacityValue", { kg: fmt.number(v.capacityKg) })}
                     </TableCell>
-                    <TableCell className="py-1.5">
+                    <TableCell className={cn("py-1.5", stackedTable.cell)}>
                       <div className="flex items-center gap-2">
                         <Switch
                           checked={v.active}
@@ -197,38 +200,26 @@ export function VehiclesManager({ rows }: { rows: VehicleRow[] }) {
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="py-1.5 text-end">
-                      <RowActions label={t("rowMenu.label", { name: v.name })}>
-                        <DropdownMenuItem
+                    <TableCell className={cn("py-1.5 text-end", stackedTable.cell)}>
+                      {/* One direct button: the switch next to it already turns a vehicle on
+                          and off, so the row needs no menu. */}
+                      <RowButtons className="max-md:flex max-md:justify-end">
+                        <RowButton
+                          icon={PencilIcon}
+                          label={t("edit")}
+                          subject={v.name}
+                          className="max-md:px-4"
                           data-testid="vehicle-edit"
-                          onSelect={() =>
-                            setTimeout(
-                              () =>
-                                openForm({
-                                  id: v.id,
-                                  name: v.name,
-                                  plate: v.plate ?? "",
-                                  capacity: String(v.capacityKg),
-                                }),
-                              0,
-                            )
+                          onClick={() =>
+                            openForm({
+                              id: v.id,
+                              name: v.name,
+                              plate: v.plate ?? "",
+                              capacity: String(v.capacityKg),
+                            })
                           }
-                        >
-                          <PencilIcon aria-hidden />
-                          {t("edit")}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          variant={v.active ? "destructive" : "default"}
-                          disabled={pending}
-                          data-testid={v.active ? "vehicle-deactivate" : "vehicle-activate"}
-                          // Defer so the menu can close before a confirm dialog opens.
-                          onSelect={() => setTimeout(() => setActive(v, !v.active), 0)}
-                        >
-                          {v.active ? <BanIcon aria-hidden /> : <CheckCircle2Icon aria-hidden />}
-                          {v.active ? t("deactivate") : t("activate")}
-                        </DropdownMenuItem>
-                      </RowActions>
+                        />
+                      </RowButtons>
                     </TableCell>
                   </TableRow>
                 ))}

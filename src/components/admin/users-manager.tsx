@@ -7,7 +7,6 @@ import {
   CopyIcon,
   KeyRoundIcon,
   LanguagesIcon,
-  PencilIcon,
   PlusIcon,
   PrinterIcon,
   Trash2Icon,
@@ -32,10 +31,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
-import { RowActions } from "@/components/ui/row-actions";
+import { RowButton, RowButtons } from "@/components/ui/row-actions";
 import {
   Select,
   SelectContent,
@@ -44,6 +42,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  stackedTable,
   Table,
   TableBody,
   TableCell,
@@ -56,6 +55,7 @@ import type { ScheduleDay } from "@/domain/work-time";
 import { createAppFormatters } from "@/lib/format";
 import { isAppLocale, LOCALE_LABELS } from "@/lib/locale-resolution";
 import { LOCALES } from "@/lib/localized-text";
+import { cn } from "@/lib/utils";
 import {
   createAdminAction,
   createDriverAction,
@@ -336,8 +336,14 @@ export function UsersManager({
   /** Shared row renderer: the driver and admin tables only differ in the middle columns. */
   function renderRows(rows: UserListRow[], kind: "driver" | "admin") {
     return rows.map((user) => (
-      <TableRow key={user.id} data-testid={`${kind}-row-${user.username ?? user.email}`}>
-        <TableCell className="py-1.5">
+      <TableRow
+        key={user.id}
+        data-testid={`${kind}-row-${user.username ?? user.email}`}
+        // A phone shows each person as a block: who and whether active, then the actions as
+        // buttons with words on them. From 768 px it is a table row again.
+        className={stackedTable.row}
+      >
+        <TableCell className={cn("py-1.5", stackedTable.cell)}>
           <div className="flex items-center gap-3">
             <span
               aria-hidden
@@ -346,17 +352,33 @@ export function UsersManager({
             >
               {initials(user.displayName)}
             </span>
-            <span className="font-medium md:whitespace-nowrap">{user.displayName}</span>
-            {kind === "admin" && user.id === currentUserId ? (
-              <span className="text-sm text-muted-foreground">({t("admins.you")})</span>
-            ) : null}
+            <div className="flex min-w-0 flex-col">
+              <span className="flex flex-wrap items-baseline gap-x-2">
+                <span className="font-medium md:whitespace-nowrap">{user.displayName}</span>
+                {kind === "admin" && user.id === currentUserId ? (
+                  <span className="text-sm text-muted-foreground">({t("admins.you")})</span>
+                ) : null}
+              </span>
+              {/* A driver's login name stays below the name at every width: one column less, so
+                  the five buttons fit next to the rest. An e-mail has its own column from 768 px. */}
+              <span
+                className={cn(
+                  "font-mono text-sm break-all text-muted-foreground",
+                  kind === "admin" && "md:hidden",
+                )}
+              >
+                {kind === "driver" ? user.username : user.email}
+              </span>
+            </div>
           </div>
         </TableCell>
-        <TableCell className="py-1.5 font-mono text-sm text-muted-foreground max-md:hidden">
-          {kind === "driver" ? user.username : user.email}
-        </TableCell>
+        {kind === "admin" ? (
+          <TableCell className="py-1.5 font-mono text-sm text-muted-foreground max-md:hidden">
+            {user.email}
+          </TableCell>
+        ) : null}
         {kind === "driver" ? (
-          <TableCell className="py-1.5 max-md:hidden">
+          <TableCell className="py-1.5 max-[1099px]:hidden">
             <Badge variant="secondary" size="sm">
               <LanguagesIcon aria-hidden />
               {LOCALE_LABELS[user.locale as keyof typeof LOCALE_LABELS] ?? user.locale}
@@ -364,16 +386,16 @@ export function UsersManager({
           </TableCell>
         ) : null}
         {kind === "driver" ? (
-          <TableCell className="py-1.5 max-md:hidden">
+          <TableCell className="min-w-44 py-1.5 max-xl:hidden">
             <ScheduleSummary schedule={schedules[user.id] ?? []} />
           </TableCell>
         ) : null}
         {kind === "driver" ? (
-          <TableCell className="py-1.5 tabular-nums max-md:hidden">
+          <TableCell className="py-1.5 tabular-nums max-[1399px]:hidden">
             <UtilizationCell utilization={utilization[user.id]} />
           </TableCell>
         ) : null}
-        <TableCell className="py-1.5">
+        <TableCell className={cn("py-1.5", stackedTable.cell)}>
           <StatusBadge
             // "Aktiv" is the normal case and stays quiet: green means delivered, done or saved.
             tone="neutral"
@@ -384,78 +406,82 @@ export function UsersManager({
             {user.active ? t("status.active") : t("status.inactive")}
           </StatusBadge>
         </TableCell>
-        <TableCell className="py-1.5 max-md:hidden">
+        <TableCell
+          className={cn("py-1.5", kind === "driver" ? "max-[1399px]:hidden" : "max-md:hidden")}
+        >
           <LastLogin row={user} timezone={timezone} />
         </TableCell>
-        <TableCell className="py-1.5 text-end">
-          <RowActions label={t("rowMenu.label", { name: user.displayName })}>
+        <TableCell className={cn("py-1.5 text-end", stackedTable.cell, "max-md:col-span-2")}>
+          <RowButtons>
             {kind === "driver" && user.active ? (
               <>
-                <DropdownMenuItem
+                <RowButton
+                  subject={user.displayName}
+                  icon={KeyRoundIcon}
+                  label={t("actions.short.resetPin")}
+                  hint={t("actions.resetPin")}
                   data-testid="reset-pin"
-                  onSelect={() => {
+                  onClick={() => {
                     setConfirmError(null);
                     setConfirm({ kind: "reset", user });
                   }}
-                >
-                  <KeyRoundIcon aria-hidden />
-                  {t("actions.resetPin")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
+                />
+                <RowButton
+                  subject={user.displayName}
+                  icon={LanguagesIcon}
+                  label={t("actions.short.editLogin")}
+                  hint={t("actions.editLogin")}
                   data-testid="edit-login"
-                  onSelect={() => {
+                  onClick={() => {
                     setEditLocale(user.locale);
                     setEditLogin(user);
                   }}
-                >
-                  <PencilIcon aria-hidden />
-                  {t("actions.editLogin")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
+                />
+                <RowButton
+                  subject={user.displayName}
+                  icon={ClockIcon}
+                  label={t("actions.short.editSchedule")}
+                  hint={t("actions.editSchedule")}
                   data-testid="edit-schedule"
-                  onSelect={() => {
-                    setScheduleFor(user);
-                  }}
-                >
-                  <ClockIcon aria-hidden />
-                  {t("actions.editSchedule")}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                  onClick={() => setScheduleFor(user)}
+                />
               </>
             ) : null}
             {user.id === currentUserId ? null : user.active ? (
-              <DropdownMenuItem
+              <RowButton
+                subject={user.displayName}
+                icon={BanIcon}
+                label={t("actions.deactivate")}
                 data-testid="deactivate"
-                variant="destructive"
-                onSelect={() => {
+                onClick={() => {
                   setConfirmError(null);
                   setConfirm({ kind: "deactivate", user });
                 }}
-              >
-                <BanIcon aria-hidden />
-                {t("actions.deactivate")}
-              </DropdownMenuItem>
+              />
             ) : (
-              <DropdownMenuItem data-testid="reactivate" onSelect={() => reactivate(user)}>
-                <CheckCircle2Icon aria-hidden />
-                {t("actions.reactivate")}
-              </DropdownMenuItem>
+              <RowButton
+                subject={user.displayName}
+                icon={CheckCircle2Icon}
+                label={t("actions.reactivate")}
+                data-testid="reactivate"
+                onClick={() => reactivate(user)}
+              />
             )}
             {user.id === currentUserId ? null : (
               // NUD-206: for good, behind its own confirmation. Never offered for the own account.
-              <DropdownMenuItem
+              <RowButton
+                subject={user.displayName}
+                icon={Trash2Icon}
+                label={t("actions.delete")}
+                destructive
                 data-testid="delete-user"
-                variant="destructive"
-                onSelect={() => {
+                onClick={() => {
                   setConfirmError(null);
                   setConfirm({ kind: "delete", user });
                 }}
-              >
-                <Trash2Icon aria-hidden />
-                {t("actions.delete")}
-              </DropdownMenuItem>
+              />
             )}
-          </RowActions>
+          </RowButtons>
         </TableCell>
       </TableRow>
     ));
@@ -489,21 +515,27 @@ export function UsersManager({
             {drivers.length === 0 ? (
               <EmptyState title={t("emptyTitle")} description={t("empty")} />
             ) : (
-              <Table data-testid="drivers-table" containerClassName="overscroll-x-contain">
-                <TableHeader data-sticky>
+              <Table
+                data-testid="drivers-table"
+                containerClassName="overscroll-x-contain"
+                className={stackedTable.table}
+              >
+                <TableHeader data-sticky className={stackedTable.header}>
                   <TableRow>
                     <TableHead>{t("columns.name")}</TableHead>
-                    {/* A phone shows who, whether active, and the menu; the rest is one tap away. */}
-                    <TableHead className="max-md:hidden">{t("columns.username")}</TableHead>
-                    <TableHead className="max-md:hidden">{t("columns.language")}</TableHead>
-                    <TableHead className="max-md:hidden">{t("columns.schedule")}</TableHead>
-                    <TableHead className="max-md:hidden">{t("columns.utilization")}</TableHead>
+                    {/* The narrower the screen, the fewer columns: language from 1024 px, working
+                        time from 1280 px, utilization and last login from 1536 px. */}
+                    <TableHead className="max-[1099px]:hidden">{t("columns.language")}</TableHead>
+                    <TableHead className="max-xl:hidden">{t("columns.schedule")}</TableHead>
+                    <TableHead className="max-[1399px]:hidden">
+                      {t("columns.utilization")}
+                    </TableHead>
                     <TableHead>{t("columns.status")}</TableHead>
-                    <TableHead className="max-md:hidden">{t("columns.lastLogin")}</TableHead>
+                    <TableHead className="max-[1399px]:hidden">{t("columns.lastLogin")}</TableHead>
                     <TableHead className="text-end">{t("columns.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>{renderRows(drivers, "driver")}</TableBody>
+                <TableBody className={stackedTable.body}>{renderRows(drivers, "driver")}</TableBody>
               </Table>
             )}
           </CardContent>
@@ -531,8 +563,12 @@ export function UsersManager({
             {admins.length === 0 ? (
               <EmptyState title={t("admins.emptyTitle")} description={t("admins.empty")} />
             ) : (
-              <Table data-testid="admins-table" containerClassName="overscroll-x-contain">
-                <TableHeader data-sticky>
+              <Table
+                data-testid="admins-table"
+                containerClassName="overscroll-x-contain"
+                className={stackedTable.table}
+              >
+                <TableHeader data-sticky className={stackedTable.header}>
                   <TableRow>
                     <TableHead>{t("columns.name")}</TableHead>
                     <TableHead className="max-md:hidden">{t("admins.email")}</TableHead>
@@ -541,7 +577,7 @@ export function UsersManager({
                     <TableHead className="text-end">{t("columns.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>{renderRows(admins, "admin")}</TableBody>
+                <TableBody className={stackedTable.body}>{renderRows(admins, "admin")}</TableBody>
               </Table>
             )}
           </CardContent>
@@ -717,7 +753,9 @@ export function UsersManager({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {confirm ? t(`confirm.${confirm.kind}Title`, { name: confirm.user.displayName }) : null}
+              {confirm
+                ? t(`confirm.${confirm.kind}Title`, { name: confirm.user.displayName })
+                : null}
             </DialogTitle>
             <DialogDescription>
               {confirm ? t(`confirm.${confirm.kind}Body`) : null}
