@@ -77,8 +77,7 @@ test("Fahrzeuge: create, edit, validate, deactivate and reactivate", async ({ pa
     await page.keyboard.press("Escape");
 
     // Edit.
-    await row.getByRole("button").last().click();
-    await page.getByTestId("vehicle-edit").click();
+    await row.getByTestId("vehicle-edit").click();
     await expect(tid(page, "vehicle-capacity-input")).toHaveValue("800");
     await tid(page, "vehicle-capacity-input").fill("950");
     await tid(page, "vehicle-save").click();

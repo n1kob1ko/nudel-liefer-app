@@ -149,7 +149,14 @@ More rules that apply everywhere:
   filters in the row below, in the page column. A page below a list (new, edit, detail) has one
   arrow link back above the title (`back`).
 - **A list is one white surface** (`<Table surface>`) with a plain header row. On a phone a table
-  keeps the columns that matter (who, state, the menu) and drops the rest.
+  keeps the columns that matter (who, state, the actions) and drops the rest.
+- **Few row actions are buttons, not a menu** (`RowButtons` / `RowButton`, owner feedback of
+  2026-11-13: the three dots are one tap too many). On a phone each row is a block
+  (`stackedTable`): who and state, then the actions as buttons with one word each ("Neue PIN",
+  "Sprache", "Löschen"), 44 px high, wrapping so that no word is cut. From 768 px the same buttons
+  are icons with a tooltip and the row's subject in their name. Drivers and vehicles work this
+  way; a row with more than five actions keeps the "…" menu (`RowActions`). A switch that already
+  turns something on and off needs no second action for it.
 - **A form is one card with hairlines between its parts,** labels above the fields, the yolk button
   at the end. Fields are as wide as what goes into them.
 - **The menu highlight travels.** The active entry of the sidebar and of the bottom bar is one pale

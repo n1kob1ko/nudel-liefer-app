@@ -400,7 +400,6 @@
       "empty": "还没有司机账号。",
       "columns": {
         "name": "姓名",
-        "username": "用户名",
         "language": "语言",
         "status": "状态",
         "lastLogin": "上次登录",
@@ -440,7 +439,12 @@
         "editLogin": "修改语言",
         "editSchedule": "编辑工作时间",
         "delete": "删除",
-        "deleteConfirm": "永久删除"
+        "deleteConfirm": "永久删除",
+        "short": {
+          "resetPin": "新 PIN",
+          "editLogin": "语言",
+          "editSchedule": "工作时间"
+        }
       },
       "confirm": {
         "resetTitle": "重置{name}的PIN码？",
@@ -482,9 +486,6 @@
       "login": {
         "title": "{name} 的语言",
         "description": "司机将以该语言使用应用。更改立即生效。"
-      },
-      "rowMenu": {
-        "label": "{name} 的操作"
       },
       "utilization": {
         "percent": "{percent} %",
@@ -1905,12 +1906,8 @@
         "inactive": "停用"
       },
       "toggleStatus": "切换{name}的状态",
-      "rowMenu": {
-        "label": "{name}的操作"
-      },
       "edit": "编辑",
       "deactivate": "停用",
-      "activate": "启用",
       "deactivated": "车辆已停用，不能再分配给新的路线。",
       "activated": "车辆已重新启用。",
       "confirm": {

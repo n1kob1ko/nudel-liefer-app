@@ -126,11 +126,26 @@ function TableCaption({ className, ...props }: React.ComponentProps<"caption">) 
   );
 }
 
+/**
+ * A table whose rows become blocks on a phone (below 768 px): no header row, each row a two-column
+ * grid of its visible cells, in source order. Put the classes on the matching elements and hide the
+ * cells a phone does not need with `max-md:hidden`; a cell that should take the whole width (the
+ * row's buttons) adds `max-md:col-span-2`. From 768 px nothing changes: it is the same table.
+ */
+const stackedTable = {
+  table: "max-md:block",
+  header: "max-md:hidden",
+  body: "max-md:block",
+  row: "max-md:grid max-md:h-auto max-md:grid-cols-[minmax(0,1fr)_auto] max-md:items-center max-md:gap-x-3 max-md:gap-y-3 max-md:py-4 max-md:hover:bg-transparent",
+  cell: "max-md:block max-md:p-0",
+} as const;
+
 /** Cell helper: right-aligns and tabularizes a numeric column (re-design.md §8.10). */
 const numericCell = "text-end tabular-nums";
 
 export {
   numericCell,
+  stackedTable,
   Table,
   TableBody,
   TableCaption,
