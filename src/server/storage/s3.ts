@@ -8,6 +8,8 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
+import { usesPathStyle } from "@/lib/s3-url-style";
+
 import { READ_URL_TTL_SECONDS, type Storage, UPLOAD_URL_TTL_SECONDS } from "./types";
 
 export type S3Config = {
@@ -17,6 +19,8 @@ export type S3Config = {
   bucket: string;
   accessKeyId: string;
   secretAccessKey: string;
+  /** `https://endpoint/bucket/key` (MinIO, R2) instead of `https://bucket.endpoint/key` (Railway). */
+  pathStyle: boolean;
 };
 
 /** Reads the S3_* variables; returns null when the storage is not (fully) configured. */
@@ -30,6 +34,7 @@ export function readS3Config(env: Record<string, string | undefined>): S3Config 
     bucket: S3_BUCKET,
     accessKeyId: S3_ACCESS_KEY_ID,
     secretAccessKey: S3_SECRET_ACCESS_KEY,
+    pathStyle: usesPathStyle(env.S3_ENDPOINT, env.S3_URL_STYLE),
   };
 }
 
@@ -40,8 +45,9 @@ export class S3Storage implements Storage {
     private readonly client: S3Client = new S3Client({
       region: config.region,
       endpoint: config.endpoint,
-      // Path-style works with MinIO and R2 and avoids bucket sub-domains on localhost.
-      forcePathStyle: Boolean(config.endpoint),
+      // Path-style works with MinIO and R2 and avoids bucket sub-domains on localhost; a Railway
+      // bucket is virtual-hosted (S3_URL_STYLE=virtual, src/lib/s3-url-style.ts).
+      forcePathStyle: config.pathStyle,
       credentials: {
         accessKeyId: config.accessKeyId,
         secretAccessKey: config.secretAccessKey,

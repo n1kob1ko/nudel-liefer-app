@@ -2,6 +2,7 @@
  * Pure helpers of the database backup (NUD-094, NUD-200): configuration, object names, retention
  * and the PG* environment for the child processes. No I/O here, so everything is unit-tested.
  */
+import { isKnownUrlStyle, usesPathStyle } from "../../src/lib/s3-url-style";
 
 export type BackupConfig = {
   /** Direct (unpooled) connection string of the database to dump; a read-only role is enough. */
@@ -15,6 +16,8 @@ export type BackupConfig = {
     bucket: string;
     accessKeyId: string;
     secretAccessKey: string;
+    /** `endpoint/bucket/key` (R2, MinIO) instead of `bucket.endpoint/key` (a Railway bucket). */
+    pathStyle: boolean;
   };
   /** Key prefix inside the backup bucket, always ends with `/` (or is empty). */
   prefix: string;
@@ -121,6 +124,9 @@ export function readBackupConfig(
   if (endpoint && !/^https?:\/\//.test(endpoint)) {
     errors.push("BACKUP_S3_ENDPOINT must be an http(s) URL");
   }
+  if (wantsS3 && !isKnownUrlStyle(env.BACKUP_S3_URL_STYLE)) {
+    errors.push("BACKUP_S3_URL_STYLE must be path or virtual");
+  }
   if (!localDir && !wantsS3) {
     errors.push(
       "no backup destination: set BACKUP_LOCAL_DIR (a folder on this machine) and/or the BACKUP_S3_* variables (a bucket)",
@@ -149,6 +155,7 @@ export function readBackupConfig(
             bucket,
             accessKeyId,
             secretAccessKey,
+            pathStyle: usesPathStyle(endpoint, env.BACKUP_S3_URL_STYLE),
           }
         : undefined,
       prefix,

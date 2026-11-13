@@ -8,6 +8,7 @@
  *
  * Exit code 0 = private, 1 = public or unexpected answer, 2 = not configured.
  */
+import { usesPathStyle } from "../src/lib/s3-url-style";
 import { storageSources } from "../src/lib/security-headers";
 
 const bucket = process.env.S3_BUCKET?.trim();
@@ -16,7 +17,7 @@ if (!bucket || !base) {
   console.error("S3_BUCKET and S3_ENDPOINT (or S3_REGION for AWS) must be set.");
   process.exit(2);
 }
-const pathStyle = Boolean(process.env.S3_ENDPOINT?.trim());
+const pathStyle = usesPathStyle(process.env.S3_ENDPOINT, process.env.S3_URL_STYLE);
 const root = pathStyle ? `${base}/${bucket}` : base;
 const targets = [
   { label: "bucket listing", url: `${root}${pathStyle ? "/" : "/?list-type=2"}` },

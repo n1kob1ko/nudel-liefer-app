@@ -1,4 +1,5 @@
 import { DEV_TILE_URL, isTileCacheEnabled } from "./map-config";
+import { usesPathStyle } from "./s3-url-style";
 import { sentryIngestSource } from "./sentry-config";
 
 type Env = Record<string, string | undefined>;
@@ -23,12 +24,17 @@ export function tileSource(tileUrl: string | undefined): string | null {
 /**
  * Origins the browser talks to for photos and screenshots: it uploads (PUT) to and shows images
  * (GET) from presigned URLs on the object store (MinIO / Cloudflare R2 `S3_ENDPOINT`, or AWS S3).
+ * A virtual-hosted bucket (`S3_URL_STYLE=virtual`, a Railway bucket) lives on its own sub-domain of
+ * the endpoint, so that host is the origin - the bare endpoint would block every upload.
  */
 export function storageSources(env: Env): string[] {
   const endpoint = env.S3_ENDPOINT?.trim();
   if (endpoint) {
     try {
-      return [new URL(endpoint).origin];
+      const url = new URL(endpoint);
+      if (usesPathStyle(endpoint, env.S3_URL_STYLE)) return [url.origin];
+      const bucket = env.S3_BUCKET?.trim();
+      return bucket ? [`${url.protocol}//${bucket}.${url.host}`] : [];
     } catch {
       return [];
     }

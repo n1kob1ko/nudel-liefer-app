@@ -17,6 +17,7 @@ const config = {
   bucket: "nudel-photos",
   accessKeyId: "minio",
   secretAccessKey: "minio-secret",
+  pathStyle: true,
 };
 
 describe("readS3Config", () => {
@@ -38,7 +39,14 @@ describe("readS3Config", () => {
       bucket: "b",
       accessKeyId: "k",
       secretAccessKey: "s",
+      pathStyle: false,
     });
+  });
+  it("uses path style with an endpoint unless S3_URL_STYLE says virtual", () => {
+    const base = { S3_BUCKET: "b", S3_ACCESS_KEY_ID: "k", S3_SECRET_ACCESS_KEY: "s" };
+    const endpoint = { ...base, S3_ENDPOINT: "https://t3.storageapi.dev" };
+    expect(readS3Config(endpoint)?.pathStyle).toBe(true);
+    expect(readS3Config({ ...endpoint, S3_URL_STYLE: "virtual" })?.pathStyle).toBe(false);
   });
 });
 
@@ -90,6 +98,29 @@ describe("S3Storage (offline presigning, mocked client for delete)", () => {
     const command = send.mock.calls[0][0];
     expect(command).toBeInstanceOf(DeleteObjectCommand);
     expect(command.input).toEqual({ Bucket: "nudel-photos", Key: "customers/a.jpg" });
+  });
+});
+
+describe("S3Storage with a virtual-hosted bucket (Railway)", () => {
+  it("presigns URLs on the bucket sub-domain, without the bucket in the path", async () => {
+    const storage = new S3Storage({
+      ...config,
+      endpoint: "https://t3.storageapi.dev",
+      bucket: "photos-abc",
+      pathStyle: false,
+    });
+    const put = new URL(
+      (
+        await storage.createUploadUrl({
+          key: "customers/a.jpg",
+          contentType: "image/jpeg",
+          contentLength: 10,
+        })
+      ).url,
+    );
+    expect(put.origin + put.pathname).toBe("https://photos-abc.t3.storageapi.dev/customers/a.jpg");
+    const get = new URL(await storage.getReadUrl("customers/a.jpg"));
+    expect(get.origin + get.pathname).toBe("https://photos-abc.t3.storageapi.dev/customers/a.jpg");
   });
 });
 
