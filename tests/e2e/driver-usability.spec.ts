@@ -24,6 +24,10 @@ const VIEWPORTS = [
 ] as const;
 
 const centerY = async (locator: Locator) => {
+  // `boundingBox()` does not wait. Right after `goto` the streamed part of a page can still be
+  // hidden (the login form sits in a Suspense boundary), and a hidden element has no box: the
+  // measurement raced the reveal and failed about one run in eight.
+  await expect(locator).toBeVisible();
   const box = await locator.boundingBox();
   expect(box, "element has a box").not.toBeNull();
   return box!.y + box!.height / 2;
