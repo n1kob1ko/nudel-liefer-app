@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { type OverviewTour, summarizeDay, tourPhase } from "./day-overview";
+import { isLate, type OverviewTour, summarizeDay, tourPhase } from "./day-overview";
 
 const at = (time: string) => new Date(`2099-07-02T${time}:00Z`);
+
+const hour = (sequence: number) => String(6 + sequence).padStart(2, "0");
 
 const stop = (
   sequence: number,
@@ -13,8 +15,8 @@ const stop = (
   sequence,
   status,
   name: `Kunde ${sequence}`,
-  etaAt: at(`0${6 + sequence}:00`),
-  completedAt: status === "PENDING" ? null : at(`0${6 + sequence}:05`),
+  etaAt: at(`${hour(sequence)}:00`),
+  completedAt: status === "PENDING" ? null : at(`${hour(sequence)}:05`),
   problemReason: status === "PROBLEM" ? "CLOSED" : null,
   lat: 48.2,
   lng: 16.3 + sequence / 100,
@@ -58,6 +60,7 @@ describe("summarizeDay", () => {
       done: 0,
       pending: 0,
       percent: 0,
+      lastFinishAt: null,
     });
   });
 
@@ -157,6 +160,8 @@ describe("summarizeDay", () => {
       done: 3,
       pending: 4,
       percent: 43,
+      // Tour "b" ends last: arrival at its stop 4 at 10:00 plus 10 minutes there.
+      lastFinishAt: at("10:10"),
     });
   });
 
@@ -194,5 +199,62 @@ describe("summarizeDay", () => {
         at: at("07:10"),
       },
     ]);
+  });
+
+  it("draws one bead per stop in tour order and marks the next one", () => {
+    const [row] = summarizeDay(
+      [
+        tour("a", {
+          stops: [stop(2, "PROBLEM"), stop(1, "DELIVERED"), stop(3, "PENDING"), stop(4, "PENDING")],
+        }),
+      ],
+      600,
+    ).rows;
+    expect(row?.beads).toEqual([
+      { id: "s1", status: "DELIVERED", next: false },
+      { id: "s2", status: "PROBLEM", next: false },
+      { id: "s3", status: "PENDING", next: true },
+      { id: "s4", status: "PENDING", next: false },
+    ]);
+  });
+
+  it("measures the delay at the last ticked stop against its planned arrival plus the service time", () => {
+    // Planned: arrive 07:00, 10 minutes there. Ticked off at 07:05: ahead of the plan, never negative.
+    expect(summarizeDay([tour("a")], 600).rows[0]?.delayMinutes).toBe(0);
+    const late = tour("b", {
+      stops: [stop(1, "DELIVERED", { completedAt: at("07:22") }), stop(2, "PENDING")],
+    });
+    expect(summarizeDay([late], 600).rows[0]?.delayMinutes).toBe(12);
+  });
+
+  it("knows no delay before the first stop or without a planned arrival", () => {
+    const fresh = tour("a", { stops: [stop(1, "PENDING")] });
+    const unplanned = tour("b", { stops: [stop(1, "DELIVERED", { etaAt: null })] });
+    const [a, b] = summarizeDay([fresh, unplanned], 600).rows;
+    expect(a?.delayMinutes).toBeNull();
+    expect(b?.delayMinutes).toBeNull();
+  });
+
+  it("calls a driver late from five minutes behind the plan", () => {
+    expect(isLate(null)).toBe(false);
+    expect(isLate(4)).toBe(false);
+    expect(isLate(5)).toBe(true);
+  });
+
+  it("names the time the last driver is expected back, ignoring planning and finished tours", () => {
+    const early = tour("a", { stops: [stop(1, "DELIVERED"), stop(2, "PENDING")] });
+    const longer = tour("b", {
+      createdAt: at("05:10"),
+      stops: [stop(1, "PENDING"), stop(2, "PENDING"), stop(3, "PENDING")],
+    });
+    const draft = tour("c", {
+      status: "DRAFT",
+      createdAt: at("05:20"),
+      departedAt: null,
+      stops: [stop(1, "PENDING"), stop(5, "PENDING")],
+    });
+    // Last open stop of "b": arrival 09:00 plus 10 minutes there.
+    expect(summarizeDay([early, longer, draft], 600).totals.lastFinishAt).toEqual(at("09:10"));
+    expect(summarizeDay([draft], 600).totals.lastFinishAt).toBeNull();
   });
 });

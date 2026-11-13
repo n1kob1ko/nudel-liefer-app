@@ -62,6 +62,13 @@ export type DriverRow = {
   } | null;
   /** Expected end of the tour; `null` when nothing is open or no arrival time is known. */
   finishAt: Date | null;
+  /** One bead per stop in tour order: the whole tour at a glance, and where it went wrong. */
+  beads: Array<{ id: string; status: OverviewStop["status"]; next: boolean }>;
+  /**
+   * Minutes behind the plan at the last ticked stop (its planned arrival plus the service time),
+   * never negative. `null` before the first stop or when that stop has no planned arrival.
+   */
+  delayMinutes: number | null;
 };
 
 export type DayProblem = {
@@ -83,6 +90,8 @@ export type DayTotals = {
   done: number;
   pending: number;
   percent: number;
+  /** When the last driver who is still out (or about to leave) is expected to be finished. */
+  lastFinishAt: Date | null;
 };
 
 export type DayOverview = { rows: DriverRow[]; totals: DayTotals; problems: DayProblem[] };
@@ -98,22 +107,30 @@ export function tourPhase(tour: {
   return tour.departedAt !== null || tour.done > 0 ? "onRoad" : "waiting";
 }
 
+/** From this many minutes behind the plan the office reads "later" instead of "on time". */
+export const LATE_AFTER_MINUTES = 5;
+
+export function isLate(delayMinutes: number | null): boolean {
+  return delayMinutes !== null && delayMinutes >= LATE_AFTER_MINUTES;
+}
+
 /** The office looks at the drivers who are out first, the finished tours last. */
 const PHASE_ORDER: Record<TourPhase, number> = { onRoad: 0, waiting: 1, planning: 2, done: 3 };
 
 function rowOf(tour: OverviewTour, number: number, serviceSecondsPerStop: number): DriverRow {
-  const progress = summarizeProgress(tour.stops);
-  const next = tour.stops.find((s) => s.id === progress.nextStopId) ?? null;
-  const last = tour.stops
+  const stops = [...tour.stops].sort((a, b) => a.sequence - b.sequence);
+  const progress = summarizeProgress(stops);
+  const next = stops.find((s) => s.id === progress.nextStopId) ?? null;
+  const last = stops
     .filter((s) => s.status !== "PENDING" && s.completedAt !== null)
     .reduce<OverviewStop | null>(
       (a, s) => (a === null || s.completedAt!.getTime() > a.completedAt!.getTime() ? s : a),
       null,
     );
   const lastOpenEta =
-    [...tour.stops]
-      .sort((a, b) => b.sequence - a.sequence)
-      .find((s) => s.status === "PENDING" && s.etaAt !== null)?.etaAt ?? null;
+    stops.findLast((s) => s.status === "PENDING" && s.etaAt !== null)?.etaAt ?? null;
+  const plannedDone =
+    last?.etaAt != null ? last.etaAt.getTime() + Math.max(serviceSecondsPerStop, 0) * 1000 : null;
   return {
     tourId: tour.id,
     number,
@@ -135,6 +152,11 @@ function rowOf(tour: OverviewTour, number: number, serviceSecondsPerStop: number
         }
       : null,
     finishAt: tourFinishAt(lastOpenEta, serviceSecondsPerStop),
+    beads: stops.map((s) => ({ id: s.id, status: s.status, next: s.id === next?.id })),
+    delayMinutes:
+      last && plannedDone !== null
+        ? Math.max(0, Math.round((last.completedAt!.getTime() - plannedDone) / 60_000))
+        : null,
   };
 }
 
@@ -184,6 +206,15 @@ export function summarizeDay(
       done,
       pending: sum((p) => p.pending),
       percent: total === 0 ? 0 : Math.round((done / total) * 100),
+      lastFinishAt: handed.reduce<Date | null>(
+        (latest, row) =>
+          row.phase !== "done" &&
+          row.finishAt !== null &&
+          (latest === null || row.finishAt.getTime() > latest.getTime())
+            ? row.finishAt
+            : latest,
+        null,
+      ),
     },
     problems,
   };
