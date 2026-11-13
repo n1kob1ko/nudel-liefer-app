@@ -285,12 +285,15 @@
     },
     "planning": {
       "title": "每日规划",
-      "description": "某一天的固定线路：始终相同的客户，可在此直接调整数量，或仅为这一天添加客户。",
+      "day": "配送日 {date}",
       "save": "保存数量",
       "saving": "保存中…",
       "saved": "{count, plural, other {已保存 # 个订单。}}",
       "savedMerged": "{count, plural, other {已合并 # 个重复订单。}}",
       "savedNothing": "没有变化：未保存任何内容。",
+      "dayTotal": "当日合计",
+      "dayWeight": "{weight} kg",
+      "dirty": "已修改 {count} 位客户",
       "readOnly": {
         "released": {
           "title": "这一天的线路已发布",

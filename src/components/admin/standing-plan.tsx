@@ -2,7 +2,7 @@
 
 import { CircleSlashIcon, PlusIcon, SaveIcon, SearchIcon } from "lucide-react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
-import { useMemo, useState, useTransition } from "react";
+import { type KeyboardEvent, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -85,6 +85,8 @@ export function StandingPlan({
 }) {
   const t = useTranslations("admin.planning");
   const tc = useTranslations("common");
+  // Quantities next to a product name use the word forms ("22 Sackerl"), like the order totals.
+  const tu = useTranslations("driver.unitsTotal");
   const format = useFormatter();
   const locale = useLocale() as AppLocale;
   const router = useRouter();
@@ -151,6 +153,26 @@ export function StandingPlan({
     return matches && (!onlyWithOrder || row.orderId !== null);
   });
 
+  // Everything the save button writes: the rows of every standing tour and the off-route customers
+  // that have (or just got) an order for this day.
+  const savedRows = [...plan.routes.flatMap((route) => route.rows), ...editableOffRoute];
+  const changedCount = savedRows.filter(
+    (row) =>
+      added.includes(row.customerId) ||
+      productIds.some(
+        (productId) =>
+          quantityOf(values[row.customerId]?.[productId]) !== (row.quantities[productId] ?? 0),
+      ),
+  ).length;
+  const dayTotals = plan.products.map((product) => ({
+    product,
+    quantity: savedRows.reduce(
+      (sum, row) => sum + quantityOf(values[row.customerId]?.[product.id]),
+      0,
+    ),
+  }));
+  const dayWeight = savedRows.reduce((sum, row) => sum + kgOf(values[row.customerId] ?? {}), 0);
+
   function save() {
     const standingRows = plan.routes.flatMap((route) => route.rows);
     const rows = [...standingRows, ...editableOffRoute].map((row) => ({
@@ -177,7 +199,7 @@ export function StandingPlan({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6" data-plan-root>
       {plan.readOnly ? (
         <Card data-testid="planning-read-only" className="border-warning/40 bg-warning-soft/40">
           <CardHeader>
@@ -221,19 +243,8 @@ export function StandingPlan({
         const weight = rows.reduce((sum, row) => sum + kgOf(values[row.customerId] ?? {}), 0);
         return (
           <Card key={route.id} data-testid={`standing-route-${route.id}`}>
-            <CardHeader>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex min-w-0 flex-col gap-1">
-                  <h2 className="text-lg font-semibold tracking-tight">{route.name}</h2>
-                  <CardDescription>
-                    {t("route.summary", {
-                      count: rows.length,
-                      weight: format.number(Math.round(weight * 100) / 100, {
-                        maximumFractionDigits: 1,
-                      }),
-                    })}
-                  </CardDescription>
-                </div>
+            <CardHeader
+              action={
                 <div className="flex flex-col gap-1">
                   <label
                     htmlFor={`driver-${route.id}`}
@@ -249,7 +260,17 @@ export function StandingPlan({
                     onChanged={() => router.refresh()}
                   />
                 </div>
-              </div>
+              }
+            >
+              <h2 className="text-lg font-semibold tracking-tight">{route.name}</h2>
+              <CardDescription>
+                {t("route.summary", {
+                  count: rows.length,
+                  weight: format.number(Math.round(weight * 100) / 100, {
+                    maximumFractionDigits: 1,
+                  }),
+                })}
+              </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
               {rows.length === 0 ? (
@@ -426,24 +447,74 @@ export function StandingPlan({
       </Card>
 
       {plan.editable ? (
-        <div className="sticky bottom-0 z-20 -mx-6 flex flex-wrap items-center justify-end gap-3 border-t bg-card/95 px-6 py-3 backdrop-blur lg:-mx-8 lg:px-8">
-          {error ? (
-            <p
-              className="mr-auto text-sm text-destructive"
-              role="alert"
-              data-testid="planning-error"
-            >
-              {error}
+        <div className="sticky bottom-0 z-20 -mx-6 flex flex-wrap items-center gap-x-6 gap-y-2 border-t bg-card px-6 py-3 lg:-mx-8 lg:px-8">
+          {/* What the kitchen has to make for this day, across every tour, while typing. */}
+          <p
+            className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-muted-foreground"
+            data-testid="planning-day-total"
+          >
+            <span className="font-medium text-foreground">{t("dayTotal")}</span>
+            {dayTotals.map(({ product, quantity }) => (
+              <span key={product.id}>
+                {productLabel(product, locale)}{" "}
+                <span className="text-base font-semibold text-foreground tabular-nums">
+                  {format.number(quantity, { maximumFractionDigits: 0 })}
+                </span>{" "}
+                {tu(product.unit as "KG" | "PACK" | "CRATE" | "PIECE")}
+              </span>
+            ))}
+            <span className="text-base font-semibold text-foreground tabular-nums">
+              {t("dayWeight", {
+                weight: format.number(Math.round(dayWeight * 100) / 100, {
+                  maximumFractionDigits: 1,
+                }),
+              })}
+            </span>
+          </p>
+          <div className="ms-auto flex flex-wrap items-center justify-end gap-3">
+            {error ? (
+              <p className="text-sm text-destructive" role="alert" data-testid="planning-error">
+                {error}
+              </p>
+            ) : null}
+            <p className="text-sm text-muted-foreground" role="status">
+              {changedCount > 0 ? (
+                <span data-testid="planning-dirty">{t("dirty", { count: changedCount })}</span>
+              ) : null}
             </p>
-          ) : null}
-          <Button type="button" onClick={save} disabled={pending} data-testid="planning-save">
-            <SaveIcon aria-hidden />
-            {pending ? t("saving") : t("save")}
-          </Button>
+            <Button type="button" onClick={save} disabled={pending} data-testid="planning-save">
+              <SaveIcon aria-hidden />
+              {pending ? t("saving") : t("save")}
+            </Button>
+          </div>
         </div>
       ) : null}
     </div>
   );
+}
+
+/**
+ * Enter and the arrow keys walk a product column like a spreadsheet: down to the next customer
+ * (also across to the next tour), up to the one before. The last field keeps the focus.
+ */
+function moveInColumn(event: KeyboardEvent<HTMLInputElement>) {
+  const step =
+    event.key === "Enter" || event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
+  if (step === 0) return;
+  event.preventDefault();
+  const field = event.currentTarget;
+  const root = field.closest("[data-plan-root]");
+  if (!root) return;
+  const column = Array.from(
+    root.querySelectorAll<HTMLInputElement>(
+      `input[data-col="${CSS.escape(field.dataset.col ?? "")}"]:not(:disabled)`,
+    ),
+  );
+  const next = column[column.indexOf(field) + step];
+  if (next) {
+    next.focus();
+    next.select();
+  }
 }
 
 /** One editable customer row (a standing tour or an off-route customer with an order). */
@@ -476,16 +547,24 @@ function PlanRow({
           <Input
             value={values[product.id] ?? "0"}
             onChange={(event) => onChange(row.customerId, product.id, event.target.value)}
+            // Typing replaces the old quantity instead of landing next to it.
+            onFocus={(event) => event.currentTarget.select()}
+            onKeyDown={moveInColumn}
             disabled={!editable}
             inputMode="numeric"
             autoComplete="off"
             aria-label={`${row.name} – ${productLabel(product, locale)}`}
-            className="h-9 w-20 text-right tabular-nums"
+            // A zero recedes, a quantity stands out: the filled rows of a day read at a glance.
+            data-filled={quantityOf(values[product.id]) > 0}
+            data-col={product.id}
+            className="h-9 w-20 text-right tabular-nums data-[filled=false]:text-muted-foreground data-[filled=true]:font-semibold"
             data-testid={`qty-${row.customerId}-${product.id}`}
           />
         </TableCell>
       ))}
-      <TableCell className="text-right text-base tabular-nums">
+      <TableCell
+        className={cn("text-right text-base tabular-nums", weight === 0 && "text-muted-foreground")}
+      >
         {format.number(weight, { maximumFractionDigits: 1 })}
       </TableCell>
       <TableCell>

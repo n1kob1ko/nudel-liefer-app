@@ -285,12 +285,15 @@
     },
     "planning": {
       "title": "Tagesplanung",
-      "description": "Die Stammtouren für einen Liefertag: dieselben Kunden wie immer, Mengen hier direkt anpassen oder einen Kunden für diesen Tag hinzufügen.",
+      "day": "Liefertag {date}",
       "save": "Mengen speichern",
       "saving": "Speichern …",
       "saved": "{count, plural, one {# Bestellung gespeichert.} other {# Bestellungen gespeichert.}}",
       "savedMerged": "{count, plural, one {# doppelte Bestellung zusammengeführt.} other {# doppelte Bestellungen zusammengeführt.}}",
       "savedNothing": "Keine Änderung: Es wurde nichts gespeichert.",
+      "dayTotal": "Tag gesamt",
+      "dayWeight": "{weight} kg",
+      "dirty": "{count, plural, one {# Kunde geändert} other {# Kunden geändert}}",
       "readOnly": {
         "released": {
           "title": "Touren dieses Tages sind freigegeben",

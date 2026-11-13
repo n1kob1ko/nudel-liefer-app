@@ -285,12 +285,15 @@
     },
     "planning": {
       "title": "Daily planning",
-      "description": "The standing tours for one delivery day: the same customers as always, quantities adjusted right here, or a customer added for this day only.",
+      "day": "Delivery day {date}",
       "save": "Save quantities",
       "saving": "Saving …",
       "saved": "{count, plural, one {# order saved.} other {# orders saved.}}",
       "savedMerged": "{count, plural, one {# duplicate order merged.} other {# duplicate orders merged.}}",
       "savedNothing": "No change: nothing was saved.",
+      "dayTotal": "Day total",
+      "dayWeight": "{weight} kg",
+      "dirty": "{count, plural, one {# customer changed} other {# customers changed}}",
       "readOnly": {
         "released": {
           "title": "Tours of this day are released",
