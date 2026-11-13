@@ -85,3 +85,11 @@ test-results/
 
 # script hashes of the prerendered pages for the CSP, written by scripts/csp-script-hashes.ts (NUD-110)
 /.csp-script-hashes.json
+
+# local agent scratch space and browser-test harness output (never committed)
+/.agent-sync/
+/.redesign/
+/web-test/
+/docs/qa-2026-10-26/
+/pw.*.local.config.ts
+/nud-140.patch

@@ -412,7 +412,8 @@
       "mutationLoading": "lista otvorena",
       "mutationDepart": "polazak",
       "outboxWaitingForConnection": "{count, plural, one {# unos čeka vezu – trenutno se ništa ne šalje.} few {# unosa čekaju vezu – trenutno se ništa ne šalje.} other {# unosa čeka vezu – trenutno se ništa ne šalje.}}",
-      "outboxUnreachable": "Server trenutno nije dostupan. Unosi ostaju na uređaju i biće ponovo poslati automatski."
+      "outboxUnreachable": "Server trenutno nije dostupan. Unosi ostaju na uređaju i biće ponovo poslati automatski.",
+      "mutationPayment": "Plaćanje"
     },
     "unitsTotal": {
       "KG": "kg",
@@ -502,6 +503,24 @@
       "empty": "Nema ničega za proveru. Možete krenuti.",
       "emptyTrip": "Nema ničega za proveru.",
       "storageError": "Čuvanje na uređaju nije uspelo. Pokušajte ponovo."
+    },
+    "payment": {
+      "title": "Plaćanje gotovinom",
+      "due": "Naplatiti pri dostavi: {amount}",
+      "collectedBadge": "{amount} naplaćeno",
+      "collected": "Naplaćeno: {amount}",
+      "short": "Nedostaje još {amount}",
+      "over": "{amount} više od dugovanog",
+      "change": "Izmeni iznos",
+      "amountLabel": "Naplaćeni iznos",
+      "save": "Naplaćeno",
+      "saved": "Naplaćeno od {name}",
+      "needDelivery": "Prvo dodirnite „Dostavljeno“, zatim unesite iznos.",
+      "cancel": "Otkaži",
+      "errors": {
+        "storage": "Čuvanje na telefonu nije moguće. Pokušajte ponovo.",
+        "amount": "Unesite iznos kao 42 ili 42,50."
+      }
     }
   },
   "pwa": {

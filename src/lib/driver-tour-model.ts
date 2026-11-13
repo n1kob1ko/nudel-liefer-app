@@ -120,6 +120,13 @@ ull. */
   keyNumber: z.string().nullable().default(null),
   /** The customer's legacy Abkürzung (NUD-164); caches written before it read as none. */
   abbreviation: z.string().nullable().default(null),
+  /**
+   * Cash to collect at this stop (D33, NUD-196): the amounts of its ON_DELIVERY orders, in euro
+   * cents. `0` = nothing to collect (monthly bill). Caches written before NUD-196 read as 0.
+   */
+  cashDueCents: z.number().int().min(0).default(0),
+  /** What the driver recorded as collected (euro cents); `null` = not recorded yet. */
+  collectedCents: z.number().int().min(0).nullable().default(null),
   photos: z.object({
     STORE: payloadPhotoSchema.nullable(),
     PARKING: payloadPhotoSchema.nullable(),
@@ -249,6 +256,12 @@ ull when he wrote none). */
    * shows no Abkürzung chip at all; `null` = none yet.
    */
   abbreviation?: string | null;
+  /**
+   * Cash to collect at this stop (D33, NUD-196) and what the driver recorded: euro cents. Optional
+   * like `hasKey` — `undefined` (hand-built values) means "no cash feature on this screen".
+   */
+  cashDueCents?: number;
+  collectedCents?: number | null;
   items: TodayItem[];
 };
 
@@ -352,6 +365,8 @@ function todayStop(stop: PayloadStop, locale: AppLocale): TodayStop {
     hasKey: stop.hasKey,
     keyNumber: stop.keyNumber,
     abbreviation: stop.abbreviation,
+    cashDueCents: stop.cashDueCents,
+    collectedCents: stop.collectedCents,
     items: stop.items.map((item) => ({
       productId: item.productId,
       name: pickName(item.name, item.sku, locale),

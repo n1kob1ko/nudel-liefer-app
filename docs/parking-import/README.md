@@ -186,6 +186,12 @@ The import ran from the developer machine against the production database throug
 the process environment for the single command (`.parking-import/prod-env.ps1`, git-ignored) —
 never written to disk and never printed.
 
+> **Historical note (2026-11-04):** `87.106.60.131` is retired. A repeat run against production
+> now targets the dedicated server **`65.109.100.79`** and reads the bucket at
+> `https://nudel.stragas.com/nudel-photos`; the tunnel becomes
+> `ssh -N -L 15432:127.0.0.1:5432 root@65.109.100.79`. The same import scripts work unchanged —
+> only the host in those two commands changes.
+
 ## The 10 pins still open
 
 `REPORT.html` shows them with everything the review agent saw; they stay out of the import until a

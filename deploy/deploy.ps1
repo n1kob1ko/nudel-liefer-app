@@ -13,6 +13,14 @@ $envVars = @{}
 Get-Content .env | Where-Object { $_ -match '^\s*([A-Z_]+)\s*=\s*(.*)$' } | ForEach-Object { $envVars[$Matches[1]] = $Matches[2].Trim().Trim('"') }
 $ip = $envVars.REMOTE_IP; $user = $envVars.REMOTE_USER
 if (-not $ip -or -not $user) { throw '.env must set REMOTE_IP and REMOTE_USER.' }
+
+# The old vServer was retired on 2026-11-04 (its data was migrated to the dedicated server
+# 65.109.100.79). Deploying there would ship code to a host nobody looks at any more, so it is
+# refused outright rather than warned about.
+$retired = @('87.106.60.131')
+if ($retired -contains $ip) {
+  throw "$ip is RETIRED (since 2026-11-04). Production runs on 65.109.100.79 (nudel.stragas.com). Update REMOTE_IP in .env."
+}
 $target = "$user@$ip"
 $key = Join-Path $HOME '.ssh\id_ed25519'
 

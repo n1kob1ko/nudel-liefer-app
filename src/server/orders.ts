@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { diffOrderUpdate, type LineChange, toAuditQuantity } from "@/domain/audit";
 import { formatTimeOfDay, type OrderWindow, parseTimeOfDay } from "@/domain/delivery-window";
+import { amountInputValue } from "@/domain/money";
 import {
   formatCalendarDate,
   isPastDeliveryDate,
@@ -205,6 +206,8 @@ export async function createOrder(
         windowToTime: v.window.toTime,
         status: v.status,
         source: v.screenshotKey ? "SCREENSHOT" : "MANUAL",
+        paymentTerm: v.paymentTerm,
+        amountCents: v.amountCents,
         screenshot: v.screenshotKey
           ? { create: { storageKey: v.screenshotKey, uploadedById: actorId } }
           : undefined,
@@ -230,6 +233,8 @@ export async function createOrder(
       diff: {
         customerId: v.customerId,
         status: v.status,
+        paymentTerm: v.paymentTerm,
+        amountCents: v.amountCents,
         deliveryDate: formatCalendarDate(planned.day),
         window: windowText(v.window),
         source: v.screenshotKey ? "SCREENSHOT" : "MANUAL",
@@ -353,6 +358,9 @@ export type OrderOverviewRow = {
   source: "MANUAL" | "SCREENSHOT";
   /** Generated from a recurring rule ("aus Dauerbestellung", NUD-149). */
   fromRecurring: boolean;
+  /** Monthly bill or cash at the stop (D33); `amountCents` null = no amount set. */
+  paymentTerm: "MONTHLY" | "ON_DELIVERY";
+  amountCents: number | null;
   customer: { id: string; customerNumber: string; name: string };
   items: Array<{ id: string; productName: unknown; unit: string; quantity: number }>;
   /** The tour this order is part of (through its stop), or `null` while no tour contains it. */
@@ -419,6 +427,8 @@ export async function listOrderOverview(
       status: o.status,
       source: o.source,
       fromRecurring: o.recurringOrderId !== null,
+      paymentTerm: o.paymentTerm,
+      amountCents: o.amountCents,
       customer: o.customer,
       items: o.items.map((i) => ({
         id: i.id,
@@ -602,6 +612,9 @@ export type OrderDetail = {
   source: "MANUAL" | "SCREENSHOT";
   /** Generated from a recurring rule (NUD-149). */
   fromRecurring: boolean;
+  /** Monthly bill or cash at the stop (D33); `amountCents` null = no amount set. */
+  paymentTerm: "MONTHLY" | "ON_DELIVERY";
+  amountCents: number | null;
   internalNote: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -684,6 +697,8 @@ export async function getOrderDetail(
     status: o.status,
     source: o.source,
     fromRecurring: o.recurringOrderId !== null,
+    paymentTerm: o.paymentTerm,
+    amountCents: o.amountCents,
     internalNote: o.internalNote,
     createdAt: o.createdAt,
     updatedAt: o.updatedAt,
@@ -765,16 +780,23 @@ export async function updateOrder(
       customerId: true,
       status: true,
       deliveryDate: true,
+      paymentTerm: true,
+      amountCents: true,
       items: { select: { productId: true } },
     },
   });
   if (!existing) return { ok: false, error: "not_found" };
   if (!isOrderEditable(existing, today)) return { ok: false, error: "not_editable" };
 
+  // An edit that does not carry the payment fields (an older screen, a script) keeps what is stored;
+  // the order form always sends both (D33).
+  const fields = isRecord(rawInput) ? rawInput : {};
   const parsed = orderInputSchema.safeParse({
-    ...(isRecord(rawInput) ? rawInput : {}),
+    ...fields,
     customerId: existing.customerId,
     screenshotKey: null,
+    paymentTerm: fields.paymentTerm ?? existing.paymentTerm,
+    amount: "amount" in fields ? fields.amount : amountInputValue(existing.amountCents),
   });
   if (!parsed.success) return { ok: false, error: "invalid" };
   const v = parsed.data;
@@ -813,6 +835,8 @@ export async function updateOrder(
         windowFromTime: true,
         windowToTime: true,
         internalNote: true,
+        paymentTerm: true,
+        amountCents: true,
         items: { select: { productId: true, quantity: true } },
       },
     });
@@ -827,6 +851,8 @@ export async function updateOrder(
         windowToTime: v.window.toTime,
         status: v.status,
         internalNote: v.internalNote,
+        paymentTerm: v.paymentTerm,
+        amountCents: v.amountCents,
         items: {
           deleteMany: {},
           create: v.lines.map((l) => ({
@@ -845,6 +871,8 @@ export async function updateOrder(
         window: windowText(rowWindow(before)),
         internalNote: before.internalNote,
         items: before.items,
+        paymentTerm: before.paymentTerm,
+        amountCents: before.amountCents,
       },
       {
         status: v.status,
@@ -855,6 +883,8 @@ export async function updateOrder(
           productId: l.productId,
           quantity: l.quantity,
         })),
+        paymentTerm: v.paymentTerm,
+        amountCents: v.amountCents,
       },
     );
     if (diff) {

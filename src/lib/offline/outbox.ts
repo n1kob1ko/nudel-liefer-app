@@ -33,6 +33,8 @@ export type OutboxEntry = {
   /** Type "parking" only (NUD-144): the Parkplatz the driver set. */
   lat?: number;
   lng?: number;
+  /** Type "payment" only (D33): the cash collected at the stop, in euro cents. */
+  collectedCents?: number;
   /** ISO time of the tap on the device; the server treats this as the time of the action. */
   createdAt: string;
   /** Monotonic order within the queue, breaks ties between taps in the same millisecond. */
@@ -91,6 +93,9 @@ export function toSyncEntry(entry: OutboxEntry): SyncEntry {
       : {}),
     ...(entry.type === "parking" && entry.lat !== undefined && entry.lng !== undefined
       ? { lat: entry.lat, lng: entry.lng }
+      : {}),
+    ...(entry.type === "payment" && entry.collectedCents !== undefined
+      ? { collectedCents: entry.collectedCents }
       : {}),
     createdAt: entry.createdAt,
   };
@@ -177,6 +182,9 @@ export function overlayStop<T extends StopLike>(stop: T, entries: readonly Outbo
       next = { ...next, hasKey, keyNumber: hasKey === true ? (entry.keyNumber ?? null) : null };
     } else if (entry.type === "abbreviation") {
       next = { ...next, abbreviation: entry.abbreviation ?? null };
+    } else if (entry.type === "payment") {
+      // Cash collected at the stop (D33): the amount shows at once, independent of the status.
+      next = { ...next, collectedCents: entry.collectedCents ?? null };
     } else if (entry.type === "undo") {
       next = { ...next, status: "PENDING", problemReason: null, completedAt: null };
     } else if (next.status === "PENDING") {

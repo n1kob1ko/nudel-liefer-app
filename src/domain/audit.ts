@@ -15,6 +15,7 @@ export const AUDIT_ENTITIES = [
   "Vehicle",
   "RecurringOrder",
   "Driver",
+  "StandingTour",
 ] as const;
 export type AuditEntity = (typeof AUDIT_ENTITIES)[number];
 
@@ -41,6 +42,9 @@ export const AUDIT_ACTIONS = [
   "stop.delivered",
   "stop.problem",
   "stop.undo",
+  "stop.payment",
+  "monthly.pay",
+  "monthly.unpay",
   "photo.add",
   "photo.replace",
   "parking.create",
@@ -60,6 +64,11 @@ export const AUDIT_ACTIONS = [
   "vehicle.activate",
   "vehicle.deactivate",
   "driver.schedule_update",
+  "standing_tour.create",
+  "standing_tour.update",
+  "standing_tour.driver",
+  "standing_tour.activate",
+  "standing_tour.deactivate",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -120,6 +129,10 @@ export type OrderSnapshot = {
   window?: string;
   internalNote: string | null;
   items: ReadonlyArray<{ productId: string; quantity: number }>;
+  /** `MONTHLY` | `ON_DELIVERY` (D33); omitted = not tracked. */
+  paymentTerm?: string;
+  /** Amount of the order in euro cents (D33); `null` = no amount. Omitted = not tracked. */
+  amountCents?: number | null;
 };
 
 export type LineChange = {
@@ -163,6 +176,8 @@ export type OrderUpdateDiff = {
   window?: FieldChange<string>;
   internalNote?: FieldChange;
   lines?: LineChange[];
+  paymentTerm?: FieldChange<string>;
+  amountCents?: FieldChange<number | null>;
 };
 
 /** What an order edit changed; `null` when nothing a person can see differs (no entry is written). */
@@ -188,5 +203,19 @@ export function diffOrderUpdate(
   }
   const lines = diffOrderLines(before.items, after.items);
   if (lines.length > 0) diff.lines = lines;
+  if (
+    before.paymentTerm !== undefined &&
+    after.paymentTerm !== undefined &&
+    before.paymentTerm !== after.paymentTerm
+  ) {
+    diff.paymentTerm = { from: before.paymentTerm, to: after.paymentTerm };
+  }
+  if (
+    before.amountCents !== undefined &&
+    after.amountCents !== undefined &&
+    before.amountCents !== after.amountCents
+  ) {
+    diff.amountCents = { from: before.amountCents, to: after.amountCents };
+  }
   return Object.keys(diff).length > 0 ? diff : null;
 }

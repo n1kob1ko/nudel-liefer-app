@@ -3,7 +3,9 @@ import { z } from "zod";
 import { isScreenshotKey } from "@/lib/uploads";
 
 import { isValidWindow, type OrderWindow, parseTimeOfDay } from "./delivery-window";
+import { parseAmountToCents } from "./money";
 import { extractionAnswerSchema, MAX_SOURCE_TEXT } from "./order-extraction-answer";
+import { DEFAULT_PAYMENT_TERM, PAYMENT_TERMS } from "./payment";
 
 /**
  * Pure order-entry rules (NUD-030): quantity parsing, line merging, input validation and the
@@ -137,6 +139,28 @@ export const orderInputSchema = z
     windowFromTime: timeField("windowFromTime"),
     windowToTime: timeField("windowToTime"),
     status: z.enum(["CONFIRMED", "DRAFT"]).default("CONFIRMED"),
+    /**
+     * Cash at the stop or on the monthly bill (D33, NUD-196). Monthly is the default; the order form
+     * always sends it, `updateOrder` falls back to the stored value when it is missing.
+     */
+    paymentTerm: z.enum(PAYMENT_TERMS).default(DEFAULT_PAYMENT_TERM),
+    /**
+     * Amount of this order as typed in the office ("42,50", "42.5", a number); the catalog has no
+     * prices (D33), so this is the only source of money. Empty = no amount.
+     */
+    amount: z
+      .union([z.string().max(20), z.number().nullable(), z.null()])
+      .nullish()
+      .transform((value, ctx) => {
+        if (value === null || value === undefined) return null;
+        if (typeof value === "string" && value.trim() === "") return null;
+        const cents = parseAmountToCents(value);
+        if (cents === null) {
+          ctx.addIssue({ code: "custom", message: "amount" });
+          return z.NEVER;
+        }
+        return cents;
+      }),
     internalNote: z
       .string()
       .trim()
@@ -201,7 +225,8 @@ export const orderInputSchema = z
       ctx.addIssue({ code: "custom", message: "window" });
       return z.NEVER;
     }
-    return { ...value, lines: merged, window };
+    const { amount, ...rest } = value;
+    return { ...rest, amountCents: amount, lines: merged, window };
   });
 
 export type OrderInput = z.input<typeof orderInputSchema>;

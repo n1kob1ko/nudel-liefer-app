@@ -250,6 +250,7 @@
     },
     "nav": {
       "dashboard": "Overview",
+      "planning": "Daily planning",
       "orders": "Orders",
       "tours": "Tours",
       "customers": "Customers",
@@ -262,7 +263,101 @@
         "system": "System"
       },
       "vehicles": "Vehicles",
-      "utilization": "Utilization"
+      "utilization": "Utilization",
+      "payments": "Payments"
+    },
+    "planning": {
+      "title": "Daily planning",
+      "description": "The standing tours for one delivery day: the same customers as always, quantities adjusted right here, or a customer added for this day only.",
+      "save": "Save quantities",
+      "saving": "Saving …",
+      "saved": "{count, plural, one {# order saved.} other {# orders saved.}}",
+      "savedMerged": "{count, plural, one {# duplicate order merged.} other {# duplicate orders merged.}}",
+      "savedNothing": "No change: nothing was saved.",
+      "readOnly": {
+        "released": {
+          "title": "Tours of this day are released",
+          "body": "Once a tour is released the driver works with the released quantities. Change quantities via “Edit” on the tours page."
+        },
+        "past": {
+          "title": "Past delivery day",
+          "body": "The orders of this day are history and can no longer be changed here."
+        },
+        "toTours": "Go to tour planning"
+      },
+      "noRoutes": {
+        "title": "No standing tour yet",
+        "body": "Standing tours are fixed customer groups with a fixed driver. Create the first one with “Edit standing tours”."
+      },
+      "columns": {
+        "customer": "Customer",
+        "weight": "Weight",
+        "state": "Status",
+        "total": "Total"
+      },
+      "state": {
+        "nothing": "nothing ordered",
+        "fromRule": "from recurring order",
+        "cancelled": "cancelled",
+        "merged": "several orders"
+      },
+      "route": {
+        "summary": "{count, plural, one {# customer} other {# customers}} · {weight} kg",
+        "driver": "Driver (standing tour)",
+        "noDriver": "No driver",
+        "driverSaved": "Driver of the standing tour changed.",
+        "empty": "This standing tour has no customers yet.",
+        "ruleHint": "Rows filled “from recurring order” become orders only when you save the quantities."
+      },
+      "offRoute": {
+        "title": "Not in a standing tour",
+        "body": "Customers without a standing tour who have an order for this day. “Add” creates an order for this delivery day only – the standing tours stay unchanged.",
+        "search": "Search customer (name, number, city)",
+        "onlyWithOrder": "Only with order",
+        "empty": "No customer found.",
+        "add": "Add"
+      },
+      "errors": {
+        "generic": "Something went wrong. Please try again.",
+        "invalid": "Invalid input.",
+        "date_in_past": "Quantities cannot be changed for past days.",
+        "tour_released": "A tour of this day is already released. Change quantities on the tours page via “Edit”.",
+        "customer_not_found": "A customer was not found. Please reload the page.",
+        "customer_inactive": "A customer is inactive. Please reload the page.",
+        "product_not_found": "A product was not found. Please reload the page.",
+        "product_inactive": "A product is no longer active. Please reload the page."
+      },
+      "manage": {
+        "open": "Edit standing tours",
+        "title": "Standing tours",
+        "description": "Fixed customer groups with a fixed driver. Each customer belongs to exactly one standing tour; it appears on every delivery day with the same customers.",
+        "new": "+ Standing tour",
+        "name": "Name",
+        "namePlaceholder": "e.g. Standing tour 1",
+        "driver": "Driver",
+        "customers": "Customers",
+        "selected": "{count} selected",
+        "search": "Search customer",
+        "noMatch": "No customer found.",
+        "inOther": "in another standing tour",
+        "archive": "Archive standing tour",
+        "created": "Standing tour created.",
+        "saved": "Standing tour saved.",
+        "archived": "Standing tour archived. Its customers now appear in the list below.",
+        "cancel": "Close",
+        "save": "Save",
+        "saving": "Saving …",
+        "errors": {
+          "invalid": "Please enter a name.",
+          "not_found": "The standing tour was not found.",
+          "name_taken": "Another standing tour already has this name.",
+          "too_many": "There are too many standing tours.",
+          "driver_invalid": "This driver is not active.",
+          "customer_not_found": "A customer was not found.",
+          "customer_inactive": "A customer is inactive.",
+          "customer_in_other": "A customer already belongs to another standing tour."
+        }
+      }
     },
     "drivers": {
       "title": "Drivers",
@@ -1220,7 +1315,14 @@
         "import": {
           "toggle": "Message or screenshot",
           "optional": "Optional: the AI fills a draft from it."
-        }
+        },
+        "paymentTerm": "Payment term",
+        "paymentTermHint": "Monthly bill is the default; “Cash on delivery” is collected by the driver at the stop.",
+        "paymentMonthly": "Monthly bill (accumulated)",
+        "paymentCash": "Cash on delivery",
+        "amount": "Amount",
+        "amountHint": "Amount of this order in euro, e.g. 42.50. Empty = no amount yet (shows as “no amount” on the monthly bill).",
+        "amountInvalid": "Please enter an amount like 42 or 42.50 (at most two decimals)."
       },
       "detail": {
         "title": "Order",
@@ -1333,7 +1435,11 @@
         "label": "Delivery window"
       },
       "fromRecurring": "from standing order",
-      "newDescription": "Pick the customer and products, check the delivery, save."
+      "newDescription": "Pick the customer and products, check the delivery, save.",
+      "paymentTerm": "Payment",
+      "paymentMonthly": "Monthly bill",
+      "paymentCash": "Cash on delivery",
+      "amountNone": "No amount entered"
     },
     "tours": {
       "title": "Tours",
@@ -1727,7 +1833,11 @@
           "driver": "taken by the driver"
         }
       },
-      "unknownActor": "Unknown user"
+      "unknownActor": "Unknown user",
+      "money": {
+        "collected": "Collected",
+        "due": "due {amount}"
+      }
     },
     "vehicles": {
       "title": "Vehicles",
@@ -1833,6 +1943,84 @@
       },
       "percentValue": "{percent} %",
       "scheduleHint": "Working hours are maintained under Drivers → row → Actions → \"Edit working time\"."
+    },
+    "payments": {
+      "title": "Payments",
+      "description": "Open cash and open monthly bills. The driver collects cash at the stop; the office marks monthly bills as paid.",
+      "summary": "Open amounts",
+      "backToPayments": "Back to payments",
+      "monthLabel": "{month}",
+      "columns": {
+        "date": "Delivery day",
+        "customer": "Customer",
+        "driver": "Driver",
+        "due": "Due",
+        "collected": "Collected",
+        "open": "Open",
+        "month": "Month",
+        "orders": "Orders",
+        "total": "Total",
+        "amount": "Amount",
+        "items": "Products",
+        "noDriver": "No driver"
+      },
+      "cash": {
+        "title": "Open cash payments",
+        "body": "Stops with “cash on delivery” where the driver collected nothing or less than the amount.",
+        "openTotal": "Open in cash ({count})",
+        "emptyTitle": "No open cash payments",
+        "emptyBody": "Every cash order is collected or not delivered yet.",
+        "toTour": "Go to tour"
+      },
+      "monthly": {
+        "title": "Open monthly bills",
+        "body": "Months that are over and have orders on a monthly bill that are not marked paid yet.",
+        "openTotal": "Open on monthly bills ({count})",
+        "emptyTitle": "No open monthly bills",
+        "emptyBody": "Every finished month is marked paid.",
+        "open": "Open bill",
+        "noAmount": "{count} without amount"
+      },
+      "paid": {
+        "title": "Marked paid",
+        "body": "The latest months the office marked as paid.",
+        "badge": "Paid"
+      },
+      "state": {
+        "open": "Open",
+        "paid": "Paid",
+        "current": "Current month"
+      },
+      "bill": {
+        "title": "Monthly bill {customer}",
+        "description": "Accumulated bill for {month}.",
+        "totalHeading": "Total of the month",
+        "customerLine": "{number} · {city}",
+        "paidOn": "Paid on {date} for {amount}",
+        "ordersHeading": "Orders of the month",
+        "ordersCount": "{count} orders on the monthly bill",
+        "emptyTitle": "No orders in this month",
+        "emptyBody": "There are no confirmed orders on a monthly bill for this month.",
+        "currentMonth": "The month is still running; it can be marked paid from the 1st of the following month.",
+        "noAmount": "no amount"
+      },
+      "note": "Note (optional)",
+      "notePlaceholder": "e.g. paid in cash, or transfer on the 3rd",
+      "mark": "Mark as paid",
+      "marking": "Saving …",
+      "unmark": "Take the paid note back",
+      "print": "Print",
+      "toast": {
+        "marked": "Month marked as paid.",
+        "unmarked": "Paid note taken back."
+      },
+      "errors": {
+        "generic": "Something went wrong. Please try again.",
+        "invalid": "Invalid input.",
+        "not_found": "The entry was not found.",
+        "nothing_to_pay": "Nothing to pay for this month (no orders, or the month is still running).",
+        "conflict": "The entry was changed at the same time. Please reload."
+      }
     }
   },
   "driver": {
@@ -2087,7 +2275,8 @@
       "mutationLoading": "checklist opened",
       "mutationDepart": "departure",
       "outboxWaitingForConnection": "{count, plural, one {# entry is waiting for a connection – nothing is being sent right now.} other {# entries are waiting for a connection – nothing is being sent right now.}}",
-      "outboxUnreachable": "The server cannot be reached right now. The entries stay on the device and are sent again automatically."
+      "outboxUnreachable": "The server cannot be reached right now. The entries stay on the device and are sent again automatically.",
+      "mutationPayment": "Cash payment"
     },
     "unitsTotal": {
       "KG": "kg",
@@ -2177,6 +2366,24 @@
       "empty": "Nothing to check. You can leave now.",
       "emptyTrip": "Nothing to check.",
       "storageError": "Could not save on this device. Please try again."
+    },
+    "payment": {
+      "title": "Cash payment",
+      "due": "Collect on delivery: {amount}",
+      "collectedBadge": "{amount} collected",
+      "collected": "Collected: {amount}",
+      "short": "{amount} still missing",
+      "over": "{amount} more than due",
+      "change": "Change amount",
+      "amountLabel": "Amount collected",
+      "save": "Collected",
+      "saved": "Collected from {name}",
+      "needDelivery": "Tap “Delivered” first, then enter the amount.",
+      "cancel": "Cancel",
+      "errors": {
+        "storage": "Cannot save on the phone. Please try again.",
+        "amount": "Please enter an amount like 42 or 42.50."
+      }
     }
   },
   "pwa": {

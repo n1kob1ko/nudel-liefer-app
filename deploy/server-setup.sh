@@ -2,6 +2,12 @@
 # Runs ON the vServer as root (NUD-127). Installs or updates the Nudel Liefer App under
 # https://<host>/delivery-app/ next to the existing sites (the quiz app stays untouched).
 #
+# RETIRED HOST WARNING (2026-11-04): the vServer 87.106.60.131 was retired and its data migrated
+# to the dedicated server 65.109.100.79, which serves the app at the ROOT of nudel.stragas.com
+# (no /delivery-app/ prefix, own nginx vhost). This script still builds the old sub-path layout and
+# rewrites /etc/delivery-app.env, so running it against the new server would break the live site.
+# It refuses to run for that host; a root-path variant has to be written before deploying again.
+#
 # Usage: bash server-setup.sh <public-ip-or-domain> /tmp/nudel-delivery-app.tgz
 #
 # Idempotent: re-running is the normal update path. Every step is safe to repeat; secrets are
@@ -23,6 +29,17 @@ S3_PUBLIC_ENDPOINT="https://${PUBLIC_HOST}"
 
 log(){ printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 fail(){ printf '\n\033[1;31mERROR: %s\033[0m\n' "$*" >&2; exit 1; }
+
+# Hosts this script must never touch. 87.106.60.131 is retired; 65.109.100.79 runs the root-path
+# deployment this script cannot produce (see the header).
+case "$PUBLIC_HOST" in
+  87.106.60.131)
+    fail "87.106.60.131 is RETIRED (since 2026-11-04). Production is nudel.stragas.com on 65.109.100.79."
+    ;;
+  65.109.100.79|nudel.stragas.com)
+    fail "$PUBLIC_HOST runs the root-path deployment (nginx vhost /etc/nginx/sites-available/nudel-stragas). This script builds the old /delivery-app/ sub-path layout and would overwrite /etc/delivery-app.env - refusing."
+    ;;
+esac
 
 [ "$(id -u)" = "0" ] || fail "run as root"
 [ -f "$ARCHIVE" ] || fail "archive not found: $ARCHIVE"

@@ -55,7 +55,15 @@ export type AuditDetail =
   | { kind: "reason"; reason: string }
   | { kind: "note"; text: string }
   | { kind: "photo"; photoKind: string; via: "admin" | "driver" }
-  | { kind: "tapped"; at: string };
+  | { kind: "tapped"; at: string }
+  /** Money in euro cents (D33): the cash collected at a stop, with what was due. */
+  | {
+      kind: "money";
+      field: "collectedCents";
+      before: number | null;
+      after: number | null;
+      dueCents: number | null;
+    };
 
 export type AuditEntryView = {
   id: string;
@@ -150,6 +158,15 @@ const photoEntry = z.object({
   kind: z.string(),
   via: z.enum(["admin", "driver"]),
   tourId: z.string().optional(),
+});
+
+/** Cash collected at a stop (D33): the amount before and after, and what was due. */
+const paymentEntry = z.object({
+  customerId: z.string(),
+  from: z.number().nullable(),
+  to: z.number().nullable(),
+  dueCents: z.number().nullable().optional(),
+  clientCreatedAt: z.string().optional(),
 });
 
 /** Ids an entry refers to, so names can be loaded with a handful of queries. */
@@ -480,9 +497,22 @@ async function toViews(db: DbForHistory, rows: Row[]): Promise<AuditEntryView[]>
         if (d.data.clientCreatedAt) out.push({ kind: "tapped", at: d.data.clientCreatedAt });
         return out;
       }
+      case "stop.payment": {
+        const d = paymentEntry.safeParse(row.diff);
+        if (!d.success) return [];
+        return [
+          customerDetail(d.data.customerId),
+          {
+            kind: "money",
+            field: "collectedCents",
+            before: d.data.from,
+            after: d.data.to,
+            dueCents: d.data.dueCents ?? null,
+          },
+        ];
+      }
       case "photo.add":
-      case "photo.replace": {
-        const d = photoEntry.safeParse(row.diff);
+      case "photo.replace": {        const d = photoEntry.safeParse(row.diff);
         return d.success ? [{ kind: "photo", photoKind: d.data.kind, via: d.data.via }] : [];
       }
       // Parking spot entries belong to the customer; no order or tour history shows them.
@@ -507,6 +537,15 @@ async function toViews(db: DbForHistory, rows: Row[]): Promise<AuditEntryView[]>
       case "vehicle.deactivate":
       // Driver working time (NUD-152) is edited on the driver page, not in an order / tour timeline.
       case "driver.schedule_update":
+      // Standing tours (NUD-186) are edited on the day plan; their entries belong to no order or tour.
+      case "standing_tour.create":
+      case "standing_tour.update":
+      case "standing_tour.driver":
+      case "standing_tour.activate":
+      case "standing_tour.deactivate":
+      // Monthly bills (NUD-196) have their own page; no order or tour timeline shows them.
+      case "monthly.pay":
+      case "monthly.unpay":
         return [];
     }
   };

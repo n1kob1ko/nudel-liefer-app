@@ -37,10 +37,14 @@ export type PlannedStop = {
  * One stop per customer: all given (confirmed) orders of a customer are merged, quantities are
  * summed per product (whole numbers) and every order stays linked. Stops are returned in
  * order of the customer's first order. The caller passes only CONFIRMED orders of one day.
+ *
+ * An order without a single positive quantity never becomes a stop (NUD-186): the day plan keeps
+ * such an order as "nothing ordered" instead of cancelling it, and there is nothing to unload.
  */
 export function buildStops(orders: readonly StopOrderInput[]): PlannedStop[] {
   const stops = new Map<string, PlannedStop>();
   for (const order of orders) {
+    if (!order.items.some((item) => item.quantity > 0)) continue;
     let stop = stops.get(order.customerId);
     if (!stop) {
       stop = { customerId: order.customerId, orderIds: [], items: [] };

@@ -125,6 +125,17 @@ export function OrderDetailView({
               </dd>
             </div>
             <div className="flex flex-col gap-0.5">
+              <dt className="text-sm text-muted-foreground">{t("paymentTerm")}</dt>
+              <dd className="text-base" data-testid="detail-payment">
+                {order.paymentTerm === "ON_DELIVERY" ? t("paymentCash") : t("paymentMonthly")}
+                <span className="block text-sm text-muted-foreground" data-testid="detail-amount">
+                  {order.amountCents === null
+                    ? t("amountNone")
+                    : fmt.amount(order.amountCents)}
+                </span>
+              </dd>
+            </div>
+            <div className="flex flex-col gap-0.5">
               <dt className="text-sm text-muted-foreground">{td("tourHeading")}</dt>
               <dd className="text-base" data-testid="detail-tour" data-tour-id={order.tour?.tourId}>
                 {/* NUD-178 (QA 2026-10-29 F6 + F11): one line, one truth — with the tour's own day, the

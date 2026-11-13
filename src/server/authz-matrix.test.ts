@@ -352,6 +352,28 @@ const MATRIX: Record<string, Row> = {
     async () => (await import("./work-schedule-actions")).saveWorkScheduleAction({}),
   ),
 
+  "src/server/standing-actions.ts#saveStandingDayAction": adminAction("day plan", async () =>
+    (await import("./standing-actions")).saveStandingDayAction({}),
+  ),
+  "src/server/standing-actions.ts#saveStandingTourAction": adminAction("standing tours", async () =>
+    (await import("./standing-actions")).saveStandingTourAction({}),
+  ),
+  "src/server/standing-actions.ts#setStandingTourDriverAction": adminAction(
+    "standing tours",
+    async () => (await import("./standing-actions")).setStandingTourDriverAction("x", null),
+  ),
+  "src/server/standing-actions.ts#setStandingTourActiveAction": adminAction(
+    "standing tours",
+    async () => (await import("./standing-actions")).setStandingTourActiveAction("x", false),
+  ),
+
+  "src/server/payment-actions.ts#markMonthlyBillPaidAction": adminAction("payments", async () =>
+    (await import("./payment-actions")).markMonthlyBillPaidAction({}),
+  ),
+  "src/server/payment-actions.ts#unmarkMonthlyBillPaidAction": adminAction("payments", async () =>
+    (await import("./payment-actions")).unmarkMonthlyBillPaidAction({}),
+  ),
+
   // ---- driver-only server actions
   "src/server/stop-status-actions.ts#stopStatusAction": driverAction(
     "driver stop status",

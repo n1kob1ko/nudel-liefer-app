@@ -27,6 +27,12 @@ export function createAppFormatters(format: Formatter, timeZone: string = DEFAUL
      * Always formatted in UTC so the day never shifts.
      */
     calendarDate: (value: Date) => format.dateTime(value, { dateStyle: "medium", timeZone: "UTC" }),
+    /**
+     * Money of an order or a bill (D33, NUD-196): euro cents in, local currency text out
+     * ("42,50 €"). Always EUR — the factory bills in euro.
+     */
+    amount: (cents: number) =>
+      format.number(cents / 100, { style: "currency", currency: "EUR" }),
   };
 }
 

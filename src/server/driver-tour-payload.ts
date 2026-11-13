@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { activeParkingSpots, routingPoint } from "@/domain/parking";
+import { cashDueCents } from "@/domain/payment";
 import type { PhotoKind } from "@/domain/photos";
 import type { PrismaClient } from "@/generated/prisma/client";
 import {
@@ -25,7 +26,7 @@ import { getDriverTours } from "./tour-driver";
  */
 export const DRIVER_PHOTO_URL_TTL_SECONDS = 12 * 60 * 60;
 
-type Db = Pick<PrismaClient, "tour" | "product" | "customer" | "photo" | "settings">;
+type Db = Pick<PrismaClient, "tour" | "product" | "customer" | "photo" | "settings" | "stop">;
 
 const depotSchema = z.object({ name: z.string(), lat: z.number(), lng: z.number() });
 const geometrySchema = z.object({ coordinates: z.array(z.tuple([z.number(), z.number()])) });
@@ -77,7 +78,7 @@ export async function getDriverTourResponse(
       : customerIds
     : [];
 
-  const [customers, rows, photoRows, settingsRow] = await Promise.all([
+  const [customers, rows, photoRows, settingsRow, paymentRows] = await Promise.all([
     db.customer.findMany({
       where: { id: { in: customerIds } },
       select: {
@@ -114,7 +115,21 @@ export async function getDriverTourResponse(
         })
       : Promise.resolve([]),
     db.settings.findUnique({ where: { id: 1 }, select: { departureChecklist: true } }),
+    // Cash of the day (D33, NUD-196): what each stop has to collect and what was recorded.
+    db.stop.findMany({
+      where: { id: { in: tours.flatMap((tour) => tour.stops.map((stop) => stop.id)) } },
+      select: {
+        id: true,
+        collectedCents: true,
+        orders: {
+          select: {
+            order: { select: { status: true, paymentTerm: true, amountCents: true } },
+          },
+        },
+      },
+    }),
   ]);
+  const paymentById = new Map(paymentRows.map((row) => [row.id, row]));
   const byId = new Map(customers.map((c) => [c.id, c]));
   const rowById = new Map(rows.map((row) => [row.id, row]));
   const checklist = parseDepartureChecklist(settingsRow?.departureChecklist);
@@ -182,6 +197,13 @@ export async function getDriverTourResponse(
         hasKey: customer?.hasKey ?? null,
         keyNumber: customer?.keyNumber ?? null,
         abbreviation: customer?.abbreviation ?? null,
+        cashDueCents: cashDueCents(
+          (paymentById.get(stop.id)?.orders ?? [])
+            .map((link) => link.order)
+            .filter((order) => order.status === "CONFIRMED")
+            .map((order) => ({ paymentTerm: order.paymentTerm, amountCents: order.amountCents })),
+        ),
+        collectedCents: paymentById.get(stop.id)?.collectedCents ?? null,
         photos: { STORE: photos?.STORE ?? null, PARKING: photos?.PARKING ?? null },
         items: stop.items.map((item) => {
           const name = localizedTextSchema.safeParse(item.name);

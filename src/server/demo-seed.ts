@@ -10,9 +10,12 @@ import {
   DEMO_CUSTOMERS,
   DEMO_DEPOT,
   DEMO_ORDER_NOTE,
+  DEMO_PRICES,
   DEMO_PRODUCT_SKUS,
+  DEMO_STANDING_TOURS,
   DEMO_VEHICLES,
   demoOrderLines,
+  demoPaymentTerm,
 } from "./demo-data";
 import { readS3Config, type Storage } from "./storage";
 import { type UploadObject, uploadWithPresignedUrl } from "./storage/upload";
@@ -24,6 +27,8 @@ export type DemoSeedSummary = {
   customersCreated: number;
   photosCreated: number;
   ordersCreated: number;
+  /** Standing tours created by this run (NUD-194); existing ones are never changed. */
+  standingToursCreated: number;
 };
 
 /** Re-exported so callers (and the demo seed test) keep importing them from here. */
@@ -236,6 +241,12 @@ export async function seedDemo(
     });
     if (!hasOrder) {
       const lines = demoOrderLines(index);
+      // NUD-196: a demo amount per order (the real catalog has no prices) and every fifth customer
+      // on cash, so the payments page and the monthly bills have something to show.
+      const amountCents = lines.reduce(
+        (sum, line) => sum + (DEMO_PRICES[line.sku] ?? 0) * line.quantity,
+        0,
+      );
       await prisma.order.create({
         data: {
           customerId: customer.id,
@@ -244,6 +255,8 @@ export async function seedDemo(
           windowTo: deliveryDate,
           status: "CONFIRMED",
           source: "MANUAL",
+          paymentTerm: demoPaymentTerm(index),
+          amountCents,
           internalNote: DEMO_ORDER_NOTE,
           createdById: admin.id,
           items: {
@@ -255,11 +268,50 @@ export async function seedDemo(
     }
   }
 
+  // Standing tours (NUD-194): the day plan groups the first 14 demo customers into two fixed tour
+  // groups with a driver; D-015 .. D-020 stay off-route, so the bottom list of the page has content.
+  // Only created, never changed: an office edit of the groups survives a rerun.
+  let standingToursCreated = 0;
+  for (const group of DEMO_STANDING_TOURS) {
+    const exists = await prisma.standingTour.findFirst({
+      where: { name: { equals: group.name, mode: "insensitive" } },
+      select: { id: true },
+    });
+    if (exists) continue;
+    const numbers = DEMO_CUSTOMERS.slice(group.from - 1, group.to).map((c) => c.number);
+    const members = await prisma.customer.findMany({
+      where: { customerNumber: { in: numbers } },
+      select: { id: true, customerNumber: true },
+    });
+    const byNumber = new Map(members.map((c) => [c.customerNumber, c.id]));
+    const ordered = numbers.flatMap((number) => {
+      const id = byNumber.get(number);
+      return id ? [id] : [];
+    });
+    if (ordered.length === 0) continue;
+    const driver = await prisma.user.findFirst({
+      where: { username: group.driverUsername, role: "DRIVER" },
+      select: { id: true },
+    });
+    await prisma.standingTour.create({
+      data: {
+        name: group.name,
+        driverId: driver?.id ?? null,
+        sortOrder: standingToursCreated,
+        customers: {
+          create: ordered.map((customerId, index) => ({ customerId, sortOrder: index })),
+        },
+      },
+    });
+    standingToursCreated += 1;
+  }
+
   return {
     deliveryDate: deliveryDate.toISOString().slice(0, 10),
     depotUpdated,
     customersCreated,
     photosCreated,
     ordersCreated,
+    standingToursCreated,
   };
 }

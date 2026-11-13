@@ -54,6 +54,25 @@ describe("buildStops", () => {
     buildStops(orders);
     expect(orders).toEqual(copy);
   });
+
+  it("skips an order that carries nothing (NUD-186: kept as 'nothing ordered', never driven to)", () => {
+    const stops = buildStops([
+      ...orders,
+      { id: "o4", customerId: "c3", items: [{ productId: "p1", quantity: 0 }] },
+      { id: "o5", customerId: "c4", items: [] },
+    ]);
+    expect(stops.map((s) => s.customerId)).toEqual(["c1", "c2"]);
+  });
+
+  it("keeps a customer who has a nothing order next to a real one", () => {
+    const stops = buildStops([
+      { id: "o1", customerId: "c1", items: [{ productId: "p1", quantity: 0 }] },
+      { id: "o2", customerId: "c1", items: [{ productId: "p1", quantity: 2 }] },
+    ]);
+    expect(stops).toEqual([
+      { customerId: "c1", orderIds: ["o2"], items: [{ productId: "p1", quantity: 2 }] },
+    ]);
+  });
 });
 
 describe("partitionByLocation (NUD-141)", () => {

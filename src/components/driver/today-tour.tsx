@@ -57,6 +57,7 @@ import { AbbreviationChip } from "./customer-abbreviation";
 import { KeyChip } from "./customer-key";
 import { DepartureCard, DepartureSheet, queueDeparture } from "./departure-checklist";
 import { driverTime } from "./driver-time";
+import { QuickDeliveredButton } from "./quick-delivered";
 import { RefreshOnFocus } from "./refresh-on-focus";
 import { ReloadStop } from "./reload-stop";
 import { useSeenRevision } from "./seen-revision";
@@ -272,10 +273,12 @@ function NoteStrip({ text }: { text: string }) {
 
 function NextStopCard({
   stop,
+  stops,
   timezone,
   unseen,
 }: {
   stop: TodayStop;
+  stops: readonly TodayStop[];
   timezone: string;
   unseen: boolean;
 }) {
@@ -354,7 +357,7 @@ function NextStopCard({
       <ItemSummary items={stop.items} />
       {stop.noteText ? <NoteStrip text={stop.noteText} /> : null}
       {unseen ? <ChangeHighlight stop={stop} /> : null}
-      <div className="grid gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-stretch gap-2">
         {stopGoogleNavigationUrl(stop) ? (
           <a
             href={stopGoogleNavigationUrl(stop)!}
@@ -364,18 +367,24 @@ function NextStopCard({
             className={buttonVariants({
               size: "xl",
               variant: "primary",
-              className: "relative z-10",
+              className: "relative z-10 min-h-14 min-w-0 text-center",
             })}
           >
-            <NavigationIcon className="size-6" aria-hidden />
-            {t("navigate")}
+            <NavigationIcon className="size-6 shrink-0" aria-hidden />
+            {/* Two words next to the "Geliefert" button on a 375 px phone: wrap, do not squeeze. */}
+            <span className="whitespace-normal leading-tight">{t("navigate")}</span>
           </a>
         ) : (
-          <p className="flex items-center gap-2 text-base" data-testid="no-pin">
+          <p
+            className="flex items-center gap-2 self-center text-base"
+            data-testid="no-pin"
+          >
             <AlertTriangleIcon className="size-5 shrink-0" aria-hidden />
             {t("noPin")}
           </p>
         )}
+        {/* One tap from the card (NUD-195): drivers who know the way do not open the stop screen. */}
+        <QuickDeliveredButton stop={stop} stops={stops} className="relative z-10" />
       </div>
     </section>
   );
@@ -1050,7 +1059,7 @@ export function TodayTour({
           ) : null}
 
           {next ? (
-            <NextStopCard stop={next} timezone={today.timezone} unseen={unseen(next)} />
+            <NextStopCard stop={next} stops={stops} timezone={today.timezone} unseen={unseen(next)} />
           ) : (
             <div
               className="flex flex-col gap-3 rounded-xl border border-border bg-success-soft p-5 text-success-soft-foreground"
