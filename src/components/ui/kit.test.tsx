@@ -95,6 +95,21 @@ describe("Button", () => {
     expect(screen.getByRole("button")).toHaveClass("btn-edge", "bg-destructive");
   });
 
+  it("keeps the keyboard focus outline switched on for every variant", () => {
+    // Tailwind v4: `outline-none` sets `--tw-outline-style: none`, and `focus-visible:outline-2`
+    // reads that variable. Both on one element means NO focus outline at all. Filled buttons hid
+    // the mistake behind their box-shadow; `ghost` has none (driver menu, "Überspringen").
+    const variants = ["default", "outline", "secondary", "ghost", "warning", "link"] as const;
+    for (const variant of variants) {
+      const { unmount } = render(<Button variant={variant}>Knopf</Button>);
+      const classes = screen.getByRole("button").className.split(/\s+/);
+      expect(classes, variant).toContain("focus-visible:outline-2");
+      expect(classes, variant).toContain("focus-visible:outline-ring");
+      expect(classes, variant).not.toContain("outline-none");
+      unmount();
+    }
+  });
+
   it("has a soft red variant for reporting a problem", () => {
     render(<Button variant="warning">Problem</Button>);
     expect(screen.getByRole("button")).toHaveClass(

@@ -18,7 +18,9 @@ import { cn } from "@/lib/utils";
  *
  * Filled variants carry a tactile edge (`btn-edge`) that flattens while pressed; every variant
  * scales to 0.97 while pressed (motion rule 4). The focus ring is an outline, so it never fights
- * the edge's box-shadow, and it is ink in light mode and yolk in dark mode (`--ring`).
+ * the edge's box-shadow, and it is ink in light mode and yolk in dark mode (`--ring`). The base
+ * must NOT carry `outline-none`: in Tailwind v4 that sets `--tw-outline-style: none`, which the
+ * `focus-visible:outline-2` below reads, so the two together switch the focus outline off.
  *
  * Sizes: `lg` (48 px) is the driver size, `xl` (56 px) the driver primary size: touch targets
  * >= 48 px stay intact even when callers override `min-h-14 text-lg` (tailwind-merge lets the
@@ -26,7 +28,7 @@ import { cn } from "@/lib/utils";
  * (plus a `Tooltip` in the admin app).
  */
 const buttonVariants = cva(
-  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md text-base font-semibold whitespace-nowrap outline-none select-none transition-[color,background-color,border-color,box-shadow,transform,filter] duration-[140ms] ease-out active:scale-[.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5",
+  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md text-base font-semibold whitespace-nowrap select-none transition-[color,background-color,border-color,box-shadow,transform,filter] duration-[140ms] ease-out active:scale-[.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5",
   {
     variants: {
       variant: {
