@@ -4,6 +4,7 @@ import {
   DEV_TILE_ATTRIBUTION,
   DEV_TILE_URL,
   getMapTileConfig,
+  GOOGLE_ATTRIBUTION,
   isTileCacheEnabled,
 } from "./map-config";
 
@@ -26,6 +27,43 @@ describe("getMapTileConfig", () => {
     expect(
       getMapTileConfig({ MAP_TILE_URL: "https://t.example/{z}/{x}/{y}.png" }).attribution,
     ).toBe("");
+  });
+});
+
+describe("Google attribution (NUD-203)", () => {
+  const URL = "https://t.example/{z}/{x}/{y}.png";
+
+  it("names Google next to the map provider while the Google key is set", () => {
+    expect(GOOGLE_ATTRIBUTION).toContain("Google Maps");
+    expect(
+      getMapTileConfig({
+        MAP_TILE_URL: URL,
+        MAP_TILE_ATTRIBUTION: "© Example",
+        GOOGLE_MAPS_SERVER_KEY: "AIza-secret-key",
+      }).attribution,
+    ).toBe(`© Example | ${GOOGLE_ATTRIBUTION}`);
+    expect(getMapTileConfig({ GOOGLE_MAPS_SERVER_KEY: "AIza-secret-key" }).attribution).toBe(
+      `${DEV_TILE_ATTRIBUTION} | ${GOOGLE_ATTRIBUTION}`,
+    );
+    // No stray separator when the map provider has no attribution of its own.
+    expect(
+      getMapTileConfig({ MAP_TILE_URL: URL, GOOGLE_MAPS_SERVER_KEY: "AIza-secret-key" })
+        .attribution,
+    ).toBe(GOOGLE_ATTRIBUTION);
+  });
+
+  it("the key itself never reaches the browser with the tile settings", () => {
+    const config = getMapTileConfig({
+      MAP_TILE_URL: URL,
+      GOOGLE_MAPS_SERVER_KEY: "AIza-secret-key",
+    });
+    expect(JSON.stringify(config)).not.toContain("AIza");
+  });
+
+  it("says nothing about Google without the key", () => {
+    expect(getMapTileConfig({ GOOGLE_MAPS_SERVER_KEY: "  " }).attribution).toBe(
+      DEV_TILE_ATTRIBUTION,
+    );
   });
 });
 

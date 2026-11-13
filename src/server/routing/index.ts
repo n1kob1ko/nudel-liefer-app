@@ -1,10 +1,12 @@
 import { FallbackRoutingProvider } from "./fallback";
+import { GoogleRoutingProvider } from "./google";
 import { LocalHeuristicProvider } from "./heuristic";
 import { HeuristicOrderRoutingProvider } from "./heuristic-order";
 import { DEFAULT_PROFILE, ORS_PROFILES, type OrsProfile, OrsRoutingProvider } from "./ors";
 import type { RoutingProvider } from "./types";
 
 export { FallbackRoutingProvider } from "./fallback";
+export { GoogleRoutingProvider, mapComputeRoutesResponse } from "./google";
 export { LocalHeuristicProvider } from "./heuristic";
 export { HeuristicOrderRoutingProvider } from "./heuristic-order";
 export {
@@ -34,7 +36,14 @@ export function parseBaseUrl(value: string | undefined): string | undefined {
 }
 
 /**
- * Routing provider selected from the environment: ORS with automatic fallback to the local
+ * Routing provider selected from the environment.
+ *
+ * `GOOGLE_MAPS_SERVER_KEY` (NUD-203) comes first and wins over every ORS variable: the visiting
+ * order from the local heuristic, the legs and the road line from Google's Routes API
+ * (`GoogleRoutingProvider`), composed like a self-hosted ORS below. `distribute()` stays the
+ * heuristic's. When Google fails, `FallbackRoutingProvider` answers with the estimate.
+ *
+ * Without that key: ORS with automatic fallback to the local
  * heuristic when either `ORS_API_KEY` (hosted API) or `ORS_BASE_URL` (self-hosted instance,
  * NUD-156 — it needs no key) is set, otherwise the heuristic alone and a single warning.
  * `ORS_BASE_URL` points the routing/optimization calls at a self-hosted openrouteservice; unset
@@ -54,10 +63,19 @@ export function getRoutingProvider(
   env: Record<string, string | undefined> = process.env,
 ): RoutingProvider {
   if (instance) return instance;
+  const googleKey = env.GOOGLE_MAPS_SERVER_KEY?.trim();
   const apiKey = env.ORS_API_KEY?.trim() ?? "";
   const baseUrl = parseBaseUrl(env.ORS_BASE_URL);
   const heuristic = new LocalHeuristicProvider();
-  if (apiKey || baseUrl) {
+  if (googleKey) {
+    instance = new FallbackRoutingProvider(
+      new HeuristicOrderRoutingProvider(
+        new GoogleRoutingProvider({ apiKey: googleKey }),
+        heuristic,
+      ),
+      heuristic,
+    );
+  } else if (apiKey || baseUrl) {
     const ors = new OrsRoutingProvider({
       apiKey,
       baseUrl,
@@ -73,7 +91,7 @@ export function getRoutingProvider(
     if (!warned) {
       warned = true;
       console.warn(
-        "[routing] neither ORS_API_KEY nor ORS_BASE_URL is set - using the local heuristic (distances and times are estimates, approximate)",
+        "[routing] none of GOOGLE_MAPS_SERVER_KEY, ORS_API_KEY, ORS_BASE_URL is set - using the local heuristic (distances and times are estimates, approximate)",
       );
     }
     instance = heuristic;

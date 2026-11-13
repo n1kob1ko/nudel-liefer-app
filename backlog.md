@@ -361,6 +361,7 @@ Read rule: `pick(text, locale)` returns the requested locale; if empty, the clos
 | NUD-200 | Nightly backup of the master data on the server (no orders, tours or payments; nothing off-site) | M2.7 | 094 | done |
 | NUD-201 | Bezahlte Bestellungen, Touren und Monatsrechnungen automatisch löschen | M2.8 | 196 | done |
 | NUD-202 | Hosting on Railway instead of the dedicated server | M2.8 | 200 | in-progress |
+| NUD-203 | Google Maps for address search and routes instead of own map services | M2.8 | 202 | in-progress |
 | NUD-100 | AI screenshot extraction (review required) | M3 | 031 | superseded → NUD-150 |
 | NUD-101 | Recurring / standing orders | M3 | 032 | superseded → NUD-149 |
 | NUD-102 | Multiple drivers / tours per day | M3 | 043 | superseded → NUD-147 |
@@ -4008,6 +4009,28 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 - `app` is built by Railpack, not by a Dockerfile: the CSP is assembled at build time from service variables, and a Railpack build sees all of them. `next start` already listens on every interface; the systemd unit's `HOSTNAME=127.0.0.1` never restricted it (checked: `next start` ignores `HOSTNAME`).
 - Checked locally before the first deploy: a production build without a reachable database; the built app against PostgreSQL 18 with the dispatcher calling all seven routes (wrong secret → 401 → exit 1); the `ors` image with the image's own test extract (download, graph build, health `ready`, a route, a restart that neither downloads nor rebuilds). The Photon and backup images could only be built on Railway (this sandbox cannot reach the map data hosts).
 
+#### NUD-203 · Google Maps for address search and routes instead of own map services
+**Status:** in-progress · **depends_on:** 202 · Source: owner 2026-11-13 ("lass das Foto weg und verwende Google Maps"; standing tours are templates in the app, "wenn man drauf klickt dann wird es halt als neue Anfrage bei Google gemacht").
+
+**Goal:** With one Google Maps Platform key the app looks addresses up and computes road routes through Google, so the self-hosted openrouteservice and Photon services on Railway (most of the hosting cost) can be removed. The map the users see stays as it is.
+
+**Acceptance criteria**
+- [x] `GOOGLE_MAPS_SERVER_KEY` selects `GoogleGeocoder` (Geocoding API) and `GoogleRoutingProvider` (Routes API `computeRoutes`) and wins over every `ORS_*` / `PHOTON_*` variable; without it nothing changes. `GOOGLE_MAPS_LANGUAGE` (`de`) and `GOOGLE_MAPS_REGION` (`at`) tune the address search.
+- [x] A candidate of the address search is labelled with the address the office typed (numbered from the second hit on); Google's address text never reaches the UI. Confidence from Google's precision (`ROOFTOP` 1 … `APPROXIMATE` 0.4, a partial match at most 0.4), so the existing "unsicher" hint below 0.5 keeps working.
+- [x] A tour's order is the local heuristic's; legs, times and the line come from Google in requests of at most 10 stops between two ends, joined without a gap or a doubled point; no steps, no traffic, no reordering by Google. A failure or 8 s without an answer falls back to the estimate ("Näherungswerte").
+- [x] Google's HTTP 200 refusals (`REQUEST_DENIED`, `OVER_QUERY_LIMIT`, …) are failures, not "nothing found". The key appears in no error text, log line or health report.
+- [x] `GET /api/health` reports `google` for routing and geocoding; a production build warns when no map service is configured at all; every map names Google Maps in its attribution while the key is set.
+- [x] `docs/deploy-railway.md` (section 7: key, switch, terms, costs, limits), `docs/env.md`, `.env.example`, `AGENTS.md` updated.
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm i18n:check` green.
+- [ ] 👤 HUMAN: create the key in Google Cloud (Geocoding API + Routes API, restricted to those two) and enter it on Railway as `GOOGLE_MAPS_SERVER_KEY` of `app`.
+- [ ] After that: `/api/health` says `google`, an address and a tour work; then `ors`, `photon`, their volumes and `ORS_BASE_URL` / `PHOTON_URL` / `PHOTON_LANG` are removed on Railway and `deploy/railway/ors`, `deploy/railway/photon` deleted.
+
+**Implementation notes (NUD-203)**
+- No migration, no UI change, no new dependency, no key in the browser. New: `src/server/geocoder/google.ts`, `src/server/routing/google.ts`; wiring in the two `index.ts`, `src/server/health.ts`, `src/lib/map-config.ts`, `scripts/lib/deploy-env.ts`. Plan: `docs/superpowers/plans/2026-11-13-google-maps-providers.md`.
+- The test fixtures are hand-written from Google's documented response shapes; nothing was recorded live, because there is no key outside the owner's account. The first real request happens on Railway (acceptance criterion above).
+- `GoogleGeocoder.reverse()` answers `null` without a request: the app does not call it, and its only answer would be address text.
+- A route cache for standing tours was built first (local branch `route-cache`) and dropped: Google allows no such cache, and the owner prefers the template.
+
 ## 9. Decision log (append-only, one line per decision taken during implementation)
 
 | Date | Ticket | Decision | Reason |
@@ -4488,6 +4511,11 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 | 2026-11-13 | NUD-202 | Photos in a Railway bucket instead of MinIO in a container | No volume to size and back up, no service to keep running; costs USD 0.015 per GB. It needs virtual-hosted URLs and a CORS rule, both now supported |
 | 2026-11-13 | NUD-202 | Photon reads a prebuilt Austria index instead of an own Nominatim import | Nominatim needs a PostGIS database of its own and hours of import for the same search result; the prebuilt index is one download |
 | 2026-11-13 | NUD-202 | `OSM_URL` of the routing service takes several addresses; the default adds the openstreetmap.fr extract | `download.geofabrik.de` refuses connections from Railway's outbound addresses, so the first start could never fetch the map. A second source keeps the service self-starting instead of needing a hand-carried file |
+| 2026-11-13 | NUD-203 | Google Maps Platform for address search and routes; `ors` and `photon` on Railway go away | Owner's choice: better address search, and the two own map services were most of the Railway bill (about USD 50 to 70 of RAM a month, Claude's estimate) for 2 to 3 drivers |
+| 2026-11-13 | NUD-203 | The map stays Leaflet with the existing tiles; only a server key, no Google map in the browser | The owner first chose "Google komplett, auch die Karte", because Google's global terms forbid its results on another map. His billing address is in Austria, where the EEA terms (since 2025-07-08) drop that rule for coordinates and the route line. So no map rebuild, no key in the browser, no Dynamic Maps cost |
+| 2026-11-13 | NUD-203 | Address candidates are labelled with what the office typed, not with Google's address | The EEA terms still forbid Google's address text next to a map, and the candidates are listed beside the pin map. The office confirms the pin on the map anyway (D9) |
+| 2026-11-13 | NUD-203 | The visiting order stays the local heuristic; Google gets at most 10 stops between the ends of a request | Waypoint optimization, more than 10 intermediates and traffic each move a request into a price class with half the free amount and twice the price; the heuristic is what the self-hosted setup used too |
+| 2026-11-13 | NUD-203 | No cache table for route results; standing tours stay templates | Google's terms allow no stored routes, and the owner said a template that asks Google again on use is what he wants |
 
 ## 10. Open questions for the client (do not block on these – use placeholders)
 

@@ -1,11 +1,13 @@
 import { CachingGeocoder } from "./cache";
 import { FakeGeocoder } from "./fake";
+import { GoogleGeocoder } from "./google";
 import { DEFAULT_COUNTRIES, OrsGeocoder } from "./ors";
 import { PhotonGeocoder } from "./photon";
 import type { Geocoder } from "./types";
 
 export { CachingGeocoder, LruCache } from "./cache";
 export { FakeGeocoder } from "./fake";
+export { GoogleGeocoder, mapGoogleGeocodeResponse } from "./google";
 export { mapOrsResponse, OrsGeocoder } from "./ors";
 export { mapPhotonResponse, PHOTON_DEFAULT_BASE_URL, PhotonGeocoder } from "./photon";
 export * from "./types";
@@ -37,16 +39,26 @@ export function parseBaseUrl(value: string | undefined): string | undefined {
 
 /**
  * Geocoder selected from the environment, in this order:
- * `PHOTON_URL` -> a self-hosted Komoot Photon (NUD-157, no key, the only way to geocode without the
+ * `GOOGLE_MAPS_SERVER_KEY` -> Google's Geocoding API (NUD-203; `GOOGLE_MAPS_LANGUAGE`, default `de`,
+ * and `GOOGLE_MAPS_REGION`, default `at`); `PHOTON_URL` -> a self-hosted Komoot Photon (NUD-157, no key, the only way to geocode without the
  * hosted quota); `ORS_API_KEY` -> the hosted openrouteservice/Pelias API; neither -> the deterministic
  * Fake plus one warning. The admin confirms every pin (D9), so the Fake never silently becomes a
  * delivery position.
  */
 export function getGeocoder(env: Record<string, string | undefined> = process.env): Geocoder {
   if (instance) return instance;
+  const googleKey = env.GOOGLE_MAPS_SERVER_KEY?.trim();
   const photonUrl = parseBaseUrl(env.PHOTON_URL);
   const apiKey = env.ORS_API_KEY?.trim();
-  if (photonUrl) {
+  if (googleKey) {
+    instance = new CachingGeocoder(
+      new GoogleGeocoder({
+        apiKey: googleKey,
+        language: env.GOOGLE_MAPS_LANGUAGE?.trim() || undefined,
+        region: env.GOOGLE_MAPS_REGION?.trim() || undefined,
+      }),
+    );
+  } else if (photonUrl) {
     instance = new CachingGeocoder(
       new PhotonGeocoder({ baseUrl: photonUrl, lang: env.PHOTON_LANG?.trim() || undefined }),
     );
@@ -62,7 +74,7 @@ export function getGeocoder(env: Record<string, string | undefined> = process.en
     if (!warned) {
       warned = true;
       console.warn(
-        "[geocoder] neither PHOTON_URL nor ORS_API_KEY is set - using the FakeGeocoder (coordinates are NOT real addresses)",
+        "[geocoder] none of GOOGLE_MAPS_SERVER_KEY, PHOTON_URL, ORS_API_KEY is set - using the FakeGeocoder (coordinates are NOT real addresses)",
       );
     }
     instance = new CachingGeocoder(new FakeGeocoder());

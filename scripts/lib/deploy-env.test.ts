@@ -13,6 +13,7 @@ const good = {
   S3_SECRET_ACCESS_KEY: "secret",
   CRON_SECRET: "c".repeat(44),
   DEEPL_API_KEY: "deepl-key:fx",
+  GOOGLE_MAPS_SERVER_KEY: "AIza-test-key",
 };
 
 describe("checkDeployEnv", () => {
@@ -73,6 +74,26 @@ describe("checkDeployEnv", () => {
     expect(preview.warnings).toEqual([]);
   });
 
+  it("warns (production only) when no map service answers: made-up pins, estimated tours (NUD-203)", () => {
+    const without = { ...good, GOOGLE_MAPS_SERVER_KEY: undefined };
+    const { errors, warnings } = checkDeployEnv(without);
+    expect(errors).toEqual([]);
+    expect(warnings.join("\n")).toMatch(/GOOGLE_MAPS_SERVER_KEY.*address/i);
+    expect(warnings.join("\n")).toMatch(/GOOGLE_MAPS_SERVER_KEY.*tour/i);
+    expect(checkDeployEnv({ ...without, GOOGLE_MAPS_SERVER_KEY: "  " }).warnings).toHaveLength(2);
+
+    // The older providers still count.
+    expect(
+      checkDeployEnv({ ...without, PHOTON_URL: "http://photon:2322", ORS_BASE_URL: "http://ors" })
+        .warnings,
+    ).toEqual([]);
+    expect(checkDeployEnv({ ...without, ORS_API_KEY: "k" }).warnings).toEqual([]);
+    // A preview build needs none.
+    expect(checkDeployEnv({ ...without, VERCEL_ENV: "preview" }).warnings).toEqual([]);
+    // The value is never echoed.
+    expect(JSON.stringify(checkDeployEnv(good))).not.toContain("AIza");
+  });
+
   it("checks the optional Sentry settings (NUD-094)", () => {
     const ok = checkDeployEnv({ ...good, SENTRY_DSN: "https://k@o1.ingest.de.sentry.io/12" });
     expect(ok).toEqual({ errors: [], warnings: [] });
@@ -109,6 +130,7 @@ describe("checkDeployEnv", () => {
       S3_URL_STYLE: "virtual",
       CRON_SECRET: "c".repeat(44),
       DEEPL_API_KEY: "deepl-key:fx",
+      GOOGLE_MAPS_SERVER_KEY: "AIza-test-key",
     };
 
     it("accepts a complete environment without asking for an R2 endpoint", () => {

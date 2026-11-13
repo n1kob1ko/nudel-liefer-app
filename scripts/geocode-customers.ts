@@ -48,7 +48,10 @@ function parseArgs(argv: readonly string[]): Options {
 }
 
 /** Which geocoder the environment selects; the Fake must never write coordinates. */
-function providerLabel(env: Record<string, string | undefined>): "self-hosted" | "hosted" | "fake" {
+function providerLabel(
+  env: Record<string, string | undefined>,
+): "google" | "self-hosted" | "hosted" | "fake" {
+  if (env.GOOGLE_MAPS_SERVER_KEY?.trim()) return "google";
   if (env.PHOTON_URL?.trim()) return "self-hosted";
   if (env.ORS_API_KEY?.trim()) return "hosted";
   return "fake";
