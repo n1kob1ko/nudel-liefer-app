@@ -1,9 +1,9 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense } from "react";
 
+import { PageHeader } from "@/components/admin/page-header";
 import { ProductForm } from "@/components/admin/product-form";
 import { LoadingSkeleton } from "@/components/shared/states";
-import { Link } from "@/i18n/navigation";
 import { requirePageActor } from "@/server/auth/page-guards";
 
 async function Guarded({ locale }: { locale: string }) {
@@ -11,14 +11,7 @@ async function Guarded({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "admin.products" });
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <Link href="/admin/products" className="link text-sm">
-          {t("backToList")}
-        </Link>
-        <h1 className="text-3xl font-semibold" data-testid="section-title">
-          {t("new")}
-        </h1>
-      </div>
+      <PageHeader back={{ href: "/admin/products", label: t("backToList") }} title={t("new")} />
       <ProductForm
         productId={null}
         unitLocked={false}

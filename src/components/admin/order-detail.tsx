@@ -47,14 +47,7 @@ export function OrderDetailView({
       <PageHeader
         title={td("title")}
         description={`${fmt.calendarDate(order.deliveryDate)} · ${order.customer.name}`}
-        breadcrumb={
-          <Link
-            href="/admin/orders"
-            className="rounded-sm underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {t("backToList")}
-          </Link>
-        }
+        back={{ href: "/admin/orders", label: t("backToList") }}
         actions={
           <OrderActions
             orderId={order.id}

@@ -22,7 +22,7 @@ import { ZoomableImage } from "@/components/shared/image-preview";
 import { ImageUploader } from "@/components/shared/image-uploader";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -511,11 +511,23 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
       <div
         className={cn(
           "flex flex-col gap-6",
-          hasSide && "lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-8",
+          // The form is one readable column (at most 46 rem). The message panel sits beside it on a
+          // wide screen; with a screenshot open the two share the width so the picture stays legible.
+          hasSide &&
+            (screenshot
+              ? "lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-6"
+              : "lg:grid lg:grid-cols-[minmax(0,46rem)_minmax(0,24rem)] lg:items-start lg:gap-6"),
         )}
       >
         {hasSide ? (
-          <div className="flex flex-col gap-3 lg:sticky lg:top-20" data-testid="order-import">
+          <div
+            className={cn(
+              "flex flex-col gap-3 lg:sticky lg:top-20",
+              // Without a screenshot the form comes first and the message panel is the side column.
+              !screenshot && "lg:order-2",
+            )}
+            data-testid="order-import"
+          >
             {editing ? null : (
               <button
                 type="button"
@@ -578,7 +590,6 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
                 <Card data-testid="order-ai" aria-labelledby="order-ai-heading">
                   <CardHeader>
                     <CardTitle id="order-ai-heading">{t("ai.heading")}</CardTitle>
-                    <CardDescription>{t("ai.hint")}</CardDescription>
                   </CardHeader>
                   <CardContent className="flex flex-col gap-4">
                     {screenshot ? null : (
@@ -694,8 +705,9 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
           noValidate
           data-testid="order-form"
         >
-          <Card>
-            <CardContent>
+          {/* One surface for the whole order; the parts are separated by hairlines, not by boxes. */}
+          <Card className="gap-0 divide-y divide-border py-0 [&>section]:flex [&>section]:flex-col [&>section]:gap-3 [&>section]:p-4 sm:[&>section]:p-5">
+            <section>
               <FormField
                 label={t("customer")}
                 required={!editing}
@@ -716,15 +728,12 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
                   emptyText={t("customerEmpty")}
                 />
               </FormField>
-            </CardContent>
-          </Card>
+            </section>
 
-          <Card aria-labelledby="order-lines">
-            <CardHeader>
-              <CardTitle id="order-lines">{t("linesHeading")}</CardTitle>
-              <CardDescription className="hidden sm:block">{t("quantityHint")}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
+            <section aria-labelledby="order-lines">
+              <h2 id="order-lines" className="text-base font-medium">
+                {t("linesHeading")}
+              </h2>
               <ul className="flex flex-col gap-3">
                 {lines.map((line, index) => {
                   const product = line.productId ? productById.get(line.productId) : undefined;
@@ -841,16 +850,14 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
                   {t("errors.linesRequired")}
                 </p>
               ) : null}
-            </CardContent>
-          </Card>
+            </section>
 
-          <Card aria-labelledby="order-window-heading" data-testid="order-window">
-            <CardHeader>
-              <CardTitle id="order-window-heading">{t("window.heading")}</CardTitle>
-              <CardDescription>{t("window.hint")}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-5">
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <section aria-labelledby="order-window-heading" data-testid="order-window">
+              <h2 id="order-window-heading" className="text-base font-medium">
+                {t("window.heading")}
+              </h2>
+              {/* Three rows of the same two columns: days, times, the fixed day. */}
+              <div className="grid grid-cols-2 gap-x-3 gap-y-4 sm:gap-x-4 max-sm:[&_input]:px-2">
                 <FormField label={t("window.from")}>
                   <Input
                     id="order-window-from"
@@ -910,16 +917,11 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
                     data-testid="order-window-to-time"
                   />
                 </FormField>
-              </div>
-              {submitted && !windowValid ? (
-                <p className="text-sm text-destructive" role="alert" data-testid="error-window">
-                  {t("errors.windowInvalid")}
-                </p>
-              ) : null}
-              <div className="grid gap-3 border-t border-border pt-5 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] sm:items-end sm:gap-4">
                 <FormField
                   label={t("date")}
+                  info={t("dateHint")}
                   hint={t("optional")}
+                  className="max-sm:col-span-2"
                   error={submitted && !plannedValid ? t("errors.dateInvalid") : undefined}
                 >
                   <Input
@@ -940,8 +942,12 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
                     data-testid="order-date"
                   />
                 </FormField>
-                <p className="text-sm text-muted-foreground sm:pb-2.5">{t("dateHint")}</p>
               </div>
+              {submitted && !windowValid ? (
+                <p className="text-sm text-destructive" role="alert" data-testid="error-window">
+                  {t("errors.windowInvalid")}
+                </p>
+              ) : null}
               {outsideWindow ? (
                 <Alert variant="warning" role="status" data-testid="warning-outside-window">
                   <AlertTriangleIcon aria-hidden />
@@ -964,14 +970,12 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
                   ) : null}
                 </div>
               ) : null}
-            </CardContent>
-          </Card>
+            </section>
 
-          <Card>
-            <CardContent>
-              {/* Side by side only where the card is wide enough for the full option text. */}
-              <div className="grid gap-4 2xl:grid-cols-2">
-                <FormField label={t("paymentTerm")} description={t("paymentTermHint")}>
+            <section>
+              {/* Payment and amount share the two columns of the delivery rows above. */}
+              <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
+                <FormField label={t("paymentTerm")}>
                   <Select
                     value={paymentTerm}
                     onValueChange={(next) => setPaymentTerm(next as PaymentTerm)}
@@ -989,8 +993,9 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
                     </SelectContent>
                   </Select>
                 </FormField>
-                <FormField label={t("amount")} description={t("amountHint")}>
-                  <div className="flex items-center gap-2">
+                <FormField label={t("amount")} info={t("amountHint")} hint={t("optional")}>
+                  {/* The euro sign stands inside the field, like the unit of a quantity. */}
+                  <div className="relative">
                     <Input
                       id="order-amount"
                       value={amount}
@@ -998,27 +1003,32 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
                       inputMode="decimal"
                       autoComplete="off"
                       placeholder="0,00"
-                      className="w-40 text-right tabular-nums"
+                      className="pe-9 text-right tabular-nums"
                       aria-invalid={amount.trim() !== "" && parseAmountToCents(amount) === null}
                       data-testid="order-amount"
                     />
-                    <span className="text-base font-semibold" aria-hidden>
+                    <span
+                      className="pointer-events-none absolute inset-y-0 end-3 flex items-center text-base text-muted-foreground"
+                      aria-hidden
+                    >
                       €
                     </span>
                   </div>
                 </FormField>
               </div>
               {amount.trim() !== "" && parseAmountToCents(amount) === null ? (
-                <p className="mt-2 text-sm text-destructive" role="alert">
+                <p className="text-sm text-destructive" role="alert">
                   {t("amountInvalid")}
                 </p>
               ) : null}
-            </CardContent>
-          </Card>
+            </section>
 
-          <Card>
-            <CardContent>
-              <FormField label={t("internalNote")} description={t("internalNoteHint")}>
+            <section>
+              <FormField
+                label={t("internalNote")}
+                info={t("internalNoteHint")}
+                hint={t("optional")}
+              >
                 <Textarea
                   id="order-note"
                   value={note}
@@ -1029,7 +1039,7 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
                   data-testid="order-note"
                 />
               </FormField>
-            </CardContent>
+            </section>
           </Card>
 
           {serverError ? (

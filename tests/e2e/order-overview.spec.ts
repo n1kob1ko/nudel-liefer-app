@@ -156,8 +156,13 @@ test("order overview: default date, filters, totals per date, in-tour badge", as
     expect(from).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(from).toBe(f.today);
     await expect(toInput).toHaveValue(from);
-    // Status and Quelle are segmented radio groups now (re-design.md §8.3): aria-checked.
-    await expect(tid(page, "filter-status-ALL")).toHaveAttribute("aria-checked", "true");
+    // Status and Quelle are segmented radio groups (re-design.md §8.3): aria-checked. They sit
+    // behind the "Filter" button, so the default is read from the closed panel.
+    await expect(page.locator('[data-testid="filter-status-ALL"]')).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    await expect(tid(page, "filter-more")).toHaveAttribute("aria-expanded", "false");
 
     // Date range via the URL (bookmarkable) and via the controls.
     await page.goto(`/de/admin/orders?from=${D1}&to=${D2}`);
@@ -191,6 +196,10 @@ test("order overview: default date, filters, totals per date, in-tour badge", as
     ).toHaveText("Storniert");
     await expect(noHorizontalScroll(page)).resolves.toBe(true);
     await page.screenshot({ path: testInfo.outputPath("order-overview.png"), fullPage: true });
+
+    // Status and Quelle sit behind the "Filter" button: closed until asked for.
+    await expect(tid(page, "filter-status-CANCELLED")).toHaveCount(0);
+    await tid(page, "filter-more").click();
 
     // Status filter.
     await tid(page, "filter-status-CANCELLED").click();

@@ -2,10 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { type AbstractIntlMessages, NextIntlClientProvider } from "next-intl";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  createRecurringOrderAction,
-  updateRecurringOrderAction,
-} from "@/server/recurring-actions";
+import { createRecurringOrderAction, updateRecurringOrderAction } from "@/server/recurring-actions";
 import type { RecurringRuleView } from "@/server/recurring-orders";
 
 import de from "../../../messages/de.json";

@@ -45,7 +45,7 @@ export function AdminBottomNav() {
               href={href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "relative flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium outline-none transition-[color,transform] duration-[140ms] ease-out focus-visible:ring-2 focus-visible:ring-ring active:scale-[.97]",
+                "relative flex min-h-12 min-w-0 flex-auto flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[11px] font-medium outline-none transition-[color,transform] duration-[140ms] ease-out focus-visible:ring-2 focus-visible:ring-ring active:scale-[.97]",
                 active
                   ? "text-primary-soft-foreground"
                   : "text-muted-foreground hover:text-foreground",
@@ -55,7 +55,7 @@ export function AdminBottomNav() {
                 <LayoutThumb layoutId={thumbId} className="rounded-xl bg-primary-soft" />
               ) : null}
               <Icon className="relative size-5" aria-hidden />
-              <span className="relative max-w-full truncate px-1">{t(`nav.${section}`)}</span>
+              <span className="relative max-w-full truncate">{t(`nav.${section}`)}</span>
             </Link>
           );
         })}

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -209,10 +210,7 @@ export function StandingPlan({
             <CardDescription>{t(`readOnly.${plan.readOnly}.body`)}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Link
-              href={`/admin/tours?date=${plan.date}`}
-              className="text-base link"
-            >
+            <Link href={`/admin/tours?date=${plan.date}`} className="text-base link">
               {t("readOnly.toTours")}
             </Link>
           </CardContent>
@@ -341,8 +339,10 @@ export function StandingPlan({
 
       <Card data-testid="planning-off-route">
         <CardHeader>
-          <h2 className="text-lg font-semibold tracking-tight">{t("offRoute.title")}</h2>
-          <CardDescription>{t("offRoute.body")}</CardDescription>
+          <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+            {t("offRoute.title")}
+            <InfoTip>{t("offRoute.body")}</InfoTip>
+          </h2>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">

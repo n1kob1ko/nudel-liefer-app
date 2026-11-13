@@ -102,14 +102,20 @@ export function CustomersTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <Table data-testid="customers-table" aria-label={t("title")}>
-        <TableHeader className="sticky top-0 z-10 bg-muted [&_th]:bg-muted">
+      <Table surface data-testid="customers-table" aria-label={t("title")}>
+        <TableHeader data-sticky>
           <TableRow>
             <TableHead className="max-md:w-full">{t("columns.customer")}</TableHead>
             <TableHead className="max-md:hidden">{t("columns.number")}</TableHead>
             <TableHead className="max-md:hidden">{t("columns.city")}</TableHead>
-            <TableHead>{t("columns.flags")}</TableHead>
-            <TableHead className="w-12 text-end">{t("columns.actions")}</TableHead>
+            {/* A phone has no width for two more column titles: there the icons and the menu
+                speak for themselves, and the titles stay for screen readers. */}
+            <TableHead>
+              <span className="max-sm:sr-only">{t("columns.flags")}</span>
+            </TableHead>
+            <TableHead className="w-12 text-end">
+              <span className="max-sm:sr-only">{t("columns.actions")}</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -173,7 +179,7 @@ function CustomerRow({ customer }: { customer: CustomerListRow }) {
           <span
             aria-hidden
             // Neutral on purpose: a colour per customer would read as a status (DESIGN.md, rule 3).
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground max-sm:hidden"
           >
             {initials(customer.name)}
           </span>
@@ -286,7 +292,7 @@ function FlagList({ customer }: { customer: CustomerListRow }) {
     );
   }
   return (
-    <div className="flex flex-wrap items-center gap-1">
+    <div className="flex items-center gap-1 sm:flex-wrap">
       {flags.map((flag) => (
         <Flag key={flag.testId} testId={flag.testId} icon={flag.icon} title={flag.title} />
       ))}

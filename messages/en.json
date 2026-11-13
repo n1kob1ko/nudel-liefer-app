@@ -121,21 +121,22 @@
       "PACK": "Bag",
       "CRATE": "Carton",
       "PIECE": "Piece (N ×)"
-    }
+    },
+    "info": "Hint"
   },
   "home": {
-    "title": "Routenplanner",
-    "placeholder": "Placeholder"
+    "office": "Office",
+    "officeHint": "Orders, tours, customers",
+    "driver": "Driver",
+    "driverHint": "My tour today"
   },
   "auth": {
     "adminLogin": {
-      "subtitle": "Sign in with your e-mail and password.",
       "title": "Office login",
       "email": "Email",
       "password": "Password",
       "submit": "Log in",
       "driverLink": "Driver login",
-      "brandSentence": "Office login for Routenplanner",
       "showPassword": "Show",
       "hidePassword": "Hide"
     },
@@ -158,7 +159,8 @@
     },
     "signedInAs": "Logged in as {name}",
     "logout": "Log out",
-    "help": "Help"
+    "help": "Help",
+    "continue": "Continue"
   },
   "admin": {
     "dashboard": {
@@ -1211,7 +1213,7 @@
       "title": "Orders",
       "description": "All orders by delivery date. The next delivery day is shown by default.",
       "new": "New order",
-      "newTitle": "Enter a new order",
+      "newTitle": "New order",
       "backToList": "Back to the orders",
       "emptyTitle": "No orders found",
       "empty": {
@@ -1242,7 +1244,7 @@
           "button": "Read with AI",
           "buttonBusy": "Reading …",
           "candidates": "Possible products: {names}",
-          "disabledHint": "AI reading is not configured (no API key). Manual entry is unaffected.",
+          "disabledHint": "AI reading is not configured.",
           "errors": {
             "extractionFailed": "The message could not be read. Please try again or enter the order manually.",
             "invalid": "Please paste a message or attach a screenshot.",
@@ -1250,7 +1252,6 @@
             "screenshotUnavailable": "The screenshot could not be read. Please upload it again."
           },
           "heading": "Take over from the customer's message",
-          "hint": "Paste the message or attach a screenshot. The AI suggests products and window, the office reviews.",
           "label": "Customer message",
           "lineLabelHint": "Read as: {label}",
           "lineLowConfidence": "Recognised with low confidence – please check the quantity.",
@@ -1273,7 +1274,6 @@
         "productSearch": "Search by name or item number",
         "productEmpty": "No product found.",
         "quantity": "Quantity",
-        "quantityHint": "Enter in a quantity adds the next line.",
         "lineLabel": "Product {n}",
         "addLine": "Add product",
         "removeLine": "Remove product {n}",
@@ -1330,7 +1330,6 @@
         "customerFixed": "The customer cannot be changed afterwards. If the customer is wrong, cancel the order and enter it again.",
         "window": {
           "heading": "Delivery",
-          "hint": "When the customer accepts the delivery. Times of day only when needed.",
           "from": "From (day)",
           "to": "To (day)",
           "fromTime": "From time",
@@ -1348,7 +1347,6 @@
           "optional": "Optional: the AI fills a draft from it."
         },
         "paymentTerm": "Payment term",
-        "paymentTermHint": "Monthly bill is the default; “Cash on delivery” is collected by the driver at the stop.",
         "paymentMonthly": "Monthly bill (accumulated)",
         "paymentCash": "Cash on delivery",
         "amount": "Amount",
@@ -1415,13 +1413,12 @@
           "next": "Next delivery day",
           "today": "Today",
           "week": "This week",
-          "custom": "Custom"
+          "custom": "Date range"
         }
       },
       "truncated": "Only the first {count} orders are shown. Please narrow the period or the filters.",
       "totals": {
         "heading": "Totals per delivery day",
-        "description": "Total per product from all confirmed orders of the day. Drafts and cancelled orders do not count. The totals ignore the customer, status and source filters.",
         "dateHeading": "{date} · {count, plural, one {# confirmed order} other {# confirmed orders}}",
         "product": "Product",
         "quantity": "Quantity",
@@ -1466,7 +1463,6 @@
         "label": "Delivery window"
       },
       "fromRecurring": "from standing order",
-      "newDescription": "Pick the customer and products, check the delivery, save.",
       "paymentTerm": "Payment",
       "paymentMonthly": "Monthly bill",
       "paymentCash": "Cash on delivery",
@@ -1974,7 +1970,7 @@
         "crossesMidnight": "Across midnight"
       },
       "percentValue": "{percent} %",
-      "scheduleHint": "Working hours are maintained under Drivers → row → Actions → \"Edit working time\"."
+      "scheduleHint": "Enter working hours under Drivers"
     },
     "payments": {
       "title": "Payments",

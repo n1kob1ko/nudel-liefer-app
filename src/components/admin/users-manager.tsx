@@ -174,7 +174,6 @@ function UtilizationCell({ utilization }: { utilization?: UserUtilization }) {
  */
 export function UsersManager({
   title,
-  description,
   drivers,
   admins,
   currentUserId,
@@ -184,7 +183,6 @@ export function UsersManager({
 }: {
   /** `h1` of the page (it stays the page's only `title`, `data-testid="section-title"`). */
   title: string;
-  description: string;
   drivers: UserListRow[];
   admins: UserListRow[];
   currentUserId: string;
@@ -322,17 +320,17 @@ export function UsersManager({
             >
               {initials(user.displayName)}
             </span>
-            <span className="font-medium whitespace-nowrap">{user.displayName}</span>
+            <span className="font-medium md:whitespace-nowrap">{user.displayName}</span>
             {kind === "admin" && user.id === currentUserId ? (
               <span className="text-sm text-muted-foreground">({t("admins.you")})</span>
             ) : null}
           </div>
         </TableCell>
-        <TableCell className="py-1.5 font-mono text-sm text-muted-foreground">
+        <TableCell className="py-1.5 font-mono text-sm text-muted-foreground max-md:hidden">
           {kind === "driver" ? user.username : user.email}
         </TableCell>
         {kind === "driver" ? (
-          <TableCell className="py-1.5">
+          <TableCell className="py-1.5 max-md:hidden">
             <Badge variant="secondary" size="sm">
               <LanguagesIcon aria-hidden />
               {LOCALE_LABELS[user.locale as keyof typeof LOCALE_LABELS] ?? user.locale}
@@ -340,12 +338,12 @@ export function UsersManager({
           </TableCell>
         ) : null}
         {kind === "driver" ? (
-          <TableCell className="py-1.5">
+          <TableCell className="py-1.5 max-md:hidden">
             <ScheduleSummary schedule={schedules[user.id] ?? []} />
           </TableCell>
         ) : null}
         {kind === "driver" ? (
-          <TableCell className="py-1.5 tabular-nums">
+          <TableCell className="py-1.5 tabular-nums max-md:hidden">
             <UtilizationCell utilization={utilization[user.id]} />
           </TableCell>
         ) : null}
@@ -360,7 +358,7 @@ export function UsersManager({
             {user.active ? t("status.active") : t("status.inactive")}
           </StatusBadge>
         </TableCell>
-        <TableCell className="py-1.5">
+        <TableCell className="py-1.5 max-md:hidden">
           <LastLogin row={user} timezone={timezone} />
         </TableCell>
         <TableCell className="py-1.5 text-end">
@@ -430,7 +428,6 @@ export function UsersManager({
             the action slot (it used to sit in the table card's header — round-3 review). */}
         <PageHeader
           title={title}
-          description={description}
           actions={
             <Button
               data-testid="create-driver"
@@ -456,12 +453,13 @@ export function UsersManager({
                 <TableHeader data-sticky>
                   <TableRow>
                     <TableHead>{t("columns.name")}</TableHead>
-                    <TableHead>{t("columns.username")}</TableHead>
-                    <TableHead>{t("columns.language")}</TableHead>
-                    <TableHead>{t("columns.schedule")}</TableHead>
-                    <TableHead>{t("columns.utilization")}</TableHead>
+                    {/* A phone shows who, whether active, and the menu; the rest is one tap away. */}
+                    <TableHead className="max-md:hidden">{t("columns.username")}</TableHead>
+                    <TableHead className="max-md:hidden">{t("columns.language")}</TableHead>
+                    <TableHead className="max-md:hidden">{t("columns.schedule")}</TableHead>
+                    <TableHead className="max-md:hidden">{t("columns.utilization")}</TableHead>
                     <TableHead>{t("columns.status")}</TableHead>
-                    <TableHead>{t("columns.lastLogin")}</TableHead>
+                    <TableHead className="max-md:hidden">{t("columns.lastLogin")}</TableHead>
                     <TableHead className="text-end">{t("columns.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -488,7 +486,6 @@ export function UsersManager({
             }
           >
             <CardTitle>{t("admins.title")}</CardTitle>
-            <p className="max-w-prose text-base text-muted-foreground">{t("admins.description")}</p>
           </CardHeader>
           <CardContent>
             {admins.length === 0 ? (
@@ -498,9 +495,9 @@ export function UsersManager({
                 <TableHeader data-sticky>
                   <TableRow>
                     <TableHead>{t("columns.name")}</TableHead>
-                    <TableHead>{t("admins.email")}</TableHead>
+                    <TableHead className="max-md:hidden">{t("admins.email")}</TableHead>
                     <TableHead>{t("columns.status")}</TableHead>
-                    <TableHead>{t("columns.lastLogin")}</TableHead>
+                    <TableHead className="max-md:hidden">{t("columns.lastLogin")}</TableHead>
                     <TableHead className="text-end">{t("columns.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -562,7 +559,7 @@ export function UsersManager({
                     label={t("form.locale")}
                     htmlFor="locale"
                     className="max-w-xs"
-                    description={t("form.localeHint")}
+                    info={t("form.localeHint")}
                   >
                     {/* A real native control in the *create* form: the Playwright spec drives it with
                         `selectOption`, and the table's inline select is what re-design.md §8.7 removes.

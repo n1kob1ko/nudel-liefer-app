@@ -60,7 +60,13 @@ const EXTRACTION: ExtractionAnswer = {
     { label: "Nudeln Kiste", quantity: 2, confidence: 0.9 },
     { label: "Nudeln Sackerl", quantity: 1, confidence: 0.4 },
   ],
-  window: { from: "2099-05-05", to: "2099-05-06", fromTime: "08:00", toTime: "12:00", confidence: 0.8 },
+  window: {
+    from: "2099-05-05",
+    to: "2099-05-06",
+    fromTime: "08:00",
+    toTime: "12:00",
+    confidence: 0.8,
+  },
   note: "Bitte am Morgen",
   confidence: 0.4,
 };

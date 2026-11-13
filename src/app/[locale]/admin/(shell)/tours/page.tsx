@@ -30,11 +30,7 @@ async function Guarded({
   const history = plan.tour ? await tourHistoryQuery(plan.tour.id) : null;
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title={t("title")}
-        description={t("description")}
-        actions={<TourDateField value={plan.date} />}
-      />
+      <PageHeader title={t("title")} actions={<TourDateField value={plan.date} />} />
       <TourPlanner
         key={plan.tour?.id ?? "none"}
         plan={plan}

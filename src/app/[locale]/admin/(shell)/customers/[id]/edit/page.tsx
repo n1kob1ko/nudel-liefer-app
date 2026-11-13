@@ -5,7 +5,6 @@ import { Suspense } from "react";
 import { CustomerForm } from "@/components/admin/customer-form";
 import { PageHeader } from "@/components/admin/page-header";
 import { LoadingSkeleton } from "@/components/shared/states";
-import { Link } from "@/i18n/navigation";
 import { getMapTileConfig } from "@/lib/map-config";
 import { requirePageActor } from "@/server/auth/page-guards";
 import { customerPhotosQuery, getCustomerQuery } from "@/server/customer-queries";
@@ -43,14 +42,7 @@ async function Guarded({ locale, id }: { locale: string; id: string }) {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        breadcrumb={
-          <Link
-            href={`/admin/customers/${customer.id}`}
-            className="underline-offset-4 hover:underline"
-          >
-            {t("form.backToDetail")}
-          </Link>
-        }
+        back={{ href: `/admin/customers/${customer.id}`, label: t("form.backToDetail") }}
         title={t("form.editTitle")}
         description={t("detail.number", { number: customer.customerNumber })}
       />

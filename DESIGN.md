@@ -121,8 +121,37 @@ More rules that apply everywhere:
   card. Nothing animates when the screen is merely opened again.
 - One 12 px gap between the blocks of a screen, one radius (`rounded-xl`) for its cards.
 
+## Start page and logins
+
+- **One narrow column in the middle** (`AuthFrame`, 24 rem): the app mark (`Brand`), one card, one
+  quiet row below it. The same on a phone and on a wide screen; nothing sits at the screen edge.
+- **The start page is two rows to tap:** "Büro" and "Fahrer", then the language. No other text.
+- **A login is one card:** title, fields, the yolk button. The way to the other login, the language
+  and the theme sit below the card. No brand panel, no slogan.
+- Whoever is already signed in gets one card with "Weiter" (yolk) and "Abmelden", not a bar.
+
+## Words
+
+- **A screen says what to do, not how the app works.** A page title has no sentence under it; at
+  most one short line of facts (the day, a count).
+- **Whatever is worth knowing once sits behind a small "i"** (`InfoTip`; `FormField info=`,
+  `PageHeader info=`): one tap away, read out to screen readers as the field's description.
+- Text stays on the page only where the user must read it to get the field right, and for errors.
+- Rarely used choices sit behind one button ("Filter" on the orders page) and show by themselves
+  while one of them is set.
+
 ## Office
 
+- **One column.** The top bar and the page share one column (1440 px at most, the same gutters),
+  so the search field, the title, the filters and the list start on the same line. No breadcrumb:
+  the menu shows where you are. Below 1025 px the bar shows the app mark.
+- **Every page starts the same** (`PageHeader`): title left, at most one yolk action right, the
+  filters in the row below, in the page column. A page below a list (new, edit, detail) has one
+  arrow link back above the title (`back`).
+- **A list is one white surface** (`<Table surface>`) with a plain header row. On a phone a table
+  keeps the columns that matter (who, state, the menu) and drops the rest.
+- **A form is one card with hairlines between its parts,** labels above the fields, the yolk button
+  at the end. Fields are as wide as what goes into them.
 - **The menu highlight travels.** The active entry of the sidebar and of the bottom bar is one pale
   yolk pill that moves to the new section (rule 20). Entries scale to 0.98 while pressed.
 - **The overview is built for two or three drivers at once** (`DayBoard`):

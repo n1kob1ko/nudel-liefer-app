@@ -41,11 +41,7 @@ export default async function LocaleLayout({ children, params }: LayoutProps<"/[
     // `suppressHydrationWarning`: `theme.js` below puts `dark` on <html> before React hydrates, so
     // the class of a dark-mode user never matches the server HTML. That is intended; the flag
     // covers this one element only, not its children.
-    <html
-      lang={locale}
-      className={`${geist.variable} h-full antialiased`}
-      suppressHydrationWarning
-    >
+    <html lang={locale} className={`${geist.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="flex min-h-full flex-col">
         {/*
          * Colour scheme (NUD-132) is applied before the first paint by this static bootstrap, which

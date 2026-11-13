@@ -16,8 +16,10 @@ function productName(name: unknown, locale: AppLocale): string {
 }
 
 /**
- * Summen je Liefertag (re-design.md §8.3): the collapsible card next to the table, one compact
- * two-column table (product · quantity, `tabular-nums`) per date of the selected range.
+ * Summen je Liefertag (re-design.md §8.3): one bar above the order list, as wide as the list. When
+ * the range is a single day the bar already says the sums ("34 Sackerl Nudeln · 12 Stück
+ * Wantan-Teig"); opened, it shows one compact two-column table (product · quantity,
+ * `tabular-nums`) per date of the selected range.
  *
  * The numbers come from `aggregateTotalsByDate` through `getDateTotals` — unchanged. The card only
  * presents them; the "Ladeliste drucken" link reuses the existing print route of the tour of that
@@ -47,7 +49,7 @@ export function OrderTotals({
   }
 
   return (
-    <Card data-testid="totals" className="@container gap-0">
+    <Card data-testid="totals" className="@container gap-0 py-3">
       <details aria-labelledby="totals-heading" className="group flex flex-col">
         {/* The card title is an `h2` (the page has the only `h1`; the days are `h3`), so the
             heading order never skips a level. Only the title and the chevron sit in the summary:
@@ -56,9 +58,26 @@ export function OrderTotals({
           data-testid="totals-toggle"
           className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [&::-webkit-details-marker]:hidden"
         >
-          <h2 id="totals-heading" className="text-lg font-semibold">
-            {t("heading")}
-          </h2>
+          <span className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+            <h2 id="totals-heading" className="text-base font-semibold">
+              {t("heading")}
+            </h2>
+            {/* One day: the sums are short enough to stand in the bar itself. Hidden while the
+                bar is open, where the table below says the same. */}
+            {totals.length === 1 && totals[0] ? (
+              <span
+                className="min-w-0 text-sm text-muted-foreground tabular-nums group-open:hidden"
+                data-testid="totals-inline"
+              >
+                {totals[0].products
+                  .map(
+                    (p) =>
+                      `${fmt.quantity(p.quantity)} ${tu(p.unit as "KG" | "PACK" | "CRATE" | "PIECE")} ${productName(p.productName, locale)}`,
+                  )
+                  .join(" · ")}
+              </span>
+            ) : null}
+          </span>
           <ChevronDownIcon
             className="size-5 shrink-0 text-muted-foreground transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none"
             aria-hidden
@@ -66,15 +85,14 @@ export function OrderTotals({
           <span className="sr-only">{t("toggle")}</span>
         </summary>
 
-        {/* The sentence only explains the card while it is open — collapsed it cost ~20 px of table
-            height at 1024 px, where the table has to be the visible content (round-3 review). */}
-        <p className="-mb-2 hidden px-4 text-sm text-muted-foreground group-open:block">
-          {t("description")}
-        </p>
-
         {/* Two day tables side by side while the card is wide (above the table) or a day column
             would be left half empty; a single day fills the width. */}
-        <div className={cn("grid gap-4 px-4 pt-4", totals.length > 1 && "@lg:grid-cols-2")}>
+        <div
+          className={cn(
+            "grid gap-x-8 gap-y-4 px-4 pt-3",
+            totals.length > 1 ? "@lg:grid-cols-2 @4xl:grid-cols-3" : "max-w-md",
+          )}
+        >
           {totals.length === 0 ? (
             <p className="text-base text-muted-foreground" data-testid="totals-empty">
               {t("empty")}

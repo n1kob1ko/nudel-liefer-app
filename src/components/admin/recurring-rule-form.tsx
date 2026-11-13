@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { DAY_PICKER_LOCALES } from "@/components/ui/date-picker";
 import { FormField } from "@/components/ui/form-field";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -784,7 +785,7 @@ export function RecurringRuleForm({
       </fieldset>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label={t("rhythm")} htmlFor={`${prefix}-every`} description={t("rhythmHint")}>
+        <FormField label={t("rhythm")} htmlFor={`${prefix}-every`} info={t("rhythmHint")}>
           <Input
             id={`${prefix}-every`}
             type="number"
@@ -797,7 +798,7 @@ export function RecurringRuleForm({
             data-testid={`${prefix}-every`}
           />
         </FormField>
-        <FormField label={t("anchor")} htmlFor={`${prefix}-anchor`} description={t("anchorHint")}>
+        <FormField label={t("anchor")} htmlFor={`${prefix}-anchor`} info={t("anchorHint")}>
           <Input
             id={`${prefix}-anchor`}
             type="date"
@@ -1082,10 +1083,11 @@ export function RecurringRuleForm({
             className="flex flex-col gap-5 border-t border-input p-3"
             data-testid={`${prefix}-more-options-panel`}
           >
-            <p className="text-sm text-muted-foreground">{t("moreOptionsHint")}</p>
-
             <fieldset className="flex flex-col gap-2">
-              <legend className="text-base font-medium">{t("window.label")}</legend>
+              <legend className="flex items-center gap-2 text-base font-medium">
+                {t("window.label")}
+                <InfoTip>{t("window.hint")}</InfoTip>
+              </legend>
               <div className="flex flex-wrap items-end gap-2">
                 <FormField label={t("window.from")} htmlFor={`${prefix}-window-from`}>
                   <Input
@@ -1108,7 +1110,6 @@ export function RecurringRuleForm({
                   />
                 </FormField>
               </div>
-              <p className="text-sm text-muted-foreground">{t("window.hint")}</p>
             </fieldset>
 
             <fieldset className="flex flex-col gap-2">
@@ -1173,7 +1174,7 @@ export function RecurringRuleForm({
                 <FormField
                   label={t("end.maxDeliveries")}
                   htmlFor={`${prefix}-max-deliveries`}
-                  description={t("end.countHint")}
+                  info={t("end.countHint")}
                 >
                   <Input
                     id={`${prefix}-max-deliveries`}

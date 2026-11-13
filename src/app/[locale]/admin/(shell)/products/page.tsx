@@ -19,7 +19,6 @@ async function Guarded({ locale }: { locale: string }) {
     <div className="flex flex-col gap-5">
       <PageHeader
         title={t("title")}
-        description={t("description")}
         actions={
           // A link styled as a button: the header action is navigation, so it stays a real `<a>`.
           <Button asChild data-testid="new-product">

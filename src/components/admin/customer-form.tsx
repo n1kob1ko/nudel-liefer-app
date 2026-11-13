@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { LatLngInputs } from "@/components/maps/lat-lng-inputs";
 import { PinPickerMapLazy } from "@/components/maps/lazy";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ABBREVIATION_MAX } from "@/domain/customer-abbreviation";
@@ -306,9 +307,9 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
       .join(" ") || undefined;
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-10" noValidate>
+    <form onSubmit={onSubmit} className="flex max-w-4xl flex-col gap-4" noValidate>
       <section
-        className="flex flex-col gap-6 rounded-xl bg-card p-5 shadow-sm"
+        className="flex flex-col gap-5 rounded-xl border border-border bg-card p-4 shadow-xs sm:p-5"
         aria-labelledby="cust-data"
       >
         <h2 id="cust-data" className="text-lg font-semibold tracking-tight">
@@ -351,7 +352,7 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
       </section>
 
       <section
-        className="flex flex-col gap-6 rounded-xl bg-card p-5 shadow-sm"
+        className="flex flex-col gap-5 rounded-xl border border-border bg-card p-4 shadow-xs sm:p-5"
         aria-labelledby="cust-address"
       >
         <div className="flex flex-col gap-1">
@@ -530,7 +531,7 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
       </section>
 
       <section
-        className="flex flex-col gap-6 rounded-xl bg-card p-5 shadow-sm"
+        className="flex flex-col gap-5 rounded-xl border border-border bg-card p-4 shadow-xs sm:p-5"
         aria-labelledby="cust-extra"
       >
         <h2 id="cust-extra" className="text-lg font-semibold tracking-tight">
@@ -561,15 +562,13 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
       </section>
 
       <section
-        className="flex flex-col gap-6 rounded-xl bg-card p-5 shadow-sm"
+        className="flex flex-col gap-5 rounded-xl border border-border bg-card p-4 shadow-xs sm:p-5"
         aria-labelledby="cust-key"
       >
-        <div className="flex flex-col gap-1">
-          <h2 id="cust-key" className="text-lg font-semibold tracking-tight">
-            {t("keyHeading")}
-          </h2>
-          <p className="max-w-prose text-sm text-muted-foreground">{t("keyHint")}</p>
-        </div>
+        <h2 id="cust-key" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+          {t("keyHeading")}
+          <InfoTip>{t("keyHint")}</InfoTip>
+        </h2>
         <FieldRow id="cust-has-key" label={t("hasKey")}>
           <select
             id="cust-has-key"
@@ -600,15 +599,16 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
       </section>
 
       <section
-        className="flex flex-col gap-6 rounded-xl bg-card p-5 shadow-sm"
+        className="flex flex-col gap-5 rounded-xl border border-border bg-card p-4 shadow-xs sm:p-5"
         aria-labelledby="cust-abbreviation"
       >
-        <div className="flex flex-col gap-1">
-          <h2 id="cust-abbreviation" className="text-lg font-semibold tracking-tight">
-            {t("abbreviationHeading")}
-          </h2>
-          <p className="max-w-prose text-sm text-muted-foreground">{t("abbreviationHint")}</p>
-        </div>
+        <h2
+          id="cust-abbreviation"
+          className="flex items-center gap-2 text-lg font-semibold tracking-tight"
+        >
+          {t("abbreviationHeading")}
+          <InfoTip>{t("abbreviationHint")}</InfoTip>
+        </h2>
         <FieldRow id="cust-abbreviation-input" label={t("abbreviation")}>
           <Input
             id="cust-abbreviation-input"
@@ -622,15 +622,16 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
       </section>
 
       <section
-        className="flex flex-col gap-6 rounded-xl bg-card p-5 shadow-sm"
+        className="flex flex-col gap-5 rounded-xl border border-border bg-card p-4 shadow-xs sm:p-5"
         aria-labelledby="cust-office"
       >
-        <div className="flex flex-col gap-1">
-          <h2 id="cust-office" className="text-lg font-semibold tracking-tight">
-            {t("officeHeading")}
-          </h2>
-          <p className="max-w-prose text-sm text-muted-foreground">{t("officeHint")}</p>
-        </div>
+        <h2
+          id="cust-office"
+          className="flex items-center gap-2 text-lg font-semibold tracking-tight"
+        >
+          {t("officeHeading")}
+          <InfoTip>{t("officeHint")}</InfoTip>
+        </h2>
         {OFFICE_FIELDS.map(({ key, max, width }) => (
           <FieldRow key={key} id={`cust-${key}`} label={t(`office.${key}`)}>
             <Input
@@ -647,15 +648,16 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
 
       {customerId && photos && customerName ? (
         <section
-          className="flex flex-col gap-6 rounded-xl bg-card p-5 shadow-sm"
+          className="flex flex-col gap-5 rounded-xl border border-border bg-card p-4 shadow-xs sm:p-5"
           aria-labelledby="cust-photos"
         >
-          <div className="flex flex-col gap-1">
-            <h2 id="cust-photos" className="text-lg font-semibold tracking-tight">
-              {t("photosHeading")}
-            </h2>
-            <p className="max-w-prose text-sm text-muted-foreground">{t("photosHint")}</p>
-          </div>
+          <h2
+            id="cust-photos"
+            className="flex items-center gap-2 text-lg font-semibold tracking-tight"
+          >
+            {t("photosHeading")}
+            <InfoTip>{t("photosHint")}</InfoTip>
+          </h2>
           <CustomerPhotoSlots customerId={customerId} customerName={customerName} photos={photos} />
         </section>
       ) : null}
@@ -712,8 +714,8 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
 }
 
 /**
- * One field of the two-column form: the 240 px label column on the left (label + helper text), the
- * control on the right; below 768 px the grid stacks, which keeps the form usable at 375 px. The
+ * One field of the two-column form: the 200 px label column on the left (label, plus an "i" for
+ * the explanation), the control on the right; below 768 px the grid stacks, which keeps the form usable at 375 px. The
  * helper text id is `${id}-hint`, the error id `${id}-error`; the caller wires both through
  * `aria-describedby`. `labelAsText` is for grouped controls (a fieldset with its own legend).
  */
@@ -735,19 +737,24 @@ function FieldRow({
   children: ReactNode;
 }) {
   return (
-    <div className="grid gap-2 md:grid-cols-[240px_minmax(0,1fr)] md:items-start md:gap-x-8">
-      <div className="flex flex-col gap-1 md:pt-2">
+    <div className="grid gap-1.5 md:grid-cols-[200px_minmax(0,1fr)] md:items-start md:gap-x-6">
+      <div className="md:pt-2">
         {labelAsText ? (
           <span className="hyphens-auto text-base font-medium text-pretty">{label}</span>
         ) : (
-          <Label htmlFor={id} className="hyphens-auto text-base font-medium text-pretty">
+          <Label htmlFor={id} className="inline hyphens-auto text-base font-medium text-pretty">
             {label}
           </Label>
         )}
+        {/* The explanation is one tap away (`InfoTip`); for screen readers it stays the field's
+            description under the id the caller wires through `aria-describedby`. */}
         {hint ? (
-          <p id={`${id}-hint`} className="text-sm text-muted-foreground text-pretty hyphens-auto">
-            {hint}
-          </p>
+          <>
+            <InfoTip className="ms-1.5 -mt-0.5">{hint}</InfoTip>
+            <span id={`${id}-hint`} className="sr-only">
+              {hint}
+            </span>
+          </>
         ) : null}
       </div>
       <div className="flex min-w-0 max-w-2xl flex-col gap-1.5">

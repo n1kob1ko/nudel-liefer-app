@@ -9,13 +9,14 @@ import { isAppLocale, LOCALE_LABELS, localesFor } from "@/lib/locale-resolution"
 import { cn } from "@/lib/utils";
 import { setLocaleAction } from "@/server/locale-actions";
 
-type Variant = "labeled" | "compact" | "icon" | "bar";
+type Variant = "labeled" | "compact" | "icon" | "bar" | "adaptive";
 
 /**
  * Native `<select>` (each language in its own script).
  * `labeled`: visible label (login/start pages). `compact`: label for screen readers only (admin header).
  * `icon`: 48 px icon button that opens the native picker (driver top bar).
  * `bar`: language icon plus the visible 48 px select (driver login page, nobody logged in yet).
+ * `adaptive`: ONE select that is `icon` on a phone and `compact` from 640 px (office top bar).
  * The office screens offer Deutsch · English · 中文, everything else (driver area, start page) all five languages.
  * `query`: search params kept when the locale changes (e.g. the login `callbackUrl`).
  * `area`: which language set to offer. NUD-186 (QA 2026-10-29 F21) needs it on the office LOGIN page,
@@ -49,7 +50,9 @@ export function LanguageSwitcher({
           ? "absolute inset-0 size-full cursor-pointer appearance-none opacity-0"
           : "min-h-12 field rounded-md border border-input bg-card px-3 text-base",
         variant === "bar" && "w-full",
-        variant === "compact" && "min-h-10",
+        (variant === "compact" || variant === "adaptive") && "min-h-10",
+        variant === "adaptive" &&
+          "max-sm:absolute max-sm:inset-0 max-sm:size-full max-sm:cursor-pointer max-sm:appearance-none max-sm:opacity-0",
         className,
       )}
       value={locale}
@@ -77,6 +80,14 @@ export function LanguageSwitcher({
     return (
       <span className="relative flex size-12 items-center justify-center rounded-md hover:bg-muted focus-within:ring-2 focus-within:ring-ring">
         <LanguagesIcon className="size-6" aria-hidden />
+        {select}
+      </span>
+    );
+  }
+  if (variant === "adaptive") {
+    return (
+      <span className="relative flex items-center justify-center rounded-md max-sm:size-12 max-sm:focus-within:ring-2 max-sm:focus-within:ring-ring max-sm:hover:bg-muted">
+        <LanguagesIcon className="size-6 sm:hidden" aria-hidden />
         {select}
       </span>
     );

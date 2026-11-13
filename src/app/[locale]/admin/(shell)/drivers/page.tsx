@@ -1,7 +1,11 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense } from "react";
 
-import { type UserListRow, UsersManager,type UserUtilization } from "@/components/admin/users-manager";
+import {
+  type UserListRow,
+  UsersManager,
+  type UserUtilization,
+} from "@/components/admin/users-manager";
 import { LoadingSkeleton } from "@/components/shared/states";
 import { requirePageActor } from "@/server/auth/page-guards";
 import { getDb } from "@/server/db";
@@ -44,7 +48,6 @@ async function Guarded({ locale }: { locale: string }) {
   return (
     <UsersManager
       title={t("title")}
-      description={t("description")}
       drivers={drivers.map(toRow)}
       admins={admins.map(toRow)}
       currentUserId={actor.id}

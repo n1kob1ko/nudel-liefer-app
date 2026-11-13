@@ -1,5 +1,6 @@
 "use client";
 
+import { SlidersHorizontalIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRef, useState, useTransition } from "react";
 
@@ -42,10 +43,10 @@ function weekRange(day: string): { from: string; to: string } {
  * be bookmarked); every change replaces it. The controls follow the user at once (local copy) and
  * are re-synced when the URL changes by itself (e.g. "reset", back button).
  *
- * Date quick picks are a `SegmentedControl` (next delivery day / today / this week / custom); the
- * Von/Bis inputs only appear for "Benutzerdefiniert" (re-design.md §8.3: "reveals Von/Bis") — they
- * stay mounted otherwise, so a hidden input still carries the range the URL and the specs read.
- * Status and Quelle are single-select chip groups — `OrderFilters` only knows one value each, so the
+ * One row holds what is used every day: the day (next delivery day / today / this week / a range)
+ * and the customer. The Von/Bis inputs only appear for the range (re-design.md §8.3) and stay
+ * mounted otherwise, so a hidden input still carries the range the URL and the specs read.
+ * Status and Quelle sit behind the "Filter" button; they are single-select chip groups, so the
  * semantics stay exactly as before (`from`, `to`, `customer`, `status`, `source`).
  */
 export function OrderFilters({
@@ -113,6 +114,12 @@ export function OrderFilters({
     }
   };
 
+  // Status and source are the rarely used filters: they sit behind one button, and show by
+  // themselves whenever one of them is set (a filter that is active must never be hidden).
+  const narrowed = filters.status !== null || filters.source !== null;
+  const [moreOpen, setMoreOpen] = useState(narrowed);
+  const showMore = moreOpen || narrowed;
+
   return (
     <form
       role="search"
@@ -122,75 +129,28 @@ export function OrderFilters({
       onSubmit={(e) => e.preventDefault()}
       data-testid="order-filters"
     >
-      {/* Two rows: range + customer, then the status/source chips. Labels stay visible because the
-          toolbar sticks and the chips alone do not say what they filter. */}
-      <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
-        <div className="flex min-w-0 max-w-full flex-col gap-1">
-          <span className="text-sm font-medium">{t("rangeLabel")}</span>
-          <SegmentedControl
-            value={quick}
-            onValueChange={setQuick}
-            ariaLabel={t("rangeLabel")}
-            size="md"
-            className="h-auto w-auto max-w-full flex-wrap [&_button]:flex-none"
-            options={[
-              { value: "next", label: t("quick.next"), testId: "quick-next" },
-              { value: "today", label: t("quick.today"), testId: "quick-today" },
-              { value: "week", label: t("quick.week"), testId: "quick-week" },
-              { value: "custom", label: t("quick.custom"), testId: "quick-custom" },
-            ]}
-          />
-        </div>
+      {/* One row: which days, which customer, and the way to the rest. The controls say what they
+          are (a day, a customer), so the row needs no labels above it. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <SegmentedControl
+          value={quick}
+          onValueChange={setQuick}
+          ariaLabel={t("rangeLabel")}
+          size="md"
+          // A phone shows the four choices as two rows of two, each as wide as the other.
+          className="h-auto w-auto max-w-full max-sm:grid max-sm:w-full max-sm:grid-cols-2 [&_button]:flex-none"
+          options={[
+            { value: "next", label: t("quick.next"), testId: "quick-next" },
+            { value: "today", label: t("quick.today"), testId: "quick-today" },
+            { value: "week", label: t("quick.week"), testId: "quick-week" },
+            { value: "custom", label: t("quick.custom"), testId: "quick-custom" },
+          ]}
+        />
 
-        {/* Von/Bis belong to "Benutzerdefiniert" (§8.3). They stay in the DOM while hidden so the
-            range the URL carries is still readable (and the specs keep their `filter-from`/`to`). */}
-        <div
-          className={cn("flex flex-wrap items-end gap-x-4 gap-y-3", quick !== "custom" && "hidden")}
-          data-testid="filter-range"
-        >
-          <div className="flex flex-col gap-1">
-            <label htmlFor="filter-from" className="text-sm font-medium">
-              {t("from")}
-            </label>
-            <Input
-              ref={fromInput}
-              id="filter-from"
-              type="date"
-              value={filters.from}
-              onChange={(e) => {
-                const from = e.target.value;
-                if (!from) return;
-                push({ ...filters, from, to: filters.to < from ? from : filters.to });
-              }}
-              className="w-40"
-              data-testid="filter-from"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="filter-to" className="text-sm font-medium">
-              {t("to")}
-            </label>
-            <Input
-              id="filter-to"
-              type="date"
-              value={filters.to}
-              onChange={(e) => {
-                const to = e.target.value;
-                if (!to) return;
-                push({ ...filters, to, from: filters.from > to ? to : filters.from });
-              }}
-              className="w-40"
-              data-testid="filter-to"
-            />
-          </div>
-        </div>
-
-        <div className="flex min-w-56 flex-1 flex-col gap-1 sm:max-w-sm">
-          <label htmlFor="filter-customer" className="text-sm font-medium">
-            {t("customer")}
-          </label>
+        <div className="min-w-48 flex-1 sm:max-w-xs">
           <Combobox
             id="filter-customer"
+            aria-label={t("customer")}
             options={customers.map((c) => ({
               value: c.id,
               label: `${c.customerNumber} · ${c.name}, ${c.city}`,
@@ -203,9 +163,68 @@ export function OrderFilters({
             emptyText={t("customerEmpty")}
           />
         </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          aria-expanded={showMore}
+          aria-controls="order-filters-more"
+          onClick={() => setMoreOpen(!showMore)}
+          data-testid="filter-more"
+          className={cn(narrowed && "border-foreground")}
+        >
+          <SlidersHorizontalIcon aria-hidden />
+          {t("heading")}
+        </Button>
       </div>
 
-      <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
+      {/* Von/Bis belong to the custom range (§8.3). They stay in the DOM while hidden so the
+          range the URL carries is still readable (and the specs keep their `filter-from`/`to`). */}
+      <div
+        className={cn("flex flex-wrap items-end gap-2", quick !== "custom" && "hidden")}
+        data-testid="filter-range"
+      >
+        <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-none">
+          <label htmlFor="filter-from" className="text-sm font-medium">
+            {t("from")}
+          </label>
+          <Input
+            ref={fromInput}
+            id="filter-from"
+            type="date"
+            value={filters.from}
+            onChange={(e) => {
+              const from = e.target.value;
+              if (!from) return;
+              push({ ...filters, from, to: filters.to < from ? from : filters.to });
+            }}
+            className="w-full sm:w-40"
+            data-testid="filter-from"
+          />
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-none">
+          <label htmlFor="filter-to" className="text-sm font-medium">
+            {t("to")}
+          </label>
+          <Input
+            id="filter-to"
+            type="date"
+            value={filters.to}
+            onChange={(e) => {
+              const to = e.target.value;
+              if (!to) return;
+              push({ ...filters, to, from: filters.from > to ? to : filters.from });
+            }}
+            className="w-full sm:w-40"
+            data-testid="filter-to"
+          />
+        </div>
+      </div>
+
+      <div
+        id="order-filters-more"
+        className={cn("flex flex-wrap items-end gap-x-4 gap-y-3", !showMore && "hidden")}
+      >
         <div className="flex min-w-0 max-w-full flex-col gap-1" data-testid="filter-status">
           <span className="text-sm font-medium">{t("status")}</span>
           <SegmentedControl
@@ -251,7 +270,6 @@ export function OrderFilters({
         <Button
           type="button"
           variant="ghost"
-          className="mb-0.5"
           onClick={() => startTransition(() => router.replace(pathname))}
           data-testid="filter-reset"
         >

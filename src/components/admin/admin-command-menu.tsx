@@ -58,8 +58,7 @@ export function AdminCommandMenu() {
       <Button
         type="button"
         variant="outline"
-        size="sm"
-        className="gap-2 font-normal text-muted-foreground max-lg:hidden"
+        className="h-10 w-72 justify-start gap-2 font-normal text-muted-foreground max-[1024px]:hidden [&>kbd]:ms-auto"
         aria-keyshortcuts="Control+K Meta+K"
         data-testid="command-open"
         onClick={() => setOpen(true)}
@@ -82,7 +81,9 @@ export function AdminCommandMenu() {
           className="top-[16%] translate-y-0 gap-0 overflow-hidden p-0 data-[state=closed]:animate-none! data-[state=open]:animate-none! [&>*]:animate-none! [&>button]:hidden"
         >
           <DialogTitle className="sr-only">{t("shell.command.title")}</DialogTitle>
-          <DialogDescription className="sr-only">{t("shell.command.description")}</DialogDescription>
+          <DialogDescription className="sr-only">
+            {t("shell.command.description")}
+          </DialogDescription>
           <Command className="rounded-xl bg-card">
             <CommandInput placeholder={t("shell.command.placeholder")} />
             <CommandList className="max-h-[min(24rem,60dvh)]">

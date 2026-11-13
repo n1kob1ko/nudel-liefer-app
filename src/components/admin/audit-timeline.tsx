@@ -122,7 +122,6 @@ export function AuditTimeline({ entries }: { entries: AuditEntryView[] }) {
       <h2 id="audit-history" className="text-xl font-semibold">
         {t("title")}
       </h2>
-      <p className="text-sm text-muted-foreground">{t("description")}</p>
     </div>
   );
 

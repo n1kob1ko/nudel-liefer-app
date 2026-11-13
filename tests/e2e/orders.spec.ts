@@ -83,7 +83,7 @@ test("manual order entry: three lines via keyboard, saved and visible in the lis
   try {
     await loginAdmin(page);
     await page.goto("/de/admin/orders/new");
-    await expect(page.getByTestId("section-title")).toHaveText("Neue Bestellung erfassen");
+    await expect(page.getByTestId("section-title")).toHaveText("Neue Bestellung");
 
     // The window starts at the next delivery day (NUD-012 default); the planned day stays empty
     // (= automatic, NUD-148).

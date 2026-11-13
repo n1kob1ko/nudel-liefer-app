@@ -6,7 +6,7 @@ import { OrderForm } from "@/components/admin/order-form";
 import { PageHeader } from "@/components/admin/page-header";
 import { LoadingSkeleton } from "@/components/shared/states";
 import { formatCalendarDate } from "@/domain/order";
-import { Link, redirect } from "@/i18n/navigation";
+import { redirect } from "@/i18n/navigation";
 import { type AppLocale, LOCALES, localizedTextSchema, pick } from "@/lib/localized-text";
 import { requirePageActor } from "@/server/auth/page-guards";
 import { orderDetailQuery } from "@/server/order-queries";
@@ -46,14 +46,7 @@ async function Guarded({ locale, id }: { locale: string; id: string }) {
     <div className="flex flex-col gap-6">
       <PageHeader
         title={t("form.editTitle")}
-        breadcrumb={
-          <Link
-            href={`/admin/orders/${id}`}
-            className="rounded-sm underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {t("detail.title")}
-          </Link>
-        }
+        back={{ href: `/admin/orders/${id}`, label: t("detail.title") }}
       />
       <OrderForm
         key={order.updatedAt.toISOString()}

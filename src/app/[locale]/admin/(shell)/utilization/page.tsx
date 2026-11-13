@@ -7,6 +7,7 @@ import { EmptyState, LoadingSkeleton } from "@/components/shared/states";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { InfoTip } from "@/components/ui/info-tip";
 import {
   Table,
   TableBody,
@@ -102,21 +103,6 @@ async function Guarded({
     <div className="flex flex-col gap-6">
       <PageHeader
         title={t("title")}
-        // NUD-187 (QA 2026-10-29 F22): the page explains Ist/Soll well but never said WHERE working
-        // hours are maintained, so every row read "Keine Arbeitszeit hinterlegt" and nobody found
-        // the place. The path is named here and linked in the table's empty state below.
-        description={
-          <>
-            {t("description")}{" "}
-            <Link
-              href="/admin/drivers"
-              className="link"
-              data-testid="utilization-schedule-hint"
-            >
-              {t("scheduleHint")}
-            </Link>
-          </>
-        }
         actions={
           <div className="flex items-center gap-2">
             <Link
@@ -191,8 +177,10 @@ async function Guarded({
 
       <Card>
         <CardHeader>
-          <CardTitle>{t("driversTitle", { period: periodLabel })}</CardTitle>
-          <p className="max-w-prose text-base text-muted-foreground">{t("driversHint")}</p>
+          <CardTitle className="flex items-center gap-2">
+            {t("driversTitle", { period: periodLabel })}
+            <InfoTip>{t("driversHint")}</InfoTip>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {report.drivers.length === 0 ? (
@@ -250,8 +238,10 @@ async function Guarded({
 
       <Card>
         <CardHeader>
-          <CardTitle>{t("toursTitle", { period: periodLabel })}</CardTitle>
-          <p className="max-w-prose text-base text-muted-foreground">{t("toursHint")}</p>
+          <CardTitle className="flex items-center gap-2">
+            {t("toursTitle", { period: periodLabel })}
+            <InfoTip>{t("toursHint")}</InfoTip>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <TourTable
@@ -288,7 +278,8 @@ async function Guarded({
       {report.withoutSchedule > 0 ? (
         <p className="text-base text-muted-foreground" data-testid="utilization-missing-schedule">
           {t("missingSchedule", { count: report.withoutSchedule })}{" "}
-          {/* NUD-187: the way out of the wall of dashes, right where it is read. */}
+          {/* NUD-187 (QA 2026-10-29 F22): nobody found where working hours are kept. The way out
+              of the wall of dashes stands right where it is read, and only while it is needed. */}
           <Link
             href="/admin/drivers"
             className="link"

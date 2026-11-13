@@ -2,8 +2,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense } from "react";
 
 import { CustomerImport } from "@/components/admin/customer-import";
+import { PageHeader } from "@/components/admin/page-header";
 import { LoadingSkeleton } from "@/components/shared/states";
-import { Link } from "@/i18n/navigation";
 import { requirePageActor } from "@/server/auth/page-guards";
 import { parkingQueueCountQuery } from "@/server/customer-queries";
 
@@ -13,15 +13,11 @@ async function Guarded({ locale }: { locale: string }) {
   const queueCount = await parkingQueueCountQuery();
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <Link href="/admin/customers" className="link text-sm">
-          {t("backToList")}
-        </Link>
-        <h1 className="text-3xl font-semibold" data-testid="section-title">
-          {t("import.title")}
-        </h1>
-        <p className="max-w-prose text-muted-foreground">{t("import.description")}</p>
-      </div>
+      <PageHeader
+        back={{ href: "/admin/customers", label: t("backToList") }}
+        title={t("import.title")}
+        info={t("import.description")}
+      />
       <CustomerImport initialQueueCount={queueCount} />
     </div>
   );
