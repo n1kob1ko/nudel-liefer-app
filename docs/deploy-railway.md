@@ -1,23 +1,25 @@
-# Deployment on Railway (NUD-202)
+# Deployment on Railway (NUD-202, NUD-203)
 
 Since 2026-11-13 the app is set up on [Railway](https://railway.com): project `routenplanner` in the owner's workspace, environment `production`, region Europe West (Amsterdam). This page is the source of truth for that setup. The dedicated server (`docs/deploy.md` section 13) is the previous home; it is not touched by anything here.
 
 Nothing in this setup lives in a `railway.json`: Railway's Config as Code is deprecated and new services cannot opt in. The settings below are applied in the Railway dashboard or through the Railway connector, and this page is where they are written down. **When a setting is changed on Railway, change it here in the same pull request.**
 
-Contents: 1 What runs where, 2 Service settings, 3 Variables, 4 Deploying, 5 Scheduled jobs, 6 Backup, 7 Routing and geocoding, 8 Photos, 9 Moving the data from the old server, 10 Checks, 11 Costs, 12 Known limits.
+Contents: 1 What runs where, 2 Service settings, 3 Variables, 4 Deploying, 5 Scheduled jobs, 6 Backup, 7 Routing and geocoding (Google Maps), 8 Photos, 9 Moving the data from the old server, 10 Checks, 11 Costs, 12 Known limits.
 
 ## 1. What runs where
 
-| Service    | What it is                                               | Built from                                           | Reachable                              |
-| ---------- | -------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------- |
-| `app`      | the Next.js app                                          | repository root, Railpack (no Dockerfile)            | public, the `*.up.railway.app` address |
-| `Postgres` | PostgreSQL 18, Railway's template, volume 5 GB           | image `ghcr.io/railwayapp-templates/postgres-ssl:18` | private network only                   |
-| `photos`   | bucket for customer photos and order screenshots         | Railway bucket, region `ams`, private                | presigned URLs only                    |
-| `backups`  | bucket for the nightly master-data dumps                 | Railway bucket, region `ams`, private                | the `backup` service only              |
-| `cron`     | calls the app's `/api/cron/*` routes                     | `deploy/railway/cron` (Dockerfile)                   | nothing listens; runs every 5 minutes  |
-| `backup`   | `pnpm backup:db`, master data only                       | repository root, `deploy/railway/backup/Dockerfile`  | nothing listens; runs every night      |
-| `ors`      | openrouteservice 9.1.1 (routing), volume 5 GB at `/data` | `deploy/railway/ors` (Dockerfile)                    | `ors.railway.internal:8082`            |
-| `photon`   | Photon 1.3.0 (geocoding), volume 5 GB at `/data`         | `deploy/railway/photon` (Dockerfile)                 | `photon.railway.internal:2322`         |
+| Service    | What it is                                                                                                     | Built from                                           | Reachable                              |
+| ---------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------- |
+| `app`      | the Next.js app                                                                                                | repository root, Railpack (no Dockerfile)            | public, the `*.up.railway.app` address |
+| `Postgres` | PostgreSQL 18, Railway's template, volume 5 GB                                                                 | image `ghcr.io/railwayapp-templates/postgres-ssl:18` | private network only                   |
+| `photos`   | bucket for customer photos and order screenshots                                                               | Railway bucket, region `ams`, private                | presigned URLs only                    |
+| `backups`  | bucket for the nightly master-data dumps                                                                       | Railway bucket, region `ams`, private                | the `backup` service only              |
+| `cron`     | calls the app's `/api/cron/*` routes                                                                           | `deploy/railway/cron` (Dockerfile)                   | nothing listens; runs every 5 minutes  |
+| `backup`   | `pnpm backup:db`, master data only                                                                             | repository root, `deploy/railway/backup/Dockerfile`  | nothing listens; runs every night      |
+| `ors`      | openrouteservice 9.1.1 (routing), volume 5 GB at `/data`. **Goes away once the Google key works (section 7).** | `deploy/railway/ors` (Dockerfile)                    | `ors.railway.internal:8082`            |
+| `photon`   | Photon 1.3.0 (geocoding), volume 5 GB at `/data`. **Goes away once the Google key works (section 7).**         | `deploy/railway/photon` (Dockerfile)                 | `photon.railway.internal:2322`         |
+
+Address search and road routes come from Google Maps Platform (Geocoding API, Routes API), called by `app` with the owner's key; nothing of that runs on Railway (section 7).
 
 There is no nginx, no systemd unit, no `/etc/delivery-app.env` and no `/etc/hosts` entry: Railway terminates TLS, restarts a crashed service and injects the variables.
 
@@ -56,8 +58,9 @@ Values that are secrets are never written here. `${{...}}` is Railway's referenc
 | `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`                            | `${{photos.ENDPOINT}}`, `${{photos.BUCKET}}`, `${{photos.REGION}}`, `${{photos.ACCESS_KEY_ID}}`, `${{photos.SECRET_ACCESS_KEY}}`                                                     |
 | `S3_URL_STYLE`                                                                                                 | `virtual` (a Railway bucket lives on `https://<bucket>.<endpoint host>`)                                                                                                             |
 | `S3_CORS_ORIGINS`                                                                                              | `https://${{RAILWAY_PUBLIC_DOMAIN}}`; add further addresses comma separated when the app gets its own domain                                                                         |
-| `ORS_BASE_URL`                                                                                                 | `http://ors.railway.internal:8082/ors`                                                                                                                                               |
-| `PHOTON_URL`, `PHOTON_LANG`                                                                                    | `http://photon.railway.internal:2322`, `de`                                                                                                                                          |
+| `GOOGLE_MAPS_SERVER_KEY`                                                                                       | the owner's Google Maps Platform key (secret; section 7). Optional beside it: `GOOGLE_MAPS_LANGUAGE` (`de`), `GOOGLE_MAPS_REGION` (`at`)                                             |
+| `ORS_BASE_URL`                                                                                                 | `http://ors.railway.internal:8082/ors`. Only until the Google key works, then removed                                                                                                |
+| `PHOTON_URL`, `PHOTON_LANG`                                                                                    | `http://photon.railway.internal:2322`, `de`. Only until the Google key works, then removed                                                                                           |
 | `SKIP_TYPECHECK`                                                                                               | `1` (as on the server: `pnpm typecheck` in CI is the gate)                                                                                                                           |
 | `DATA_RETENTION_MODE`, `ORDER_RETENTION_MODE`, `ORPHAN_CLEANUP_MODE`                                           | `dry-run` each. **Deleting stays off until the owner asks for it.**                                                                                                                  |
 | `AUDIT_RETENTION_DAYS`, `DRIVER_TEXT_RETENTION_DAYS`, `SCREENSHOT_RETENTION_DAYS`, `ORPHAN_CLEANUP_GRACE_DAYS` | `730`, `365`, `180`, `14` (the values of the server)                                                                                                                                 |
@@ -93,13 +96,44 @@ Railway can also take scheduled copies of the whole database volume (service `Po
 
 Restore: `pnpm backup:verify` with `BACKUP_S3_*` and `RESTORE_DATABASE_URL` (see `docs/runbook.md` section 5).
 
-## 7. Routing and geocoding
+## 7. Routing and geocoding (Google Maps)
+
+Owner's decision of 2026-11-13 (NUD-203): address search and road routes come from **Google Maps Platform**, so that no map service of our own has to run. The map the users see stays the Leaflet map with the tiles of `MAP_TILE_URL`.
+
+**What the app asks Google**
+
+- **Geocoding API**, once per address the office looks up (customer form, parking queue, customer import). The answer is kept in the app's memory for repeated lookups of the same text, and the pin the office confirms is stored with the customer.
+- **Routes API** (`computeRoutes`), whenever a tour is planned or re-ordered. The visiting order is the app's own heuristic; Google delivers distance and driving time of every leg and the line on the map. One request holds at most 10 stops between its two ends, so a tour of up to 10 stops is one request, 25 stops are three.
+- A standing tour is a template in the app. Using it plans a tour and asks Google again; results of Google are not kept in a cache table.
+- Google not answering within 8 s, refusing the key or being over a limit: the tour is planned with the estimate and says so ("Näherungswerte"); the address search shows its error and the office can set the pin by hand.
+
+**The key (👤 owner, once)**
+
+1. [console.cloud.google.com](https://console.cloud.google.com): create a project, add a billing account (credit card; the billing address decides which terms apply, see below).
+2. "APIs & Services" → "Library": enable **Geocoding API** and **Routes API**. Nothing else is needed (no Maps JavaScript API, no map key for the browser).
+3. "APIs & Services" → "Credentials" → "Create credentials" → "API key". Under "API restrictions" choose "Restrict key" and tick exactly those two APIs. An IP restriction is not possible: it needs a fixed outbound address, which `app` does not have in this setup.
+4. Recommended: "APIs & Services" → "Quotas", a daily limit for both APIs (for example 300 requests per day each: 30 days of that stay below the free 10,000 per month), and a budget alert under "Billing" → "Budgets & alerts".
+5. Railway → `app` → Variables → `GOOGLE_MAPS_SERVER_KEY` = the key → Deploy. Never into the repository, a chat or this page.
+
+**Then (the switch)**
+
+1. `GET /api/health` → `routing.mode` and `geocoding.mode` are `google`. The key wins over `ORS_BASE_URL` and `PHOTON_URL`, which may still be set at that moment.
+2. Geocode an address in the customer form, plan a tour: real distances, a route along roads, "Google Maps" in the map's attribution.
+3. Remove on Railway: the variables `ORS_BASE_URL`, `PHOTON_URL`, `PHOTON_LANG` of `app`, the services `ors` and `photon`, their volumes `ors-data` and `photon-data`. Then delete `deploy/railway/ors` and `deploy/railway/photon` and their rows on this page.
+
+**Terms (read on 2026-11-13; not legal advice)**
+
+- The owner's billing address is in Austria, so Google's terms for the European Economic Area apply (in force since 2025-07-08): [Geocoding API](https://developers.google.com/maps/comms/eea/geocoding), [Routes API](https://developers.google.com/maps/comms/eea/routes). They drop the rule "no use with a non-Google map": latitude, longitude and place id of a geocoding hit and the route line may be shown on our map.
+- Still not allowed on or next to a map: Google's address text of a hit, and a route's description and steps. That is why a candidate of the address search is labelled with the address the office typed, and why the route request never asks for steps. Both are asserted by tests.
+- Google's content has to be recognisable as such: every map carries "Routing & Geocoding: Google Maps" in its attribution while the key is set (`src/lib/map-config.ts`).
+- With a billing address outside the EEA the global terms apply, which forbid showing Google's results on another map. Then this setup must not be used as it is.
+
+**Until the key is entered**, `ors` and `photon` answer as before:
 
 - `ors` is the official image with `ORS_HOME=/data`, so the extract, the graph and the logs are on the volume. The first start downloads the OSM extract and builds the car graph (Austria: about 15 minutes, up to 4 GB of RAM); later starts take seconds. Until the graph is ready the app plans with the heuristic and says so ("Näherungswerte").
 - `download.geofabrik.de` refuses connections from Railway's outbound addresses (port 443, "Connection refused", seen 2026-11-13 and reported by others in Railway's forum). That is why `OSM_URL` takes several addresses and the start script logs which one delivered the file, together with the answer's `Last-Modified` header. A refresh that finds no address keeps serving the extract already on the volume.
 - `photon` unpacks the search index onto its volume on the first start (about a minute for Austria) and serves it.
-- Both have no public address. `GET /api/health` on the app reports `routing.mode` and `geocoding.mode`; both must be `self-hosted`.
-- New map data: `ors` → variable `REBUILD_OSM=true`, deploy, remove the variable again. `photon` → change `PHOTON_INDEX_URL` or delete the folder `photon` on the volume.
+- Both have no public address. `GET /api/health` on the app then reports `routing.mode` and `geocoding.mode` as `self-hosted`.
 
 ## 8. Photos
 
@@ -135,18 +169,22 @@ The pre-deploy step runs `prisma migrate deploy`, so a database that is behind t
 
 ## 10. Checks
 
-- `curl -s https://<address>/api/health` → `"status":"ok"`, `database` and `storage` ok, `routing.mode` and `geocoding.mode` both `self-hosted`.
+- `curl -s https://<address>/api/health` → `"status":"ok"`, `database` and `storage` ok, `routing.mode` and `geocoding.mode` both `google` (`self-hosted` before the Google key is entered).
 - Log in as office user, open a customer, upload a photo, reload: the photo shows. (Proves presigned URL, CORS rule and CSP together.)
-- Geocode an address in the customer form and plan a tour: distances are real, not "Näherungswerte".
+- Geocode an address in the customer form and plan a tour: distances are real, not "Näherungswerte". The candidate of the address search shows the address as typed, the map's attribution names Google Maps.
 - `cron` → Deployments: a run every 5 minutes, exit code 0. `backup` → one successful run, an object under `db/` in the `backups` bucket.
 - Log in as driver on a phone, install the app, open a stop without network.
 
 ## 11. Costs
 
-Railway bills by use: USD 10 per GB of RAM and month, USD 20 per vCPU and month (used, not reserved), USD 0.15 per GB of volume, USD 0.015 per GB in a bucket, on top of the plan (Hobby USD 5, Pro USD 20, each including the same amount of use). Almost all of it is the RAM of `ors` and `photon`; the app, the database and the two cron services together are a few dollars. Measured figures: dashboard → project → Usage. Section to update once a full week of use is visible.
+Railway bills by use: USD 10 per GB of RAM and month, USD 20 per vCPU and month (used, not reserved), USD 0.15 per GB of volume, USD 0.015 per GB in a bucket, on top of the plan (Hobby USD 5, Pro USD 20, each including the same amount of use). Almost all of it is the RAM of `ors` and `photon` as long as they run; the app, the database and the two cron services together are a few dollars. Measured figures: dashboard → project → Usage. Section to update once a full week of use is visible.
+
+Google Maps Platform (price list of 2026-11-12): Geocoding API and Routes API "Compute Routes Essentials" each have 10,000 free requests per month, after that USD 5 per 1,000. The app stays in "Essentials" by design (at most 10 stops between the ends of a request, no traffic, no reordering by Google; the next class costs USD 10 per 1,000 with 5,000 free). Estimate, not measured: three tours a day of about 25 stops, each planned and re-ordered a few times, are some 50 route requests a day, about 1,500 a month, and a handful of address lookups; both far inside the free amount. Measured figures: Google Cloud console → "APIs & Services" → "Metrics".
 
 ## 12. Known limits
 
+- Address search and real road distances depend on Google: without its answer the office sets pins by hand and tours are estimates. A daily quota on the key (section 7) has the same effect once it is used up.
+- What Google delivered stays in the app in two places: the pin of a customer (confirmed or moved by the office on the map) and the legs and line of a planned tour (until the tour is deleted). Google's terms describe keeping coordinates as a cache of up to 30 days; whether a pin the office confirmed counts as such a cache was not clarified. If it must be strict: a job that looks the stored addresses up again every month would be the way.
 - One region, one replica of everything; a Railway outage in Amsterdam takes the app down.
 - The backups are in the same Railway project as the database. A second copy elsewhere is not set up.
 - Nothing alerts when `cron` or `backup` fail; the failed run is visible in the dashboard only.

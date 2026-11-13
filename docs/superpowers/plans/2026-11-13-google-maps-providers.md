@@ -39,8 +39,8 @@
 - `label` is the query the user typed (numbered ` (2)`, ` (3)` from the second hit on), never `formatted_address`. `confidence`: `ROOFTOP` 1, `RANGE_INTERPOLATED` 0.8, `GEOMETRIC_CENTER` 0.6, `APPROXIMATE` 0.4; a `partial_match` is capped at 0.4.
 - `reverse()` returns `null` without a request (the app does not use it, and the answer would be address text).
 
-- [ ] Tests first: mapping (two hits, labels, confidences, partial match), `ZERO_RESULTS` -> `[]`, `OVER_QUERY_LIMIT` / `REQUEST_DENIED` / `INVALID_REQUEST` -> `GeocoderError("HTTP")` without the key in the message, HTTP 500 retried once, timeout -> `TIMEOUT`, request carries `address`, `language=de`, `region=at`, the key only as query parameter, blank address -> `[]` without a request, too long -> `INVALID_INPUT`.
-- [ ] Implement, run `pnpm vitest run src/server/geocoder`, commit.
+- [x] Tests first: mapping (two hits, labels, confidences, partial match), `ZERO_RESULTS` -> `[]`, `OVER_QUERY_LIMIT` / `REQUEST_DENIED` / `INVALID_REQUEST` -> `GeocoderError("HTTP")` without the key in the message, HTTP 500 retried once, timeout -> `TIMEOUT`, request carries `address`, `language=de`, `region=at`, the key only as query parameter, blank address -> `[]` without a request, too long -> `INVALID_INPUT`.
+- [x] Implement, run `pnpm vitest run src/server/geocoder`, commit.
 
 ### Task 2: `GoogleRoutingProvider`
 
@@ -48,24 +48,24 @@
 
 **Interfaces:**
 
-- Produces: `class GoogleRoutingProvider implements Pick<RoutingProvider, "route">` with `new GoogleRoutingProvider({ apiKey, language?, region?, timeoutMs?, fetch? })`; `MAX_GOOGLE_INTERMEDIATES = 10`; `mapComputeRoutesResponse(body: unknown, points: number): { legs: RouteLeg[]; coordinates: [number, number][] }`.
+- Produces: `class GoogleRoutingProvider implements Pick<RoutingProvider, "route">` with `new GoogleRoutingProvider({ apiKey, timeoutMs?, fetch? })` (no language or region: without steps and with coordinates as waypoints neither changes the answer); `MAX_GOOGLE_INTERMEDIATES = 10`; `mapComputeRoutesResponse(body: unknown, points: number): { legs: RouteLeg[]; coordinates: [number, number][] }`.
 - Request per chunk: `origin`, `destination`, `intermediates` as `{ location: { latLng: { latitude, longitude } } }`, `travelMode: "DRIVE"`, `routingPreference: "TRAFFIC_UNAWARE"`, `polylineEncoding: "GEO_JSON_LINESTRING"`, `polylineQuality: "OVERVIEW"`; headers `X-Goog-Api-Key`, `X-Goog-FieldMask: routes.legs.distanceMeters,routes.legs.duration,routes.polyline.geoJsonLinestring`.
 
-- [ ] Tests first: 2 stops -> one request, 3 legs, totals, `approximate: false`; 25 stops -> three requests (12 + 12 + 5 points), 26 legs, geometry joined without a doubled point; leg without `distanceMeters` -> 0; `duration: "123.4s"` -> 123; no route -> `NO_ROUTE`; HTTP 403 -> `HTTP` without the key; timeout -> `TIMEOUT`; no stops -> empty route without a request; no `steps` in the field mask.
-- [ ] Implement, run `pnpm vitest run src/server/routing`, commit.
+- [x] Tests first: 2 stops -> one request, 3 legs, totals, `approximate: false`; 25 stops -> three requests (12 + 12 + 5 points), 26 legs, geometry joined without a doubled point; leg without `distanceMeters` -> 0; `duration: "123.4s"` -> 123; no route -> `NO_ROUTE`; HTTP 403 -> `HTTP` without the key; timeout -> `TIMEOUT`; no stops -> empty route without a request; no `steps` in the field mask.
+- [x] Implement, run `pnpm vitest run src/server/routing`, commit.
 
 ### Task 3: Provider selection, health, deploy check
 
 **Files:** Modify `src/server/routing/index.ts`, `src/server/geocoder/index.ts`, `src/server/health.ts`, `scripts/lib/deploy-env.ts` (+ their tests).
 
-- [ ] `getRoutingProvider`: key set -> `Fallback(HeuristicOrder(google, heuristic), heuristic)`; `getGeocoder`: key set -> `CachingGeocoder(GoogleGeocoder)`. Google before ORS / Photon. `GOOGLE_MAPS_LANGUAGE` (default `de`), `GOOGLE_MAPS_REGION` (default `at`).
-- [ ] `ProviderMode` gains `"google"`; `/api/health` reports it for routing and geocoding.
-- [ ] Tests: precedence with the old variables still set, health, both singletons.
+- [x] `getRoutingProvider`: key set -> `Fallback(HeuristicOrder(google, heuristic), heuristic)`; `getGeocoder`: key set -> `CachingGeocoder(GoogleGeocoder)`. Google before ORS / Photon. `GOOGLE_MAPS_LANGUAGE` (default `de`), `GOOGLE_MAPS_REGION` (default `at`).
+- [x] `ProviderMode` gains `"google"`; `/api/health` reports it for routing and geocoding.
+- [x] Tests: precedence with the old variables still set, health, both singletons.
 
 ### Task 4: Attribution, documentation, Railway
 
 **Files:** Modify `src/lib/map-config.ts` (+ test), `docs/env.md`, `.env.example`, `docs/deploy-railway.md`, `AGENTS.md`, `backlog.md`.
 
-- [ ] With the key set the map attribution ends with "Route: Google Maps" (Google asks that its content is recognisable as such).
-- [ ] Docs: variables, the terms summary above, costs, how to create and restrict the key, known limits (stored tours and customer pins).
+- [x] With the key set the map attribution ends with "Routing & Geocoding: Google Maps" (Google asks that its content is recognisable as such).
+- [x] Docs: variables, the terms summary above, costs, how to create and restrict the key, known limits (stored tours and customer pins).
 - [ ] After the owner entered the key on Railway: `/api/health` shows `google`, a geocode and a tour work; then remove `ors`, `photon`, their volumes and `ORS_BASE_URL` / `PHOTON_URL` / `PHOTON_LANG`, and delete `deploy/railway/ors` and `deploy/railway/photon` with their documentation.
