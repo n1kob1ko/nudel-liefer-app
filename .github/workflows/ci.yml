@@ -45,17 +45,6 @@ jobs:
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
-      # NUD-122: the real upload path (presigned PUT + attach) must run here, not be skipped.
-      # MinIO was removed from Docker Hub, so the chainguard image is used (same as docker-compose).
-      minio:
-        image: chainguard/minio:latest
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-          MC_HOST_self: http://minioadmin:minioadmin@localhost:9000
-        ports: ["9000:9000"]
-        options: >-
-          --health-cmd "mc ready self" --health-interval 5s --health-timeout 5s --health-retries 12
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nudel
       SEED_ADMIN_PASSWORD: ci-only-password
@@ -75,6 +64,21 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      # NUD-122: the real upload path (presigned PUT + attach) must run here, not be skipped.
+      # MinIO was removed from Docker Hub, so the chainguard image is used (same as docker-compose).
+      # It is started in a step, not under `services:`: the image has no default command and a
+      # service container cannot be given one (`server /data`), so it only printed its help and exited.
+      - name: Start the object storage (MinIO)
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+            chainguard/minio:latest server /data
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:9000/minio/health/ready && exit 0
+            sleep 1
+          done
+          docker logs minio
+          exit 1
       - name: Create the object-storage bucket
         run: |
           docker run --rm --network host \
