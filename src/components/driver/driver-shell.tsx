@@ -116,7 +116,10 @@ function SyncChip({ onClick, className }: { onClick: () => void; className?: str
   const failure = tapFailure ?? photoFailure;
 
   let state: SyncState;
-  if (failure && pending > 0) state = "error";
+  // A "network" failure is the normal dead-spot case: the taps wait and are sent later, so the chip
+  // says "waiting" with the count. Red "Fehler" is for what the driver may have to act on (the
+  // server refused or answered with an error, the session ended).
+  if (failure && failure !== "network" && pending > 0) state = "error";
   else if (pending > 0) state = "pending";
   else if (!online) state = "offline";
   else if (status.syncing || (status.savedAt === null && status.phase === "idle"))

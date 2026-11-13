@@ -13,17 +13,29 @@ import { Toaster } from "./sonner";
  * "Rückgängig" button of a completed stop was in the DOM but not clickable (the report could not
  * reach it, and neither could the e2e click).
  *
- * The driver therefore gets `bottom-center` above its action bar; the office keeps `top-right`.
+ * The driver first got `bottom-center` above its action bar. On the start page, though, the card of
+ * the next stop scrolls into that band: after a quick "Geliefert" the toast lay right over the next
+ * card's buttons for 10 s, with "Rückgängig" where "Geliefert" had been (multi-day run 2026-11-16).
+ * A second quick tap undid the stop just delivered. The driver's toasts therefore sit at the top,
+ * just below the sticky header (56 px + 8 px), where the summary is and no action button lives.
+ * The office got `top-right`, which covered the page's own buttons in the title row ("Neue
+ * Bestellung", the date arrows of Touren); it uses `bottom-right` now, where no page puts an action.
  * The area is derived from the path instead of being passed in, because the host is mounted once in
  * the root layout (a second host would render every toast twice).
  */
+/** Below the sticky 56 px driver header, which itself starts below the notch. */
+const DRIVER_TOP_OFFSET = "calc(env(safe-area-inset-top, 0px) + 64px)";
+
 export function ToasterArea() {
   const pathname = usePathname();
   const isDriver = pathname?.startsWith("/driver") ?? false;
   return isDriver ? (
-    // 96 px clears the two-button action bar (Geliefert / Problem) plus the safe-area padding.
-    <Toaster position="bottom-center" offset={{ bottom: 96 }} mobileOffset={{ bottom: 96 }} />
+    <Toaster
+      position="top-center"
+      offset={{ top: DRIVER_TOP_OFFSET }}
+      mobileOffset={{ top: DRIVER_TOP_OFFSET }}
+    />
   ) : (
-    <Toaster position="top-right" offset={{ top: 72 }} />
+    <Toaster position="bottom-right" />
   );
 }

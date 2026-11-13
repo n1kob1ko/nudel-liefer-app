@@ -184,6 +184,21 @@ describe.each(Object.keys(LOCALES))("TodayTour in %s", (locale) => {
     );
   });
 
+  it("says on the next-stop card when cash is to be collected there", () => {
+    renderIn(
+      locale,
+      <TodayTour
+        today={today([stop(1, { cashDueCents: 15750, collectedCents: null }), stop(2)])}
+        tiles={TILES}
+      />,
+    );
+    const cash = within(screen.getByTestId("next-stop")).getByTestId("next-stop-cash");
+    expect(cash.textContent).toMatch(/157[,.]50/);
+    cleanup();
+    renderIn(locale, <TodayTour today={today([stop(1), stop(2)])} tiles={TILES} />);
+    expect(screen.queryByTestId("next-stop-cash")).toBeNull();
+  });
+
   it("has a page heading and a named progress bar (NUD-095)", () => {
     renderIn(locale, <TodayTour today={today([stop(1)])} tiles={TILES} />);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/\S/);

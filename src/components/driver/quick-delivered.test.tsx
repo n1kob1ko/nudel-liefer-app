@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   enqueue: vi.fn(),
   undo: vi.fn(),
   requestOfflineSync: vi.fn(),
+  push: vi.fn(),
   toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }),
 }));
 vi.mock("@/lib/offline/outbox-browser", () => ({
@@ -21,6 +22,7 @@ vi.mock("@/lib/offline/outbox-browser", () => ({
 }));
 vi.mock("@/lib/offline/browser", () => ({ requestOfflineSync: mocks.requestOfflineSync }));
 vi.mock("sonner", () => ({ toast: mocks.toast }));
+vi.mock("@/i18n/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
 
 const LOCALES: Record<string, AbstractIntlMessages> = {
   de,
@@ -34,7 +36,11 @@ const STOP = { id: "s1", customerName: "Trattoria Roma" };
 const stops = (...statuses: string[]) =>
   statuses.map((status, i) => ({ id: `s${i + 1}`, sequence: i + 1, status }));
 
-function renderIn(locale: string, tourStops = stops("PENDING", "PENDING")) {
+function renderIn(
+  locale: string,
+  tourStops = stops("PENDING", "PENDING"),
+  stop: { id: string; customerName: string; cashDueCents?: number } = STOP,
+) {
   return render(
     <NextIntlClientProvider
       locale={locale}
@@ -46,7 +52,7 @@ function renderIn(locale: string, tourStops = stops("PENDING", "PENDING")) {
         throw new Error(`missing message ${namespace}.${key}`);
       }}
     >
-      <QuickDeliveredButton stop={STOP} stops={tourStops} />
+      <QuickDeliveredButton stop={stop} stops={tourStops} />
     </NextIntlClientProvider>,
   );
 }
@@ -62,6 +68,24 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe.each(Object.keys(LOCALES))("QuickDeliveredButton in %s", (locale) => {
+  it("stays on the tour when nothing is to be collected", async () => {
+    renderIn(locale);
+    fireEvent.click(screen.getByTestId("btn-quick-delivered"));
+    await waitFor(() => expect(mocks.toast).toHaveBeenCalled());
+    expect(mocks.push).not.toHaveBeenCalled();
+  });
+
+  it("opens the stop screen after the tap when cash is to be collected there", async () => {
+    renderIn(locale, stops("PENDING", "PENDING"), { ...STOP, cashDueCents: 15750 });
+    fireEvent.click(screen.getByTestId("btn-quick-delivered"));
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/driver/stops/s1"));
+    expect(mocks.enqueue).toHaveBeenCalledWith({
+      type: "delivered",
+      stopId: "s1",
+      customerName: "Trattoria Roma",
+    });
+  });
+
   it("marks the stop delivered with one tap and offers undo", async () => {
     renderIn(locale);
     fireEvent.click(screen.getByTestId("btn-quick-delivered"));
