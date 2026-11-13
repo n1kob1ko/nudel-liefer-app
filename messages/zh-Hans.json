@@ -1983,8 +1983,9 @@
       },
       "paid": {
         "title": "已标记已付",
-        "body": "办公室最近标记为已付的月份。",
-        "badge": "已付"
+        "body": "办公室最近标记为已付的五个月份。",
+        "badge": "已付",
+        "all": "查看全部记录（{count}）"
       },
       "state": {
         "open": "未结",
@@ -2002,7 +2003,8 @@
         "emptyTitle": "本月没有订单",
         "emptyBody": "本月没有已确认的月度账单订单。",
         "currentMonth": "本月尚未结束；从下月 1 日起可标记为已付。",
-        "noAmount": "无金额"
+        "noAmount": "无金额",
+        "breakdown": "订单 {orders}，调整 {adjustments}"
       },
       "note": "备注（可选）",
       "notePlaceholder": "例如：现金结清，或 3 日转账",
@@ -2020,6 +2022,101 @@
         "not_found": "未找到该记录。",
         "nothing_to_pay": "本月无应付金额（没有订单，或本月尚未结束）。",
         "conflict": "该记录同时被修改。请重新加载。"
+      },
+      "adjust": {
+        "heading": "调整项",
+        "subtotal": "订单小计",
+        "total": "合计",
+        "formTitle": "添加调整项",
+        "formBody": "以固定金额记录折扣、退款或附加费。调整项计入本月合计。",
+        "kind": "类型",
+        "deduction": "扣减",
+        "surcharge": "附加",
+        "label": "说明",
+        "labelPlaceholder": "例如：老客户折扣",
+        "amount": "金额（欧元）",
+        "amountPlaceholder": "10.00",
+        "add": "添加",
+        "adding": "正在保存…",
+        "remove": "删除调整项“{label}”",
+        "locked": "本月已标记为已付，调整项因此被锁定。如需修改，请先撤销已付标记。",
+        "toast": {
+          "added": "已添加调整项。",
+          "removed": "已删除调整项。"
+        },
+        "errors": {
+          "labelRequired": "请填写说明。",
+          "amountInvalid": "请输入大于 0 的金额，例如 10.50。",
+          "invalid": "输入无效。请检查说明和金额。",
+          "not_found": "该调整项已不存在。请重新加载页面。",
+          "locked": "本月刚刚被标记为已付。如需修改，请先撤销已付标记。",
+          "generic": "操作未成功，请重试。",
+          "no_orders": "本月没有月度账单订单，因此无法在此添加更正。"
+        },
+        "noOrders": "只有含月度账单订单的月份才能添加更正。"
+      },
+      "export": {
+        "pdf": "PDF",
+        "csv": "CSV",
+        "pdfLabel": "下载月度账单（PDF）",
+        "csvLabel": "下载月度账单（CSV，可用 Excel 打开）",
+        "allTitle": "导出给会计",
+        "allBody": "将某个月的全部月度账单导出为一个 CSV 文件（可用 Excel 打开），每个订单和每个调整项各占一行。",
+        "month": "月份",
+        "allCsv": "下载 CSV",
+        "kindOrder": "订单",
+        "kindAdjustment": "调整项",
+        "columns": {
+          "month": "月份",
+          "customerNumber": "客户编号",
+          "customer": "客户",
+          "date": "送货日",
+          "kind": "类型",
+          "description": "说明",
+          "amount": "金额（欧元）",
+          "status": "状态",
+          "paidOn": "付款日期",
+          "paidAmount": "已付合计 (EUR)"
+        },
+        "document": {
+          "title": "月度账单",
+          "customerNumber": "客户编号 {number}",
+          "vatId": "增值税号 {vatId}",
+          "open": "未结",
+          "current": "本月尚未结束，此清单为暂定。",
+          "paidOn": "已于 {date} 付款，金额 {amount}",
+          "note": "备注：{note}",
+          "noAmountNotice": "{count, plural, other {# 个无金额的订单}}未计入合计。",
+          "empty": "本月没有月度账单订单。",
+          "page": "第 {page} 页，共 {pages} 页",
+          "paidDiffers": "已付金额与上方合计不同，因为标记已付后订单有改动。"
+        },
+        "failed": "下载失败。请刷新页面后重试。"
+      },
+      "history": {
+        "title": "已付记录",
+        "description": "办公室标记为已付的所有月份。金额为标记当天的合计。",
+        "count": "{count} 条记录",
+        "sum": "合计 {amount}",
+        "searchLabel": "搜索客户",
+        "searchPlaceholder": "客户名称或客户编号",
+        "year": "年份",
+        "allYears": "全部年份",
+        "reset": "重置筛选",
+        "columns": {
+          "paidAt": "付款日期",
+          "paidBy": "标记人",
+          "note": "备注"
+        },
+        "openBill": "打开月度账单：{customer}，{month}",
+        "emptyTitle": "还没有月份被标记为已付",
+        "emptyBody": "办公室将月度账单标记为已付后，会显示在这里。",
+        "emptyFilteredTitle": "没有结果",
+        "emptyFilteredBody": "没有符合年份和搜索条件的记录。",
+        "pagination": {
+          "label": "分页",
+          "status": "第 {page} 页，共 {pageCount} 页"
+        }
       }
     }
   },

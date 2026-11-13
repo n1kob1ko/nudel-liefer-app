@@ -373,6 +373,12 @@ const MATRIX: Record<string, Row> = {
   "src/server/payment-actions.ts#unmarkMonthlyBillPaidAction": adminAction("payments", async () =>
     (await import("./payment-actions")).unmarkMonthlyBillPaidAction({}),
   ),
+  "src/server/payment-actions.ts#addMonthlyAdjustmentAction": adminAction("payments", async () =>
+    (await import("./payment-actions")).addMonthlyAdjustmentAction({}),
+  ),
+  "src/server/payment-actions.ts#removeMonthlyAdjustmentAction": adminAction("payments", async () =>
+    (await import("./payment-actions")).removeMonthlyAdjustmentAction({}),
+  ),
 
   // ---- driver-only server actions
   "src/server/stop-status-actions.ts#stopStatusAction": driverAction(
@@ -418,6 +424,14 @@ const MATRIX: Record<string, Row> = {
     call: async () =>
       (await import("@/app/api/admin/customers/import/parse/route")).POST(
         post("/api/admin/customers/import/parse"),
+      ),
+  },
+  "src/app/api/admin/payments/export/route.ts#GET": {
+    note: "monthly bill as PDF or CSV",
+    expect: ADMIN_ONLY,
+    call: async () =>
+      (await import("@/app/api/admin/payments/export/route")).GET(
+        get("/api/admin/payments/export?month=2099-05"),
       ),
   },
   "src/app/api/driver/tour/today/route.ts#GET": {

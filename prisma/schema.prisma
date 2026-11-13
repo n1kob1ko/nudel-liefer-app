@@ -103,18 +103,19 @@ model User {
   orders      Order[]
   tours       Tour[]
 
-  parkingSpots        ParkingSpot[]
-  keyUpdates          Customer[]       @relation("CustomerKeyUpdatedBy")
-  abbreviationUpdates Customer[]       @relation("CustomerAbbreviationUpdatedBy")
-  recurringOrders     RecurringOrder[]
+  parkingSpots              ParkingSpot[]
+  keyUpdates                Customer[]          @relation("CustomerKeyUpdatedBy")
+  abbreviationUpdates       Customer[]          @relation("CustomerAbbreviationUpdatedBy")
+  recurringOrders           RecurringOrder[]
   /// Working days and hours (NUD-152); one row per ISO weekday, `active = false` = not working.
-  workSchedules       WorkSchedule[]
+  workSchedules             WorkSchedule[]
   /// Default driver of a standing tour ("Stammtour"): the driver who knows these customers.
-  standingTours       StandingTour[]
+  standingTours             StandingTour[]
   /// Cash the driver collected (D33, NUD-196).
-  collectedStops      Stop[]           @relation("StopCollectedBy")
+  collectedStops            Stop[]              @relation("StopCollectedBy")
   /// Monthly bills the user marked as paid (D33, NUD-196).
-  monthlyPaymentsPaid MonthlyPayment[] @relation("MonthlyPaymentPaidBy")
+  monthlyPaymentsPaid       MonthlyPayment[]    @relation("MonthlyPaymentPaidBy")
+  monthlyAdjustmentsCreated MonthlyAdjustment[] @relation("MonthlyAdjustmentCreatedBy")
 }
 
 /// A driver's working day (NUD-152): one row per ISO weekday (1 = Monday ... 7 = Sunday). A weekday
@@ -205,11 +206,12 @@ model Customer {
   stops                 Stop[]
   parkingSpots          ParkingSpot[]
   recurringOrders       RecurringOrder[]
-  keyUpdatedBy          User?            @relation("CustomerKeyUpdatedBy", fields: [keyUpdatedById], references: [id], onDelete: Restrict)
-  abbreviationUpdatedBy User?            @relation("CustomerAbbreviationUpdatedBy", fields: [abbreviationUpdatedById], references: [id], onDelete: Restrict)
+  keyUpdatedBy          User?                  @relation("CustomerKeyUpdatedBy", fields: [keyUpdatedById], references: [id], onDelete: Restrict)
+  abbreviationUpdatedBy User?                  @relation("CustomerAbbreviationUpdatedBy", fields: [abbreviationUpdatedById], references: [id], onDelete: Restrict)
   standingTours         StandingTourCustomer[]
   /// Paid monthly bills of the customer (D33, NUD-196).
   monthlyPayments       MonthlyPayment[]
+  monthlyAdjustments    MonthlyAdjustment[]
 
   @@index([name])
 }
@@ -219,15 +221,15 @@ model Customer {
 /// `amountCents` and `orderCount` are a snapshot of what was marked, because orders can be edited
 /// afterwards; the live total of the month is computed from the orders every time.
 model MonthlyPayment {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   customerId  String
   /// First day of the billed month, factory time zone (`DATE`).
-  periodStart DateTime @db.Date
+  periodStart DateTime  @db.Date
   amountCents Int
   orderCount  Int
   /// Optional note of the office ("bar beglichen", "Überweisung 3 Tage später", ...).
   note        String?
-  paidAt      DateTime @default(now())
+  paidAt      DateTime  @default(now())
   paidById    String
   /// Set when the office takes the "paid" note back; the row stays (history, audit).
   voidedAt    DateTime?
@@ -239,6 +241,31 @@ model MonthlyPayment {
   @@unique([customerId, periodStart])
   @@index([periodStart])
   @@index([customerId, periodStart])
+}
+
+/// A correction line on a customer's monthly bill (NUD-197): a discount or credit note (negative
+/// `amountCents`) or an extra charge (positive). It counts into the month's total next to the
+/// orders. Removing one sets `voidedAt` (soft delete); while the month is marked paid the lines
+/// are frozen, so the snapshot in `MonthlyPayment` stays true.
+model MonthlyAdjustment {
+  id          String    @id @default(cuid())
+  customerId  String
+  /// First day of the billed month (`DATE`), like `MonthlyPayment.periodStart`.
+  periodStart DateTime  @db.Date
+  /// What the correction is for, typed by the office (max 120 characters).
+  label       String
+  /// Euro cents with a sign: negative = deduction, positive = surcharge, never 0 (CHECK in the migration).
+  amountCents Int
+  createdAt   DateTime  @default(now())
+  createdById String
+  voidedAt    DateTime?
+  voidedById  String?
+
+  customer  Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  createdBy User     @relation("MonthlyAdjustmentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([customerId, periodStart])
+  @@index([periodStart])
 }
 
 /// A standing delivery group ("Stammtour", NUD-186): the same customers every delivery day, in a
@@ -255,7 +282,7 @@ model StandingTour {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  driver    User?                 @relation(fields: [driverId], references: [id], onDelete: Restrict)
+  driver    User?                  @relation(fields: [driverId], references: [id], onDelete: Restrict)
   customers StandingTourCustomer[]
 
   @@index([driverId])
@@ -432,8 +459,8 @@ model RecurringOrder {
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
-  customer    Customer             @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  confirmedBy User                 @relation(fields: [confirmedById], references: [id], onDelete: Restrict)
+  customer    Customer                @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  confirmedBy User                    @relation(fields: [confirmedById], references: [id], onDelete: Restrict)
   items       RecurringOrderItem[]
   /// Products that differ from the base `items` on one ISO weekday (NUD-171); no rows for a weekday
   /// means "same as the base list".
@@ -578,9 +605,9 @@ model Stop {
 
   /// Cash collected by the driver at this stop (D33, NUD-196): `collectedCents` null = not recorded,
   /// `collectedAt`/`collectedById` say when and by whom. Only ON_DELIVERY orders of the stop count.
-  collectedCents    Int?
-  collectedAt       DateTime?
-  collectedById     String?
+  collectedCents Int?
+  collectedAt    DateTime?
+  collectedById  String?
 
   tour        Tour           @relation(fields: [tourId], references: [id], onDelete: Cascade)
   customer    Customer       @relation(fields: [customerId], references: [id], onDelete: Restrict)

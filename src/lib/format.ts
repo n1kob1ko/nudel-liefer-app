@@ -28,11 +28,21 @@ export function createAppFormatters(format: Formatter, timeZone: string = DEFAUL
      */
     calendarDate: (value: Date) => format.dateTime(value, { dateStyle: "medium", timeZone: "UTC" }),
     /**
+     * The day of a moment (`paidAt`, `createdAt`) in the factory time zone: "18.10.2026". Not for
+     * `DATE` columns, those are `calendarDate`.
+     */
+    dayOfMoment: (value: Date) => format.dateTime(value, { dateStyle: "medium", timeZone }),
+    /**
      * Money of an order or a bill (D33, NUD-196): euro cents in, local currency text out
      * ("42,50 €"). Always EUR — the factory bills in euro.
      */
-    amount: (cents: number) =>
-      format.number(cents / 100, { style: "currency", currency: "EUR" }),
+    amount: (cents: number) => format.number(cents / 100, { style: "currency", currency: "EUR" }),
+    /**
+     * A correction on a monthly bill (NUD-197): always with its sign ("-10,00 €", "+2,50 €"), so a
+     * deduction and a surcharge read differently without relying on colour.
+     */
+    signedAmount: (cents: number) =>
+      format.number(cents / 100, { style: "currency", currency: "EUR", signDisplay: "exceptZero" }),
   };
 }
 
