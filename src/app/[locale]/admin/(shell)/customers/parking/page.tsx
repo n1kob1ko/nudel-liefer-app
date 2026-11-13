@@ -18,10 +18,7 @@ async function Guarded({ locale }: { locale: string }) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <Link
-          href="/admin/customers"
-          className="text-sm text-primary underline-offset-4 hover:underline"
-        >
+        <Link href="/admin/customers" className="link text-sm">
           {t("toList")}
         </Link>
         <h1 className="text-3xl font-semibold" data-testid="section-title">

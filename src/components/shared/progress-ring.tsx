@@ -62,7 +62,7 @@ export function ProgressRing({
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={circumference * (1 - ratio)}
-          className="stroke-primary transition-[stroke-dashoffset]"
+          className="stroke-success transition-[stroke-dashoffset] duration-500 ease-in-out motion-reduce:transition-none"
         />
       </svg>
       <span className="absolute inset-0 flex items-center justify-center text-base font-semibold tabular-nums">

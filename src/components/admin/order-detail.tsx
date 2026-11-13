@@ -79,7 +79,7 @@ export function OrderDetailView({
               <dd className="text-base">
                 <Link
                   href={`/admin/customers/${order.customer.id}`}
-                  className="font-medium text-primary underline-offset-4 hover:underline"
+                  className="link"
                   data-testid="detail-customer"
                 >
                   {order.customer.name}
@@ -129,9 +129,7 @@ export function OrderDetailView({
               <dd className="text-base" data-testid="detail-payment">
                 {order.paymentTerm === "ON_DELIVERY" ? t("paymentCash") : t("paymentMonthly")}
                 <span className="block text-sm text-muted-foreground" data-testid="detail-amount">
-                  {order.amountCents === null
-                    ? t("amountNone")
-                    : fmt.amount(order.amountCents)}
+                  {order.amountCents === null ? t("amountNone") : fmt.amount(order.amountCents)}
                 </span>
               </dd>
             </div>

@@ -87,7 +87,7 @@ export function DepartureCard({
       data-testid="departure-card"
     >
       <div className="flex items-start gap-3">
-        <ClipboardCheckIcon className="mt-0.5 size-7 shrink-0 text-primary" aria-hidden />
+        <ClipboardCheckIcon className="mt-0.5 size-7 shrink-0 text-foreground" aria-hidden />
         <div className="min-w-0">
           <h2 id="departure-card-title" className="text-xl font-bold">
             {t("cardTitle")}
@@ -330,9 +330,7 @@ export function DepartureSheet({
                         {line.keyNumber ?? t("keyNoNumber")}
                       </strong>
                       <span aria-hidden>·</span>
-                      <span className="min-w-0 font-semibold break-words">
-                        {line.customerName}
-                      </span>
+                      <span className="min-w-0 font-semibold break-words">{line.customerName}</span>
                     </span>
                   </TickRow>
                 ))}

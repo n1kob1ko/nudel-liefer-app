@@ -140,7 +140,7 @@ export function PlanDayDialog({
               <label key={v.id} className="flex min-h-10 items-center gap-2 text-base">
                 <input
                   type="checkbox"
-                  className="size-5 accent-primary"
+                  className="size-5 accent-foreground"
                   checked={vehicleIds.includes(v.id)}
                   disabled={pending}
                   onChange={() => toggle(offVehicles, setOffVehicles, v.id)}
@@ -169,7 +169,7 @@ export function PlanDayDialog({
               <label key={d.id} className="flex min-h-10 items-center gap-2 text-base">
                 <input
                   type="checkbox"
-                  className="size-5 accent-primary"
+                  className="size-5 accent-foreground"
                   checked={driverIds.includes(d.id)}
                   disabled={pending}
                   onChange={() => toggle(offDrivers, setOffDrivers, d.id)}

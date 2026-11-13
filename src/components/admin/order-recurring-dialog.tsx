@@ -146,7 +146,7 @@ export function OrderRecurringDialog({
               <label className="flex items-start gap-2 text-base">
                 <input
                   type="checkbox"
-                  className="mt-0.5 size-5 accent-primary"
+                  className="mt-0.5 size-5 accent-foreground"
                   checked={skipOrderDay}
                   onChange={(e) => setSkipOrderDay(e.target.checked)}
                   data-testid="order-recurring-skip-day"

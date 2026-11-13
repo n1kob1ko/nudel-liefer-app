@@ -47,7 +47,7 @@ export function LanguageSwitcher({
       className={cn(
         variant === "icon"
           ? "absolute inset-0 size-full cursor-pointer appearance-none opacity-0"
-          : "min-h-12 rounded-md border border-input bg-background px-3 text-base",
+          : "min-h-12 field rounded-md border border-input bg-card px-3 text-base",
         variant === "bar" && "w-full",
         variant === "compact" && "min-h-10",
         className,

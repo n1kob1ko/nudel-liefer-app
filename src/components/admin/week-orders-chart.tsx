@@ -66,7 +66,7 @@ export function WeekOrdersChart({
                 className={cn(
                   "w-full max-w-14 rounded-full transition-[filter] group-hover:brightness-95",
                   day.when === "today" && "bg-primary",
-                  day.when === "past" && "bg-primary/45 dark:bg-primary/55",
+                  day.when === "past" && "bg-foreground/25 dark:bg-foreground/35",
                   day.when === "upcoming" && "bg-hatch",
                 )}
                 style={{ height: `${height}%` }}
@@ -90,7 +90,7 @@ export function WeekOrdersChart({
         ))}
       </div>
       <div aria-hidden className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <LegendSwatch className="bg-primary/45 dark:bg-primary/55" label={labels.past} />
+        <LegendSwatch className="bg-foreground/25 dark:bg-foreground/35" label={labels.past} />
         <LegendSwatch className="bg-primary" label={labels.today} />
         <LegendSwatch className="bg-hatch" label={labels.upcoming} />
       </div>

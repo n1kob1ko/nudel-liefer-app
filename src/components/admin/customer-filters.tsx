@@ -201,7 +201,7 @@ function FilterChip({
     >
       <input
         type="checkbox"
-        className="size-4 shrink-0 accent-primary"
+        className="size-4 shrink-0 accent-foreground"
         checked={checked}
         onChange={(e) => onCheckedChange(e.target.checked)}
         data-testid={testId}

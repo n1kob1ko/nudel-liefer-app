@@ -83,7 +83,7 @@ import { TourDiffList } from "./tour-diff-list";
 import { TourEditDialog, type TourEditPayload } from "./tour-edit-dialog";
 import { TourLoad } from "./tour-load";
 
-const selectClass = "h-10 min-w-56 rounded-md border border-input bg-background px-3 text-base";
+const selectClass = "h-10 min-w-56 field rounded-md border border-input bg-card px-3 text-base";
 
 /**
  * One compact KPI row at ≥ 1280 px (round-3 review: two rows of full-height tiles filled the whole

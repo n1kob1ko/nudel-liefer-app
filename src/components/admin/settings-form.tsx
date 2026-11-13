@@ -442,7 +442,7 @@ export function SettingsForm({
                     <label key={day} className="flex items-center gap-2 text-base">
                       <input
                         type="checkbox"
-                        className="size-5 accent-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+                        className="size-5 accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
                         checked={weekdays.includes(day)}
                         onChange={(e) => toggleDay(day, e.target.checked)}
                         data-testid={`weekday-${day}`}

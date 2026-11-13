@@ -102,7 +102,7 @@ export function ThemeToggle({
         disabled={pending}
         data-testid="theme-toggle"
         className={cn(
-          "inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-base hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring",
+          "inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-input/60 bg-card px-3 text-base transition-[background-color,transform] duration-150 ease-out hover:bg-muted active:scale-[.97] focus-visible:ring-2 focus-visible:ring-ring",
           className,
         )}
       >

@@ -772,7 +772,7 @@ export function RecurringRuleForm({
             <label key={day} className="flex items-center gap-2 text-base">
               <input
                 type="checkbox"
-                className="size-5 accent-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+                className="size-5 accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
                 checked={draft.weekdays.includes(day)}
                 onChange={(event) => toggleWeekday(day, event.target.checked)}
                 data-testid={`${prefix}-weekday-${day}`}
@@ -1116,7 +1116,7 @@ export function RecurringRuleForm({
               <label className="flex items-center gap-2 text-base">
                 <input
                   type="checkbox"
-                  className="size-5 accent-primary"
+                  className="size-5 accent-foreground"
                   checked={draft.season}
                   onChange={(event) => onChange({ season: event.target.checked })}
                   data-testid={`${prefix}-season`}

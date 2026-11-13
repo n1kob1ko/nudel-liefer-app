@@ -116,8 +116,10 @@
   font:
     700 17px/1 system-ui,
     sans-serif;
+  /* Yolk on a light map needs its own outline: an ink line, then the white ring. */
   box-shadow:
-    0 0 0 3px hsl(var(--card)),
+    0 0 0 2px hsl(var(--primary-foreground)),
+    0 0 0 4px hsl(var(--card)),
     var(--shadow-md);
 }
 
@@ -128,7 +130,7 @@
   height: 28px;
   margin: 0 auto;
   background: hsl(var(--primary));
-  border: 2px solid hsl(var(--card));
+  border: 2px solid hsl(var(--primary-foreground));
   border-radius: 50% 50% 50% 0;
   box-shadow: var(--shadow-md);
   transform: rotate(-45deg);

@@ -196,7 +196,7 @@ function CustomerRow({ customer }: { customer: CustomerListRow }) {
           <div className="flex min-w-0 flex-col">
             <Link
               href={`/admin/customers/${customer.id}`}
-              className="font-medium break-words text-primary underline-offset-4 hover:underline"
+              className="link break-words"
               data-testid="customer-link"
             >
               {customer.name}

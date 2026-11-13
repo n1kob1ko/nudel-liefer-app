@@ -277,7 +277,7 @@ export function StandingToursDialog({
                       <input
                         id={`pick-${customer.id}`}
                         type="checkbox"
-                        className="mt-1 size-4 accent-primary"
+                        className="mt-1 size-4 accent-foreground"
                         checked={checked}
                         disabled={inOther}
                         onChange={() => toggleCustomer(customer.id)}
