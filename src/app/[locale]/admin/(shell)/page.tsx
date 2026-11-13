@@ -219,7 +219,7 @@ function StatTiles({
         value={problems}
         sub={t("admin.dashboard.tiles.problemsSub")}
         icon={problems > 0 ? TriangleAlertIcon : CircleAlertIcon}
-        tone={problems > 0 ? "warning" : "neutral"}
+        tone={problems > 0 ? "destructive" : "neutral"}
         href={tourHref}
       />
       <StatTile

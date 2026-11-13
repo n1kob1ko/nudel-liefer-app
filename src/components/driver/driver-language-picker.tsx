@@ -34,7 +34,7 @@ export function DriverLanguagePicker() {
           disabled={pending}
           aria-busy={pending && chosen === code}
           data-testid={`pick-${code}`}
-          className="min-h-20 rounded-xl border-2 border-foreground bg-background px-4 text-3xl font-semibold hover:bg-muted focus-visible:ring-4 focus-visible:ring-ring disabled:opacity-60"
+          className="min-h-20 rounded-xl border border-input/60 bg-card px-4 text-3xl font-semibold shadow-xs outline-none transition-[background-color,border-color,transform] duration-[140ms] ease-out hover:border-input hover:bg-muted/60 focus-visible:ring-4 focus-visible:ring-ring active:scale-[.97] disabled:opacity-60"
           onClick={() => {
             setChosen(code);
             startTransition(async () => {

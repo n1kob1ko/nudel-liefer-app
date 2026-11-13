@@ -1,6 +1,12 @@
 "use client";
 
-import { CircleParkingIcon, CrosshairIcon, KeyboardIcon, LoaderCircleIcon, MapPinIcon } from "lucide-react";
+import {
+  CircleParkingIcon,
+  CrosshairIcon,
+  KeyboardIcon,
+  LoaderCircleIcon,
+  MapPinIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
 import { toast } from "sonner";
@@ -167,27 +173,28 @@ function ParkingSheet({
     }
   }
 
-  const map = point || mode === "map" ? (
-    <div
-      className="relative isolate w-full overflow-hidden rounded-lg border [&_.leaflet-container]:h-[260px]!"
-      data-testid="parking-map"
-    >
-      <PinPickerMapLazy
-        value={point}
-        fallbackCenter={fallbackCenter}
-        onChange={(next) => {
-          setPoint(next);
-          if (mode === "manual" || mode === "map") {
-            setLat(String(next.lat));
-            setLng(String(next.lng));
-          }
-        }}
-        tiles={tiles}
-        markerKind="parking"
-        labels={NO_LABELS}
-      />
-    </div>
-  ) : null;
+  const map =
+    point || mode === "map" ? (
+      <div
+        className="relative isolate w-full overflow-hidden rounded-lg border [&_.leaflet-container]:h-[260px]!"
+        data-testid="parking-map"
+      >
+        <PinPickerMapLazy
+          value={point}
+          fallbackCenter={fallbackCenter}
+          onChange={(next) => {
+            setPoint(next);
+            if (mode === "manual" || mode === "map") {
+              setLat(String(next.lat));
+              setLng(String(next.lng));
+            }
+          }}
+          tiles={tiles}
+          markerKind="parking"
+          labels={NO_LABELS}
+        />
+      </div>
+    ) : null;
 
   const modeButton = (icon: React.ReactNode, label: string, onClick: () => void, id: string) => (
     <Button
@@ -204,7 +211,7 @@ function ParkingSheet({
   );
 
   const fieldClass =
-    "block min-h-14 w-full rounded-lg border-2 bg-background px-3 text-xl font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive";
+    "block min-h-14 w-full field rounded-lg border border-input bg-card px-3 text-xl font-semibold outline-none aria-invalid:border-destructive";
 
   return (
     <Sheet open onOpenChange={(next) => (next ? undefined : onClose())}>

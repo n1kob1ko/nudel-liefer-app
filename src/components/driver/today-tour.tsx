@@ -18,13 +18,15 @@ import {
   RouteIcon,
 } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { Fragment, useState } from "react";
+import { type CSSProperties, Fragment, useState } from "react";
 import { toast } from "sonner";
 
 import { TourMapLazy } from "@/components/maps/lazy";
+import { STAGGER_MAX } from "@/components/motion/stagger";
+import { SuccessPulse } from "@/components/motion/success-pulse";
 import { ProgressBar } from "@/components/shared/progress-bar";
 import { ProgressRing } from "@/components/shared/progress-ring";
-import { toneDot } from "@/components/shared/status";
+import { stopTone, toneDot } from "@/components/shared/status";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { StopNumberBadge } from "@/components/shared/stop-number-badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -191,7 +193,7 @@ function RowSummary({ items }: { items: TodayItem[] }) {
 function StatusLabel({ status }: { status: TodayStop["status"] }) {
   const t = useTranslations("driver.today");
   const Icon = status === "DELIVERED" ? CheckIcon : status === "PROBLEM" ? AlertTriangleIcon : null;
-  const tone = status === "DELIVERED" ? "success" : status === "PROBLEM" ? "warning" : "neutral";
+  const tone = stopTone(status);
   const label =
     status === "DELIVERED"
       ? t("statusDelivered")
@@ -276,17 +278,24 @@ function NextStopCard({
   stops,
   timezone,
   unseen,
+  entering = false,
 }: {
   stop: TodayStop;
   stops: readonly TodayStop[];
   timezone: string;
   unseen: boolean;
+  /** The card took over from the stop before it (a delivery on this screen): it rises in. */
+  entering?: boolean;
 }) {
   const t = useTranslations("driver.today");
   const fmtTime = driverTime(useFormatter(), timezone);
   return (
     <section
-      className="relative flex flex-col gap-2 rounded-xl border border-border border-s-4 border-s-primary bg-primary-soft p-3 text-primary-soft-foreground shadow-sm"
+      // The one coloured card of the screen (redesign RD2): pale yolk with a yolk edge all round.
+      className={cn(
+        "relative flex flex-col gap-2 rounded-xl border border-primary bg-primary-soft p-3 text-primary-soft-foreground shadow-xs",
+        entering && "stagger-item",
+      )}
       aria-labelledby="next-stop-heading"
       data-testid="next-stop"
       data-stop-id={stop.id}
@@ -337,21 +346,17 @@ function NextStopCard({
           {stop.customerName}
         </p>
       </div>
-      <div className="flex items-center gap-2">
-        <p
-          className="flex min-w-0 flex-1 items-start gap-1.5 text-base"
-          data-testid="next-stop-address"
-        >
-          <MapPinIcon className="mt-0.5 size-5 shrink-0" aria-hidden />
-          <span className="min-w-0">
-            {stop.street}, {stop.postalCode} {stop.city}
-          </span>
-        </p>
-        <KeyChip stop={stop} interactive className="relative z-10 shrink-0 bg-background" />
-      </div>
-      {stop.abbreviation !== undefined ? (
-        <div>
-          <AbbreviationChip stop={stop} interactive className="relative z-10 bg-background" />
+      <p className="flex min-w-0 items-start gap-1.5 text-base" data-testid="next-stop-address">
+        <MapPinIcon className="mt-0.5 size-5 shrink-0" aria-hidden />
+        <span className="min-w-0">
+          {stop.street}, {stop.postalCode} {stop.city}
+        </span>
+      </p>
+      {/* Key and Abkürzung side by side on one line, under the address they belong to. */}
+      {stop.hasKey !== undefined || stop.abbreviation !== undefined ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <KeyChip stop={stop} interactive className="relative z-10 shrink-0" />
+          <AbbreviationChip stop={stop} interactive className="relative z-10" />
         </div>
       ) : null}
       <ItemSummary items={stop.items} />
@@ -375,10 +380,7 @@ function NextStopCard({
             <span className="whitespace-normal leading-tight">{t("navigate")}</span>
           </a>
         ) : (
-          <p
-            className="flex items-center gap-2 self-center text-base"
-            data-testid="no-pin"
-          >
+          <p className="flex items-center gap-2 self-center text-base" data-testid="no-pin">
             <AlertTriangleIcon className="size-5 shrink-0" aria-hidden />
             {t("noPin")}
           </p>
@@ -408,12 +410,15 @@ function StopRow({
   waiting,
   selected = false,
   onFocus,
+  index,
 }: {
   stop: TodayStop;
   timezone: string;
   isNext: boolean;
   unseen: boolean;
   waiting: boolean;
+  /** Position in its list: the rows arrive 30 ms apart (motion rule 3). Omit for no entrance. */
+  index?: number;
   /** Highlighted in the map sheet because its marker is selected. */
   selected?: boolean;
   /** Set by the map sheet: the row focuses the stop on the map instead of opening the stop page. */
@@ -443,7 +448,7 @@ function StopRow({
           isNext
             ? "primary"
             : problem
-              ? "warning"
+              ? "destructive"
               : stop.status === "DELIVERED"
                 ? "success"
                 : "neutral"
@@ -470,8 +475,11 @@ function StopRow({
           ) : null}
         </span>
         {reason ? (
-          <span className="flex items-center gap-1.5 text-base font-medium text-warning-soft-foreground">
-            <span className={cn("size-2.5 shrink-0 rounded-full", toneDot.warning)} aria-hidden />
+          <span className="flex items-center gap-1.5 text-base font-medium text-destructive-soft-foreground">
+            <span
+              className={cn("size-2.5 shrink-0 rounded-full", toneDot.destructive)}
+              aria-hidden
+            />
             <span className="truncate">{reason}</span>
           </span>
         ) : (
@@ -509,7 +517,13 @@ function StopRow({
         "border-b border-border last:border-b-0",
         isNext && "bg-primary-soft text-primary-soft-foreground",
         selected && "bg-muted",
+        index !== undefined && "stagger-item",
       )}
+      style={
+        index === undefined
+          ? undefined
+          : ({ "--i": Math.min(index, STAGGER_MAX - 1) } as CSSProperties)
+      }
       data-testid="stop-row"
       data-stop-id={stop.id}
       data-status={stop.status}
@@ -680,9 +694,9 @@ function formatDuration(
 }
 
 /**
- * The amber part of the progress ring (run 3 review, point 6): the ring is drawn for all handled
+ * The red part of the progress ring (run 3 review, point 6): the ring is drawn for all handled
  * stops, so without this overlay a tour whose handled stops include problems would show a solid
- * green ring while the bar below shows green *and* amber. Geometry mirrors `ProgressRing`
+ * green ring while the bar below shows green *and* red. Geometry mirrors `ProgressRing`
  * (stroke = 10 % of the size, radius = (size − stroke) / 2) and the whole arc is rotated like the
  * ring, so both start at 12 o'clock.
  */
@@ -701,7 +715,7 @@ function ProblemArc({
   const stroke = Math.max(4, Math.round(size * 0.1));
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
-  const amber = (problems / total) * circumference;
+  const arc = (problems / total) * circumference;
   return (
     <svg
       aria-hidden
@@ -716,9 +730,9 @@ function ProblemArc({
         r={radius}
         fill="none"
         strokeWidth={stroke}
-        strokeDasharray={`${amber} ${circumference - amber}`}
+        strokeDasharray={`${arc} ${circumference - arc}`}
         strokeDashoffset={-(delivered / total) * circumference}
-        className="stroke-warning"
+        className="stroke-destructive"
       />
     </svg>
   );
@@ -776,6 +790,8 @@ export function TodayTour({
 
   const fmtTime = driverTime(useFormatter(), today.timezone);
   const next = nextPendingStop(stops);
+  // The stop that was next when the screen opened: only a later one animates in.
+  const [firstNextId] = useState(next?.id ?? null);
   const { done, total } = progressOf(stops);
   const remaining = roundedMinutes(remainingSeconds(stops, today.serviceSecondsPerStop));
   const reloadBefore = reloadBeforeStops(stops);
@@ -848,7 +864,7 @@ export function TodayTour({
             {t("allDoneTitle")}
           </li>
         ) : null}
-        {open.map((stop) => (
+        {open.map((stop, index) => (
           <Fragment key={stop.id}>
             {reloadBefore.has(stop.id) ? (
               <ReloadStop
@@ -870,12 +886,13 @@ export function TodayTour({
               waiting={waitingIds.has(stop.id)}
               selected={selectedId === stop.id}
               onFocus={onFocus}
+              index={index}
             />
           </Fragment>
         ))}
         {delivered.length > 0 ? (
           <DoneGroup stops={delivered} open={doneOpen} onToggle={toggleDone}>
-            {delivered.map((stop) => (
+            {delivered.map((stop, index) => (
               <StopRow
                 key={stop.id}
                 stop={stop}
@@ -885,6 +902,7 @@ export function TodayTour({
                 waiting={waitingIds.has(stop.id)}
                 selected={selectedId === stop.id}
                 onFocus={onFocus}
+                index={index}
               />
             ))}
           </DoneGroup>
@@ -897,7 +915,7 @@ export function TodayTour({
             label={t("problemGroup", { count: problemsList.length })}
             testId="problem-group"
           >
-            {problemsList.map((stop) => (
+            {problemsList.map((stop, index) => (
               <StopRow
                 key={stop.id}
                 stop={stop}
@@ -907,6 +925,7 @@ export function TodayTour({
                 waiting={waitingIds.has(stop.id)}
                 selected={selectedId === stop.id}
                 onFocus={onFocus}
+                index={index}
               />
             ))}
           </DoneGroup>
@@ -994,7 +1013,8 @@ export function TodayTour({
           >
             <div className="flex items-start gap-3">
               <div className="flex shrink-0 flex-col items-center gap-1">
-                <div className="relative">
+                {/* One short ring each time a delivery is ticked off on this screen (rule 8). */}
+                <SuccessPulse as="div" count={done - problems} className="rounded-full">
                   <ProgressRing
                     value={done}
                     max={total}
@@ -1011,7 +1031,7 @@ export function TodayTour({
                       size={64}
                     />
                   ) : null}
-                </div>
+                </SuccessPulse>
                 {/* Outside the ring: the ring is too small for a 16 px word (driver body text >= 16 px). */}
                 <span className="text-base font-medium text-muted-foreground">
                   {t("progressDone")}
@@ -1042,7 +1062,7 @@ export function TodayTour({
               total={total}
               segments={[
                 { value: done - problems, tone: "success" },
-                { value: problems, tone: "warning" },
+                { value: problems, tone: "destructive" },
                 { value: open.length, tone: "neutral" },
               ]}
               label={t("progressLabel")}
@@ -1059,7 +1079,16 @@ export function TodayTour({
           ) : null}
 
           {next ? (
-            <NextStopCard stop={next} stops={stops} timezone={today.timezone} unseen={unseen(next)} />
+            <NextStopCard
+              // A new stop is a new card: it rises in when it takes over after a delivery here,
+              // and stays still on the first render of the screen.
+              key={next.id}
+              stop={next}
+              stops={stops}
+              timezone={today.timezone}
+              unseen={unseen(next)}
+              entering={next.id !== firstNextId}
+            />
           ) : (
             <div
               className="flex flex-col gap-3 rounded-xl border border-border bg-success-soft p-5 text-success-soft-foreground"

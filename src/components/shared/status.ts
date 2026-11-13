@@ -55,11 +55,14 @@ export const toneDot: Record<Tone, string> = {
   info: "bg-info",
 };
 
-/** Stop: open = neutral, delivered = green, problem = amber, failed/cancelled = red. */
+/**
+ * Stop: open = neutral, delivered = green, problem = red (redesign RD2: red means "problem" and
+ * nothing else), waiting in the outbox / cancelled = orange.
+ */
 const STOP_TONES: Record<string, Tone> = {
   PENDING: "neutral",
   DELIVERED: "success",
-  PROBLEM: "warning",
+  PROBLEM: "destructive",
   QUEUED: "warning", // UI overlay: the action is waiting in the outbox, not stored on the stop
   FAILED: "destructive",
   CANCELLED: "warning", // a cancelled stop is reported, not an error the driver caused

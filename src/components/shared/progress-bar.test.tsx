@@ -20,6 +20,11 @@ describe("ProgressBar", () => {
     expect(bar).toHaveAttribute("aria-valuenow", "4");
     expect(bar).toHaveAttribute("aria-valuemax", "20");
     expect(bar).toHaveAttribute("aria-valuetext", "4 von 20 erledigt");
+    // Problems are red in the whole app (redesign RD2): green is delivered, red is a problem.
+    const tones = [...bar.querySelectorAll("[data-tone]")].map((slice) =>
+      slice.getAttribute("data-tone"),
+    );
+    expect(tones).toEqual(["success", "destructive"]);
   });
 
   it("renders one slice per segment with the tone from the status map", () => {

@@ -376,3 +376,68 @@ describe.each(Object.keys(LOCALES))("next-stop card links (%s)", (locale) => {
     }
   });
 });
+
+describe("TodayTour, look and motion (redesign RD2)", () => {
+  const view = (stops: TodayStop[], extra: Partial<DriverToday> = {}) => (
+    <NextIntlClientProvider locale="de" messages={de}>
+      <TodayTour today={today(stops, extra)} tiles={TILES} />
+    </NextIntlClientProvider>
+  );
+
+  it("has exactly one yolk button: Navigation starten on the next-stop card", () => {
+    render(
+      view([stop(1), stop(2)], {
+        tourStatus: "RELEASED",
+        departedAt: null,
+        loadingStartedAt: null,
+      }),
+    );
+    // The voluntary departure checklist is on the screen and is not yolk.
+    expect(screen.getByTestId("departure-open")).not.toHaveClass("bg-primary");
+    expect(screen.getByTestId("departure-skip")).not.toHaveClass("bg-primary");
+    const yolk = [...document.querySelectorAll("a, button")].filter((el) =>
+      el.classList.contains("bg-primary"),
+    );
+    expect(yolk.map((el) => el.getAttribute("data-testid"))).toEqual(["navigate"]);
+  });
+
+  it("marks the next-stop card with a yolk edge all round, not with a side stripe", () => {
+    render(view([stop(1)]));
+    const card = screen.getByTestId("next-stop");
+    expect(card).toHaveClass("border-primary", "bg-primary-soft");
+    expect(card.className).not.toMatch(/border-s-/);
+  });
+
+  it("lets the stop rows arrive 30 ms apart, capped so a long tour does not keep the driver waiting", () => {
+    render(view(Array.from({ length: 20 }, (_, i) => stop(i + 1))));
+    const rows = screen.getAllByTestId("stop-row");
+    expect(rows[0]).toHaveClass("stagger-item");
+    expect(rows[2]!.style.getPropertyValue("--i")).toBe("2");
+    expect(rows[19]!.style.getPropertyValue("--i")).toBe("11");
+  });
+
+  it("shows a reported problem in red: badge, reason line and progress", () => {
+    render(view([stop(1), stop(2, { status: "PROBLEM", problemReason: "CLOSED" })]));
+    const row = within(screen.getByTestId("problem-group")).getByTestId("stop-row");
+    expect(within(row).getByTestId("stop-status").firstElementChild).toHaveAttribute(
+      "data-tone",
+      "destructive",
+    );
+    expect(
+      screen.getByRole("progressbar").querySelector('[data-tone="destructive"]'),
+    ).not.toBeNull();
+  });
+
+  it("keeps the next-stop card still on arrival and lets the following stop rise in", () => {
+    const { rerender } = render(view([stop(1), stop(2)]));
+    expect(screen.getByTestId("next-stop")).not.toHaveClass("stagger-item");
+    const ring = () => screen.getByTestId("progress").querySelector('[data-slot="pulse-ring"]');
+    expect(ring()).toBeNull();
+    // Stop 1 was ticked off on this screen: the card of stop 2 takes over and the count pulses.
+    rerender(view([stop(1, { status: "DELIVERED" }), stop(2)]));
+    const card = screen.getByTestId("next-stop");
+    expect(card).toHaveAttribute("data-stop-id", "s2");
+    expect(card).toHaveClass("stagger-item");
+    expect(ring()).not.toBeNull();
+  });
+});

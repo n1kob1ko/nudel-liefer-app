@@ -70,8 +70,9 @@ export function KeyChip({
   );
   const tone =
     display.kind === "unknown"
-      ? "border-dashed border-muted-foreground bg-background text-muted-foreground"
-      : "border-border bg-card text-foreground";
+      ? // Not known yet: a quiet chip, so the eye stays on the customer and the quantities.
+        "border-input/50 bg-transparent text-muted-foreground"
+      : "border-input/50 bg-card text-foreground";
 
   if (!interactive) {
     return (
@@ -95,7 +96,7 @@ export function KeyChip({
         onClick={() => setOpen(true)}
         className={cn(
           // 48 px touch target; the visible chip is as small as the display-only one.
-          "inline-flex min-h-12 min-w-12 max-w-full items-center justify-center gap-1.5 rounded-lg border-2 px-3 text-base leading-tight outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "inline-flex min-h-12 min-w-12 max-w-full items-center justify-center gap-1.5 rounded-lg border px-3 text-base leading-tight outline-none transition-[background-color,border-color,transform] duration-[140ms] ease-out hover:border-input focus-visible:ring-2 focus-visible:ring-ring active:scale-[.97]",
           tone,
           className,
         )}
@@ -148,10 +149,10 @@ function KeySheet({ stop, onClose }: { stop: KeyStop; onClose: () => void }) {
       aria-pressed={hasKey === value}
       onClick={() => setHasKey(value)}
       className={cn(
-        "min-h-14 rounded-lg border-2 px-4 text-lg font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "min-h-14 rounded-lg border px-4 text-lg font-semibold outline-none transition-[background-color,border-color,transform] duration-[140ms] ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card active:scale-[.97]",
         hasKey === value
-          ? "border-primary bg-primary text-primary-foreground"
-          : "border-border bg-card hover:bg-muted",
+          ? "border-foreground bg-primary text-primary-foreground"
+          : "border-input/60 bg-card hover:border-input hover:bg-muted/60",
       )}
       data-testid={testId}
     >
@@ -188,7 +189,7 @@ function KeySheet({ stop, onClose }: { stop: KeyStop; onClose: () => void }) {
                 autoComplete="off"
                 autoCapitalize="characters"
                 enterKeyHint="done"
-                className="block min-h-14 w-full rounded-lg border-2 bg-background px-3 text-xl font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="block min-h-14 w-full field rounded-lg border border-input bg-card px-3 text-xl font-semibold outline-none"
                 data-testid="key-number"
               />
             </div>
