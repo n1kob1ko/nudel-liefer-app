@@ -508,6 +508,11 @@ const MATRIX: Record<string, Row> = {
     expect: PUBLIC,
     call: async () => (await import("@/app/api/csp-report/route")).POST(post("/api/csp-report")),
   },
+  "src/app/api/dev/settings-cache/route.ts#POST": {
+    note: "e2e test hook: expires the settings cache, changes no data; a 404 unless ENABLE_ERROR_TEST_PAGES=true",
+    expect: PUBLIC,
+    call: async () => (await import("@/app/api/dev/settings-cache/route")).POST(),
+  },
   "src/app/api/session-ended/route.ts#GET": {
     note: "deletes the caller's own session cookie",
     expect: PUBLIC,

@@ -3,7 +3,12 @@ import { expect, type Page, test } from "@playwright/test";
 import bcrypt from "bcryptjs";
 import { Client } from "pg";
 
-import { gotoSettled, installNetworkEmulation, setOnline } from "./helpers/network";
+import {
+  followLinkOffline,
+  gotoSettled,
+  installNetworkEmulation,
+  setOnline,
+} from "./helpers/network";
 import { png } from "./helpers/png";
 
 // NUD-118. A driver finishes tour 1 and the office releases a follow-up tour the same day. Needs
@@ -279,6 +284,14 @@ test("warm cache with queued taps: tour 1 finished offline, the follow-up replac
       await expect(visible(page, "btn-delivered")).toBeEnabled();
       await visible(page, "btn-delivered").click();
       await expect(page.getByTestId("pending-badge")).toHaveAttribute("data-count", String(i + 1));
+      // No automatic jump (NUD-176): the result card leads on to the second stop.
+      if (i === 0) {
+        await followLinkOffline(
+          page,
+          visible(page, "next-stop-action"),
+          new RegExp(`/de/driver/stops/${stop1[1]}$`),
+        );
+      }
     }
     // Both taps wait on the phone; the cached tour 1 is "finished" on the screen.
     await expect(async () => {

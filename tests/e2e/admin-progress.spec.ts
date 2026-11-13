@@ -200,7 +200,8 @@ test("a stop the driver completes shows up on the dashboard and the tour page wi
   await loginDriver(driver);
   await driver.goto(`/de/driver/stops/${stopIds[0]}`);
   await visible(driver, "btn-delivered").click();
-  await expect(driver).toHaveURL(new RegExp(`/driver/stops/${stopIds[1]}$`));
+  // The driver's screen stays on the stop and shows its result (NUD-176).
+  await expect(visible(driver, "stop-result")).toHaveAttribute("data-status", "DELIVERED");
   await expect.poll(() => stopStatus(0)).toBe("DELIVERED");
   const deliveredAt = Date.now();
 

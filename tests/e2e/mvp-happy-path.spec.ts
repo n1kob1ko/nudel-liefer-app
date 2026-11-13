@@ -280,8 +280,10 @@ for (const { locale, username } of DRIVER_LOCALES) {
     expect(await noHorizontalScroll(driver)).toBe(true);
     await driver.screenshot({ path: testInfo.outputPath(`mvp-driver-stop-${locale}.png`) });
 
-    // Deliver.
+    // Deliver: the stop shows its result (no automatic jump, NUD-176) and leads back to the tour.
     await visible(driver, "btn-delivered").click();
+    await expect(visible(driver, "stop-result")).toHaveAttribute("data-status", "DELIVERED");
+    await visible(driver, "back-to-tour-action").click();
     await expect(driver).toHaveURL(new RegExp(`/${locale}/driver$`));
     await expect(visible(driver, "all-done")).toBeVisible();
     await driver.screenshot({ path: testInfo.outputPath(`mvp-driver-done-${locale}.png`) });

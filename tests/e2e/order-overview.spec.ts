@@ -44,6 +44,12 @@ async function fixture(projectName: string) {
   const product = async (sku: string) =>
     (await client.query(`SELECT "id" FROM "Product" WHERE "sku"=$1`, [sku])).rows[0].id as string;
   const [spag, penn] = [await product("NUDELN-BEUTEL"), await product("NUDELN-KARTON")];
+  // "Today" as the app sees it: the calendar day in the factory's time zone.
+  const today = (
+    await client.query(
+      `SELECT to_char(now() AT TIME ZONE (SELECT "timezone" FROM "Settings" LIMIT 1),'YYYY-MM-DD') AS s`,
+    )
+  ).rows[0].s as string;
   const customer = async (suffix: string) => {
     const id = `id-${tag}-${suffix}`;
     await client.query(
@@ -111,6 +117,7 @@ async function fixture(projectName: string) {
     D2,
     D3,
     year,
+    today,
     ids: { a1, b1, a1x, a2 },
     tourId,
     cleanup: async () => {
@@ -137,17 +144,17 @@ test("order overview: default date, filters, totals per date, in-tour badge", as
   try {
     await loginAdmin(page);
 
-    // Default filter = next delivery date (one day, no other filters).
+    // Default filter = today in the factory's time zone (NUD-179; one day, no other filters).
     await page.goto("/de/admin/orders");
     await expect(tid(page, "section-title")).toHaveText("Bestellungen");
     // Von/Bis only show under "Benutzerdefiniert" (re-design.md §8.3) but stay in the DOM, so the
-    // default range is read from the hidden inputs and the "Nächster Liefertag" quick pick is on.
+    // default range is read from the hidden inputs and the "Heute" quick pick is on.
     await expect(tid(page, "quick-today")).toHaveAttribute("aria-checked", "true");
     const fromInput = page.locator('[data-testid="filter-from"]');
     const toInput = page.locator('[data-testid="filter-to"]');
     const from = await fromInput.inputValue();
     expect(from).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(from > new Date().toISOString().slice(0, 10)).toBe(true);
+    expect(from).toBe(f.today);
     await expect(toInput).toHaveValue(from);
     // Status and Quelle are segmented radio groups now (re-design.md §8.3): aria-checked.
     await expect(tid(page, "filter-status-ALL")).toHaveAttribute("aria-checked", "true");
@@ -241,11 +248,21 @@ test("order detail: edit a quantity, cancel, duplicate; tours are flagged outdat
 
     // Edit: change the quantity of line 1, the same server validation applies.
     await page.goto(`/de/admin/orders/${f.ids.a1}`);
-    await expect(tid(page, "detail-tour")).toHaveText("Diese Bestellung ist Teil einer Tour.");
+    // NUD-178: one line with a way into the tour, plus the tour's day and the stop's state.
+    await expect(tid(page, "detail-tour-link")).toHaveText("In dieser Tour ansehen");
+    await expect(tid(page, "detail-tour-link")).toHaveAttribute(
+      "href",
+      new RegExp(`/admin/tours\\?date=${D1}&tour=${f.tourId}$`),
+    );
+    await expect(tid(page, "detail-tour-meta")).toContainText("Stopp Offen");
     await tid(page, "order-edit").click();
     await expect(page).toHaveURL(new RegExp(`/admin/orders/${f.ids.a1}/edit$`));
     await expect(tid(page, "section-title")).toHaveText("Bestellung bearbeiten");
-    await expect(tid(page, "customer-fixed")).toBeVisible();
+    // The customer of an existing order is fixed: the picker is locked and the form says why.
+    await expect(page.locator("#order-customer")).toBeDisabled();
+    await expect(
+      page.getByText("Der Kunde kann nachträglich nicht geändert werden.", { exact: false }),
+    ).toBeVisible();
     const lines = tid(page, "order-line");
     await expect(lines).toHaveCount(2);
     await expect(lines.nth(0).getByTestId("line-quantity")).toHaveValue("3");

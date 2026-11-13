@@ -3,6 +3,7 @@ import { Client } from "pg";
 
 import { createDriverFixture, loginDriver } from "./helpers/driver-fixture";
 import { requireDatabaseUrl, requireFreeDay, requireUsableDatabase } from "./helpers/preconditions";
+import { expireSettingsCache } from "./helpers/settings";
 import { ensureVehicle } from "./helpers/vehicle";
 
 // NUD-147. Needs a seeded database (product NUDELN-KARTON, an admin), DATABASE_URL and
@@ -78,6 +79,7 @@ test.describe("Touren planen", () => {
       await client.query(`SELECT "depotLat","depotLng","depotPinConfirmed" FROM "Settings"`)
     ).rows[0] as { depotLat: number; depotLng: number; depotPinConfirmed: boolean };
     await client.query(`UPDATE "Settings" SET "depotPinConfirmed"=true`);
+    await expireSettingsCache();
     // Four customers with two Kiste each; the vehicles carry 2.5 customers' worth.
     const capacity = Math.round(kgPerCarton * 2 * 2.5);
     const vanA = await ensureVehicle(client, "E2E Split A", capacity);
@@ -223,6 +225,7 @@ test.describe("Touren planen", () => {
         [vanA, vanB],
       ]);
       await client.query(`UPDATE "Settings" SET "depotPinConfirmed"=$1`, [depot.depotPinConfirmed]);
+      await expireSettingsCache();
       await client.end();
     }
   });

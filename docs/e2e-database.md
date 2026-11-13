@@ -85,7 +85,7 @@ specs open their own `pg` connections) and passes it to the webServer command, s
 read the same rows. `reuseExistingServer: !CI` and the `E2E_PREBUILT` switch are unchanged, see
 [`env.md`](./env.md).
 
-Two caveats:
+Four caveats:
 
 - **A reused server keeps its own database.** Locally (`without CI`) Playwright reuses a server that
   already listens on the port; that process was started with its own environment, so it still talks
@@ -93,6 +93,18 @@ Two caveats:
   use a free `PORT=` and expect the build time, see `E2E_PREBUILT`).
 - **The specs without the "today" requirement are indifferent.** They work on either database; run
   them with or without `E2E_DATABASE_URL`.
+- **One worker.** `playwright.config.ts` sets `workers: 1`. The specs share one database and several
+  own something that exists only once in it (the settings row, "today" of the dashboard and of the
+  driver app, the vehicles of the planning dialog); side by side they changed each other's
+  preconditions and a full run failed in different places every time. `--workers=N` on the command
+  line still wins for specs you know to be independent.
+- **Settings written by a spec need `expireSettingsCache()`.** The server caches the settings row
+  (`getSettings`, "use cache") and only its own save action expires that copy. A spec that writes
+  `"Settings"` straight to the database (confirmed depot, departure checklist) calls
+  `expireSettingsCache()` from `tests/e2e/helpers/settings.ts` after the write and after the restore;
+  without it the pages keep the value the server read first. The helper posts to
+  `/api/dev/settings-cache`, which exists only with `ENABLE_ERROR_TEST_PAGES=true` (see
+  [`env.md`](./env.md)).
 
 ## 5. Reading the messages
 
@@ -102,6 +114,7 @@ Two caveats:
 | `Precondition failed: … is not seeded — missing …`               | no base seed                                          | `pnpm db:seed` (or `pnpm e2e:db:reset`)                    |
 | `Precondition failed: the depot pin is not confirmed …`          | no demo seed                                          | `pnpm db:seed --demo --no-photos` (or `pnpm e2e:db:reset`) |
 | `Precondition failed: … tour already exists for today …`         | another spec or a manual run created a tour for today | `pnpm e2e:db:reset`                                        |
+| `Precondition failed: …/api/dev/settings-cache answered 404 …`   | the server runs without `ENABLE_ERROR_TEST_PAGES`     | start it with `ENABLE_ERROR_TEST_PAGES=true`               |
 | `E2E_DATABASE_URL is not set …`                                  | the variable is missing                               | section 2 above                                            |
 | `E2E_DATABASE_URL points at the same database as DATABASE_URL …` | the e2e variable was pointed at the dev database      | use a database of its own                                  |
 

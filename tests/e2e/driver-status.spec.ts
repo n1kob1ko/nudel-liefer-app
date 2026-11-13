@@ -202,9 +202,12 @@ for (const locale of LOCALES) {
     await expect(sheet).toHaveCount(0);
     expect((await stopRow(0)).status).toBe("PENDING");
 
-    // Double tap on "Delivered": exactly one state change, then the next stop opens.
+    // Double tap on "Delivered": exactly one state change. The screen stays on the stop (NUD-176):
+    // its result card offers Undo and the way to the next stop.
     await visible(page, "btn-delivered").dblclick();
-    await expect(page).toHaveURL(stopUrl(1));
+    await expect(visible(page, "stop-result")).toHaveAttribute("data-status", "DELIVERED");
+    await expect(page).toHaveURL(stopUrl(0));
+    await expect(visible(page, "strip-undo")).toBeVisible();
     await expect.poll(async () => (await stopRow(0)).status).toBe("DELIVERED");
     expect(await mutationCount()).toBe(1);
     expect(await tourStatus()).toBe("IN_PROGRESS");
@@ -215,13 +218,21 @@ for (const locale of LOCALES) {
     // Rounded: sonner scales a toast by a hair while it animates in (47.999996 px measured).
     expect(Math.round((await toastUndo.boundingBox())!.height)).toBeGreaterThanOrEqual(48);
     await page.screenshot({ path: testInfo.outputPath(`status-toast-${locale}.png`) });
+    await expectTouchTarget(page, "next-stop-action");
+    await visible(page, "next-stop-action").click();
+    await expect(page).toHaveURL(stopUrl(1));
 
     // Stop 2: problem with reason and free text, stored in the driver's locale.
     await visible(page, "btn-problem").click();
     await page.getByTestId("reason-NO_PARKING").click();
     await page.getByTestId("problem-note").fill(`Baustelle ${locale}`);
     await page.getByTestId("problem-submit").click();
-    await expect(page).toHaveURL(stopUrl(2));
+    await expect(visible(page, "stop-result")).toHaveAttribute("data-status", "PROBLEM");
+    await expect(visible(page, "next-stop-action")).toHaveAttribute(
+      "href",
+      new RegExp(`/driver/stops/${stopIds[2]}$`),
+    );
+    await expect(page).toHaveURL(stopUrl(1));
     await expect.poll(async () => (await stopRow(1)).status).toBe("PROBLEM");
     const problem = await stopRow(1);
     expect(problem.problemReason).toBe("NO_PARKING");
@@ -247,11 +258,15 @@ for (const locale of LOCALES) {
     await expectTouchTarget(page, "undo");
     await page.screenshot({ path: testInfo.outputPath(`status-result-${locale}.png`) });
 
-    // Finish: stop 3 (next pending behind it: none -> the earlier open stop 2), then stop 2.
+    // Finish: stop 3 (next pending behind it: none -> the earlier open stop 2), then stop 2, whose
+    // result card leads back to the tour because nothing is open any more.
     await page.goto(`/${locale}/driver/stops/${stopIds[2]}`);
     await visible(page, "btn-delivered").click();
+    await visible(page, "next-stop-action").click();
     await expect(page).toHaveURL(stopUrl(1));
     await visible(page, "btn-delivered").click();
+    await expect(visible(page, "next-stop-action")).toHaveCount(0);
+    await visible(page, "back-to-tour-action").click();
     await expect(page).toHaveURL(new RegExp(`/${locale}/driver$`));
     await expect(visible(page, "all-done")).toBeVisible();
     await expect(visible(page, "finished-summary")).toContainText("3");
@@ -328,8 +343,9 @@ test("a failed request keeps the queued tap and retries it with the same id", as
     return route.continue();
   });
   await visible(page, "btn-delivered").click();
-  // The screen moved on, the badge says one tap is waiting, the server knows nothing yet.
-  await expect(page).toHaveURL(new RegExp(`/stops/${stopIds[1]}$`));
+  // The screen shows the stop as done, the badge says one tap is waiting, the server knows nothing yet.
+  await expect(visible(page, "stop-result")).toHaveAttribute("data-status", "DELIVERED");
+  await expect(visible(page, "stop-pending-sync")).toBeVisible();
   await expect(page.getByTestId("pending-badge")).toHaveAttribute("data-count", "1");
   expect((await stopRow(0)).status).toBe("PENDING");
   // The retry (exponential backoff, first wait 2 s) sends the very same tap.
