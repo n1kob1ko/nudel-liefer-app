@@ -99,13 +99,13 @@ export function OrdersTable({
         // Below `md` the rows become stacked blocks (review 2026-10-31: seven columns squeezed into
         // 390 px read as cramped): name and menu on the first line, the position chips on their
         // own line, status / source / tour as a row of badges — see `OrderRow`.
-        className="md:[&_td]:px-2 md:[&_td]:py-0.5 md:[&_th]:px-2 max-md:[&_td]:p-0"
-        containerClassName="md:max-h-[70dvh] md:overflow-auto"
+        surface
+        className="md:[&_td]:px-2 md:[&_td]:py-0.5 md:[&_td:first-child]:ps-4 md:[&_td:last-child]:pe-3 md:[&_th]:px-2 md:[&_th:first-child]:ps-4 max-md:[&_td]:p-0"
         aria-label={t("title")}
       >
         {/* Sticky header: the utilities are set here so the table does not depend on an optional
             prop of the shared kit (`TableHeader` also supports `data-sticky`). */}
-        <TableHeader className="sticky top-0 z-10 bg-muted max-md:hidden [&_th]:bg-muted">
+        <TableHeader className="sticky top-0 z-10 bg-card max-md:hidden [&_th]:bg-card">
           <TableRow>
             {multiDay ? <TableHead>{t("columns.date")}</TableHead> : null}
             <TableHead>{t("columns.customer")}</TableHead>
@@ -122,11 +122,9 @@ export function OrdersTable({
           {[...groups.entries()].map(([key, group]) => (
             <Fragment key={key}>
               {multiDay ? null : (
-                <TableRow
-                  data-testid="order-group"
-                  data-date={key}
-                  className="hover:bg-transparent"
-                >
+                // The page header already names the day of a single-day list, so the group row is
+                // for screen readers only (it scopes the rows below it to that day).
+                <TableRow data-testid="order-group" data-date={key} className="sr-only">
                   <TableHead
                     scope="colgroup"
                     colSpan={columns}

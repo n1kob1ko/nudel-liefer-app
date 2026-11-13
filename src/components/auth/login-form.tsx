@@ -29,29 +29,6 @@ import { setLocaleAction } from "@/server/locale-actions";
 const PIN_PATTERN = /^\d{6}$/;
 
 /**
- * Inline brand mark (re-design.md §7.5/§8.9): wordmark "Routenplanner" plus a brand-coloured dot, pure
- * CSS — no image file, no external font. The dot flips to the foreground colour on the brand-coloured
- * office panel where a brand-coloured dot would disappear.
- */
-function BrandMark({ onPrimary = false, className }: { onPrimary?: boolean; className?: string }) {
-  return (
-    <p
-      className={cn(
-        "flex items-center gap-2 text-lg font-semibold tracking-tight",
-        onPrimary ? "text-primary-foreground" : "text-foreground",
-        className,
-      )}
-    >
-      <span>Routenplanner</span>
-      <span
-        aria-hidden
-        className={cn("size-2.5 rounded-full", onPrimary ? "bg-primary-foreground" : "bg-primary")}
-      />
-    </p>
-  );
-}
-
-/**
  * Language picker (re-design.md §7.5): a row of five pills. The `select` next to it is the element
  * the e2e specs drive (`selectOption`, exact option texts); it is transparent and
  * `pointer-events-none`, so real users always use the pills — the picker itself stays fully
@@ -165,110 +142,118 @@ function DriverLoginForm({ callbackUrl }: { callbackUrl?: string }) {
     fieldErrors.pin ?? (state.error === "invalid" ? t("errors.credentials") : undefined);
 
   return (
-    <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 p-6">
-      <div className="flex items-center justify-between gap-3">
-        <BrandMark />
-        {/* Colour scheme (NUD-132): the tablet may be installed before anyone logs in. Icon only
-            (review 2026-10-31): the moon/sun says enough, the label made the row look cluttered. */}
+    <main className="flex flex-col gap-3">
+      <Card className="gap-5 p-5 sm:p-6">
+        <h1 id="driver-login-title" className="text-2xl font-semibold" data-testid="login-title">
+          {t("driverLogin.title")}
+        </h1>
+
+        <LanguagePills callbackUrl={callbackUrl} />
+
+        <form
+          action={formAction}
+          noValidate
+          onSubmit={handleSubmit}
+          aria-labelledby="driver-login-title"
+          className="flex flex-col gap-4"
+          data-testid="driver-login-form"
+        >
+          <input type="hidden" name="locale" value={locale} />
+          {callbackUrl ? <input type="hidden" name="callbackUrl" value={callbackUrl} /> : null}
+
+          <div aria-live="polite">
+            <FormField
+              id="driver-username"
+              error={fieldErrors.username}
+              label={
+                <span className="inline-flex items-center gap-2 align-bottom">
+                  <UserIcon className="size-5 shrink-0" aria-hidden />
+                  <span>{t("driverLogin.username")}</span>
+                </span>
+              }
+            >
+              <Input
+                id="driver-username"
+                name="username"
+                type="text"
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                className="h-12"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+              />
+            </FormField>
+          </div>
+
+          <div aria-live="polite">
+            <FormField
+              id="driver-pin"
+              error={pinError}
+              label={
+                <span className="inline-flex items-center gap-2 align-bottom">
+                  <KeyRoundIcon className="size-5 shrink-0" aria-hidden />
+                  <span>{t("driverLogin.pin")}</span>
+                </span>
+              }
+            >
+              {/* The six cells share the width of the card, so the row ends where the fields end. */}
+              <PinInput
+                id="driver-pin"
+                name="pin"
+                value={pin}
+                onChange={setPin}
+                className="w-full [&>div]:w-full"
+                cellClassName="w-auto flex-1"
+              />
+            </FormField>
+          </div>
+
+          {state.error ? (
+            <p
+              role="alert"
+              className="text-base font-medium text-destructive"
+              data-testid="login-error"
+            >
+              {t(`errors.${state.error}`)}
+            </p>
+          ) : null}
+
+          <Button
+            type="submit"
+            size="xl"
+            loading={pending}
+            className="w-full"
+            data-testid="login-submit"
+          >
+            {pending ? null : <LogInIcon aria-hidden />}
+            {t("driverLogin.submit")}
+          </Button>
+        </form>
+      </Card>
+
+      {/* Below the card: the other login, and the colour scheme (NUD-132: the tablet may be
+          installed before anyone logs in). Icon only, the moon or sun says enough. */}
+      <div className="flex items-center justify-between gap-2">
+        <Link
+          href="/login"
+          className={cn(buttonVariants({ variant: "ghost", size: "lg" }), "-ms-2 px-3")}
+        >
+          {t("driverLogin.adminLink")}
+        </Link>
         <ThemeToggle className="size-12 border border-input/60 bg-card" />
       </div>
-      <h1 id="driver-login-title" className="text-2xl font-semibold" data-testid="login-title">
-        {t("driverLogin.title")}
-      </h1>
-
-      <LanguagePills callbackUrl={callbackUrl} />
-
-      <form
-        action={formAction}
-        noValidate
-        onSubmit={handleSubmit}
-        aria-labelledby="driver-login-title"
-        className="flex flex-col gap-4"
-        data-testid="driver-login-form"
-      >
-        <input type="hidden" name="locale" value={locale} />
-        {callbackUrl ? <input type="hidden" name="callbackUrl" value={callbackUrl} /> : null}
-
-        <div aria-live="polite">
-          <FormField
-            id="driver-username"
-            error={fieldErrors.username}
-            label={
-              <>
-                <UserIcon className="size-5 shrink-0" aria-hidden />
-                <span>{t("driverLogin.username")}</span>
-              </>
-            }
-          >
-            <Input
-              id="driver-username"
-              name="username"
-              type="text"
-              autoComplete="username"
-              autoCapitalize="none"
-              autoCorrect="off"
-              className="h-12"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-            />
-          </FormField>
-        </div>
-
-        <div aria-live="polite">
-          <FormField
-            id="driver-pin"
-            error={pinError}
-            label={
-              <>
-                <KeyRoundIcon className="size-5 shrink-0" aria-hidden />
-                <span>{t("driverLogin.pin")}</span>
-              </>
-            }
-          >
-            <PinInput id="driver-pin" name="pin" value={pin} onChange={setPin} />
-          </FormField>
-        </div>
-
-        {state.error ? (
-          <p
-            role="alert"
-            className="text-base font-medium text-destructive"
-            data-testid="login-error"
-          >
-            {t(`errors.${state.error}`)}
-          </p>
-        ) : null}
-
-        <Button
-          type="submit"
-          size="xl"
-          loading={pending}
-          className="w-full"
-          data-testid="login-submit"
-        >
-          {pending ? null : <LogInIcon aria-hidden />}
-          {t("driverLogin.submit")}
-        </Button>
-      </form>
-
-      <Link
-        href="/login"
-        className={cn(buttonVariants({ variant: "ghost", size: "lg" }), "w-full")}
-      >
-        {t("driverLogin.adminLink")}
-      </Link>
     </main>
   );
 }
 
 /**
- * Office login (re-design.md §8.9). Split layout from 1024 px (45 % brand panel, form card),
- * single centred column below. `noValidate` and the same inline-error treatment as the driver login;
+ * Office login. The same narrow column as the driver login (`AuthFrame`): one card, the other
+ * login and the settings below it. `noValidate` and the same inline-error treatment as the driver login;
  * the server's `auth.errors.<code>` still renders under `data-testid="login-error"`.
  */
 function AdminLoginForm({ callbackUrl }: { callbackUrl?: string }) {
   const t = useTranslations("auth");
-  const tCommon = useTranslations("common");
   const locale = useLocale();
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
@@ -302,25 +287,91 @@ function AdminLoginForm({ callbackUrl }: { callbackUrl?: string }) {
   );
 
   return (
-    <main className="flex min-h-dvh w-full flex-1 flex-col lg:flex-row">
-      <aside className="hidden flex-col justify-between gap-8 bg-gradient-to-br from-primary to-primary-hover p-12 text-primary-foreground lg:flex lg:w-[45%]">
-        <BrandMark onPrimary />
-        <p className="max-w-md text-2xl leading-snug font-medium">
-          {t("adminLogin.brandSentence")}
-        </p>
-        <p className="text-sm text-primary-foreground/80">{tCommon("appName")}</p>
-      </aside>
+    <main className="flex flex-col gap-3">
+      <Card className="gap-5 p-5 sm:p-6">
+        <h1 className="text-2xl font-semibold tracking-tight" data-testid="login-title">
+          {t("adminLogin.title")}
+        </h1>
 
-      <div className="relative flex flex-1 flex-col items-center justify-center gap-6 p-6 pt-20 lg:pt-6">
-        {/* NUD-186 (QA 2026-10-29 F21): the office UI exists in de/en/zh-Hans, so the language is
-            pickable before signing in — with `area="admin"`, because `/login` is not `/admin`. The
-            scheme toggle (NUD-132) sits next to it. Both live in the corner of the screen, not in
-            the card (review 2026-10-31): inside the card they pulled the title off balance, and the
-            toggle shows its icon only. */}
-        <div
-          className="absolute top-4 right-4 flex items-center gap-2"
-          data-testid="login-controls"
+        <form
+          action={formAction}
+          noValidate
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-4"
+          data-testid="admin-login-form"
         >
+          <input type="hidden" name="locale" value={locale} />
+          {callbackUrl ? <input type="hidden" name="callbackUrl" value={callbackUrl} /> : null}
+
+          <div aria-live="polite">
+            <FormField id="admin-email" error={fieldErrors.email} label={t("adminLogin.email")}>
+              <Input
+                id="admin-email"
+                name="email"
+                type="email"
+                autoComplete="username"
+                className="h-12"
+              />
+            </FormField>
+          </div>
+
+          <div aria-live="polite">
+            {/* Hand-wired (not `FormField`): the show/hide toggle must sit inside the field box. */}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="admin-password">{t("adminLogin.password")}</Label>
+              <div className="relative">
+                <Input
+                  id="admin-password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  className="h-12 pr-12"
+                  aria-invalid={fieldErrors.password ? true : undefined}
+                  aria-describedby={fieldErrors.password ? "admin-password-error" : undefined}
+                />
+                {passwordToggle}
+              </div>
+              {fieldErrors.password ? (
+                <p id="admin-password-error" className="text-sm font-medium text-destructive">
+                  {fieldErrors.password}
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          {state.error ? (
+            <p
+              role="alert"
+              className="text-base font-medium text-destructive"
+              data-testid="login-error"
+            >
+              {t(`errors.${state.error}`)}
+            </p>
+          ) : null}
+
+          <Button
+            type="submit"
+            loading={pending}
+            className="h-12 w-full"
+            data-testid="login-submit"
+          >
+            {pending ? null : <LogInIcon aria-hidden />}
+            {t("adminLogin.submit")}
+          </Button>
+        </form>
+      </Card>
+
+      {/* Below the card: the other login on the left, language and colour scheme on the right.
+          NUD-186 (QA 2026-10-29 F21): the office UI exists in de/en/zh-Hans, so the language is
+          pickable before signing in, with `area="admin"` because `/login` is not `/admin`. */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Link
+          href="/driver/login"
+          className={cn(buttonVariants({ variant: "ghost", size: "lg" }), "-ms-2 px-3")}
+        >
+          {t("adminLogin.driverLink")}
+        </Link>
+        <div className="flex items-center gap-2" data-testid="login-controls">
           <LanguageSwitcher
             variant="compact"
             area="admin"
@@ -330,88 +381,6 @@ function AdminLoginForm({ callbackUrl }: { callbackUrl?: string }) {
           />
           <ThemeToggle className="size-12 border border-input/60 bg-card" />
         </div>
-
-        <BrandMark className="lg:hidden" />
-
-        <Card className="w-full max-w-md p-6 sm:p-8">
-          <div className="flex flex-col gap-1.5">
-            <h1 className="text-2xl font-semibold tracking-tight" data-testid="login-title">
-              {t("adminLogin.title")}
-            </h1>
-            <p className="text-base text-muted-foreground">{t("adminLogin.subtitle")}</p>
-          </div>
-
-          <form
-            action={formAction}
-            noValidate
-            onSubmit={handleSubmit}
-            className="mt-6 flex flex-col gap-4"
-            data-testid="admin-login-form"
-          >
-            <input type="hidden" name="locale" value={locale} />
-            {callbackUrl ? <input type="hidden" name="callbackUrl" value={callbackUrl} /> : null}
-
-            <div aria-live="polite">
-              <FormField id="admin-email" error={fieldErrors.email} label={t("adminLogin.email")}>
-                <Input
-                  id="admin-email"
-                  name="email"
-                  type="email"
-                  autoComplete="username"
-                  className="h-12"
-                />
-              </FormField>
-            </div>
-
-            <div aria-live="polite">
-              {/* Hand-wired (not `FormField`): the show/hide toggle must sit inside the field box. */}
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="admin-password">{t("adminLogin.password")}</Label>
-                <div className="relative">
-                  <Input
-                    id="admin-password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    className="h-12 pr-12"
-                    aria-invalid={fieldErrors.password ? true : undefined}
-                    aria-describedby={fieldErrors.password ? "admin-password-error" : undefined}
-                  />
-                  {passwordToggle}
-                </div>
-                {fieldErrors.password ? (
-                  <p id="admin-password-error" className="text-sm font-medium text-destructive">
-                    {fieldErrors.password}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-
-            {state.error ? (
-              <p
-                role="alert"
-                className="text-base font-medium text-destructive"
-                data-testid="login-error"
-              >
-                {t(`errors.${state.error}`)}
-              </p>
-            ) : null}
-
-            <Button
-              type="submit"
-              loading={pending}
-              className="h-12 w-full"
-              data-testid="login-submit"
-            >
-              {pending ? null : <LogInIcon aria-hidden />}
-              {t("adminLogin.submit")}
-            </Button>
-          </form>
-        </Card>
-
-        <Link href="/driver/login" className={buttonVariants({ variant: "ghost", size: "lg" })}>
-          {t("adminLogin.driverLink")}
-        </Link>
       </div>
     </main>
   );

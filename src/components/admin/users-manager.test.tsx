@@ -28,6 +28,8 @@ vi.mock("@/server/user-actions", () => ({
   setDriverLocaleAction: (...args: unknown[]) => setDriverLocaleAction(...(args as [])),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh, push: vi.fn() }) }));
+// `PageHeader` carries the app's `Link` (the way back on sub pages); this page has none.
+vi.mock("@/i18n/navigation", () => ({ Link: () => null }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 function merge(base: Tree, extra: Tree): Tree {
@@ -97,7 +99,6 @@ function renderManager() {
     >
       <UsersManager
         title="Fahrer"
-        description="Fahrerkonten verwalten. Fahrer melden sich mit Benutzername und 6-stelliger PIN an."
         drivers={drivers}
         admins={admins}
         currentUserId="a1"

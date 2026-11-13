@@ -121,21 +121,22 @@
       "PACK": "Sackerl",
       "CRATE": "Kiste",
       "PIECE": "Stück (N ×)"
-    }
+    },
+    "info": "Hinweis"
   },
   "home": {
-    "title": "Routenplanner",
-    "placeholder": "Platzhalter"
+    "office": "Büro",
+    "officeHint": "Bestellungen, Touren, Kunden",
+    "driver": "Fahrer",
+    "driverHint": "Meine Tour heute"
   },
   "auth": {
     "adminLogin": {
-      "subtitle": "Mit E-Mail und Passwort anmelden.",
       "title": "Anmeldung Büro",
       "email": "E-Mail",
       "password": "Passwort",
       "submit": "Anmelden",
       "driverLink": "Fahrer-Anmeldung",
-      "brandSentence": "Büro-Anmeldung Routenplanner",
       "showPassword": "Anzeigen",
       "hidePassword": "Verbergen"
     },
@@ -158,7 +159,8 @@
     },
     "signedInAs": "Angemeldet als {name}",
     "logout": "Abmelden",
-    "help": "Hilfe"
+    "help": "Hilfe",
+    "continue": "Weiter"
   },
   "admin": {
     "dashboard": {
@@ -1211,7 +1213,7 @@
       "title": "Bestellungen",
       "description": "Alle Bestellungen nach Lieferdatum. Standardmäßig wird der nächste Liefertag angezeigt.",
       "new": "Neue Bestellung",
-      "newTitle": "Neue Bestellung erfassen",
+      "newTitle": "Neue Bestellung",
       "backToList": "Zurück zu den Bestellungen",
       "emptyTitle": "Keine Bestellungen gefunden",
       "empty": {
@@ -1242,7 +1244,7 @@
           "button": "Mit KI auslesen",
           "buttonBusy": "Wird ausgelesen …",
           "candidates": "Mögliche Produkte: {names}",
-          "disabledHint": "KI-Auslesen ist nicht konfiguriert (kein API-Schlüssel). Die manuelle Eingabe funktioniert unverändert.",
+          "disabledHint": "KI-Auslesen ist nicht konfiguriert.",
           "errors": {
             "extractionFailed": "Die Nachricht konnte nicht ausgelesen werden. Bitte erneut versuchen oder manuell erfassen.",
             "invalid": "Bitte eine Nachricht einfügen oder einen Screenshot anhängen.",
@@ -1250,7 +1252,6 @@
             "screenshotUnavailable": "Der Screenshot konnte nicht gelesen werden. Bitte erneut hochladen."
           },
           "heading": "Aus Kundennachricht übernehmen",
-          "hint": "Nachricht einfügen oder Screenshot anhängen. Die KI schlägt Produkte und Zeitraum vor, das Büro prüft.",
           "label": "Kundennachricht",
           "lineLabelHint": "Erkannt als: {label}",
           "lineLowConfidence": "Unsicher erkannt – bitte Menge prüfen.",
@@ -1273,7 +1274,6 @@
         "productSearch": "Nach Name oder Artikelnummer suchen",
         "productEmpty": "Kein Produkt gefunden.",
         "quantity": "Menge",
-        "quantityHint": "Enter in der Menge fügt die nächste Zeile hinzu.",
         "lineLabel": "Produkt {n}",
         "addLine": "Produkt hinzufügen",
         "removeLine": "Produkt {n} entfernen",
@@ -1330,7 +1330,6 @@
         "customerFixed": "Der Kunde kann nachträglich nicht geändert werden. Bei einem falschen Kunden die Bestellung stornieren und neu erfassen.",
         "window": {
           "heading": "Lieferung",
-          "hint": "Zeitraum, in dem der Kunde die Lieferung annimmt. Uhrzeiten nur bei Bedarf.",
           "from": "Von (Tag)",
           "to": "Bis (Tag)",
           "fromTime": "Ab Uhrzeit",
@@ -1348,7 +1347,6 @@
           "optional": "Optional: Die KI füllt daraus einen Entwurf."
         },
         "paymentTerm": "Zahlungsart",
-        "paymentTermHint": "Monatsrechnung ist der Standard; „Bar bei Lieferung“ nimmt der Fahrer am Stopp ein.",
         "paymentMonthly": "Monatsrechnung (Sammelrechnung)",
         "paymentCash": "Bar bei Lieferung",
         "amount": "Betrag",
@@ -1415,13 +1413,12 @@
           "next": "Nächster Liefertag",
           "today": "Heute",
           "week": "Diese Woche",
-          "custom": "Benutzerdefiniert"
+          "custom": "Zeitraum"
         }
       },
       "truncated": "Es werden nur die ersten {count} Bestellungen angezeigt. Bitte den Zeitraum oder die Filter eingrenzen.",
       "totals": {
         "heading": "Summen je Liefertag",
-        "description": "Summe je Produkt aus allen bestätigten Bestellungen des Tages. Entwürfe und stornierte Bestellungen zählen nicht. Die Summen ignorieren die Filter Kunde, Status und Quelle.",
         "dateHeading": "{date} · {count, plural, one {# bestätigte Bestellung} other {# bestätigte Bestellungen}}",
         "product": "Produkt",
         "quantity": "Menge",
@@ -1466,7 +1463,6 @@
         "label": "Lieferzeitraum"
       },
       "fromRecurring": "aus Dauerbestellung",
-      "newDescription": "Kunde und Produkte wählen, Lieferung prüfen, speichern.",
       "paymentTerm": "Zahlung",
       "paymentMonthly": "Monatsrechnung",
       "paymentCash": "Bar bei Lieferung",
@@ -1922,7 +1918,7 @@
         "crossesMidnight": "Über Mitternacht"
       },
       "percentValue": "{percent} %",
-      "scheduleHint": "Arbeitszeiten pflegst du unter Fahrer → Zeile → Aktionen → „Arbeitszeit bearbeiten\"."
+      "scheduleHint": "Arbeitszeiten bei den Fahrern eintragen"
     },
     "vehicles": {
       "title": "Fahrzeuge",

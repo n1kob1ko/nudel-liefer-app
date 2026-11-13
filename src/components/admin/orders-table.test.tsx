@@ -117,7 +117,14 @@ describe.each(Object.keys(LOCALES))("OrdersTable (%s)", (locale) => {
       [
         row("a", D1, {
           source: "SCREENSHOT",
-          tour: { tourId: "tour-1", stopId: "stop-1", date: "2099-07-02", tourStatus: "RELEASED", stopStatus: "PENDING", completedAt: null },
+          tour: {
+            tourId: "tour-1",
+            stopId: "stop-1",
+            date: "2099-07-02",
+            tourStatus: "RELEASED",
+            stopStatus: "PENDING",
+            completedAt: null,
+          },
         }),
       ],
       false,

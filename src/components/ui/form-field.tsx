@@ -3,13 +3,15 @@
 import type { ReactElement, ReactNode } from "react";
 import { cloneElement, isValidElement, useId } from "react";
 
+import { InfoTip } from "@/components/ui/info-tip";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 /**
  * FormField (redesign RD-2, re-design.md §5/§7.5, fixes F1).
  *
- * The wrapper owns the label, the optional description, the control and the inline error text, and
+ * The wrapper owns the label, the optional description or info hint, the control and the inline
+ * error text, and
  * wires the aria relationships for the caller. Errors are **localized text passed in by the caller**
  * — this layer never renders a browser validation bubble (forms use `noValidate`; zod messages go
  * through next-intl).
@@ -29,6 +31,7 @@ export function FormField({
   label,
   children,
   description,
+  info,
   error,
   required = false,
   htmlFor,
@@ -39,8 +42,16 @@ export function FormField({
 }: {
   label: ReactNode;
   children: ReactNode;
-  /** One sentence under the label (helper text), always visible. */
+  /**
+   * Helper text that is always visible under the label. Use it only for what the user must read
+   * to fill the field in correctly; everything else is `info`.
+   */
   description?: string;
+  /**
+   * An explanation behind a small "i" next to the label (`InfoTip`): one tap away, not on the page.
+   * It is also the field's description for screen readers, so nothing is lost without a pointer.
+   */
+  info?: string;
   /** Localized error text; rendered below the control and announced through the wired attributes. */
   error?: string;
   required?: boolean;
@@ -63,7 +74,11 @@ export function FormField({
   // The caller's own `aria-describedby` (prop or attribute on the control) is kept, and the field's
   // own description/error ids are appended.
   const extra = childElement?.props["aria-describedby"] ?? ariaDescribedBy;
-  const describedBy = [extra, description ? ids.description : null, error ? ids.error : null]
+  const describedBy = [
+    extra,
+    description || info ? ids.description : null,
+    error ? ids.error : null,
+  ]
     .filter(Boolean)
     .join(" ");
 
@@ -91,12 +106,17 @@ export function FormField({
               *
             </span>
           ) : null}
+          {info ? <InfoTip className="ms-1.5 -mt-0.5">{info}</InfoTip> : null}
         </span>
         {hint ? <span className="text-sm text-muted-foreground">{hint}</span> : null}
       </div>
       {description ? (
         <p id={ids.description} className="text-sm text-muted-foreground">
           {description}
+        </p>
+      ) : info ? (
+        <p id={ids.description} className="sr-only">
+          {info}
         </p>
       ) : null}
       {control}

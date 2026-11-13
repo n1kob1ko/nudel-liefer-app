@@ -32,7 +32,7 @@ export function MobileNav({ variant = "header" }: { variant?: "header" | "tab" }
           <button
             type="button"
             data-testid="open-menu-tab"
-            className="flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex min-h-12 flex-auto flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[11px] font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
           >
             <EllipsisIcon className="size-5" aria-hidden />
             {t("admin.shell.more")}

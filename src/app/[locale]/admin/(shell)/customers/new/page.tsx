@@ -8,7 +8,6 @@ import {
 } from "@/components/admin/customer-form";
 import { PageHeader } from "@/components/admin/page-header";
 import { LoadingSkeleton } from "@/components/shared/states";
-import { Link } from "@/i18n/navigation";
 import { getMapTileConfig } from "@/lib/map-config";
 import { requirePageActor } from "@/server/auth/page-guards";
 import { nextCustomerNumberQuery } from "@/server/customer-queries";
@@ -19,15 +18,7 @@ async function Guarded({ locale }: { locale: string }) {
   const suggestion = await nextCustomerNumberQuery();
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        breadcrumb={
-          <Link href="/admin/customers" className="underline-offset-4 hover:underline">
-            {t("backToList")}
-          </Link>
-        }
-        title={t("new")}
-        description={t("form.createDescription")}
-      />
+      <PageHeader back={{ href: "/admin/customers", label: t("backToList") }} title={t("new")} />
       <CustomerForm
         customerId={null}
         tiles={getMapTileConfig()}

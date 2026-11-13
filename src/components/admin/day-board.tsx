@@ -315,7 +315,9 @@ function Lane({
               .join(" · ")}
           </p>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-1.5">
+        {/* A phone has no room for name, state and count in one line: there the state moves below,
+            so the driver's name is never cut. */}
+        <div className="flex flex-wrap items-center justify-end gap-1.5 max-sm:order-last max-sm:w-full max-sm:justify-start">
           {progress.problems > 0 ? (
             <span data-testid="lane-problems">
               <StatusBadge tone="destructive" icon={TriangleAlertIcon}>

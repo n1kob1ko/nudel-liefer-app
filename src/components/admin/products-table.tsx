@@ -102,7 +102,7 @@ export function ProductsTable({ rows }: { rows: ProductRow[] }) {
 
   return (
     <TooltipProvider>
-      <Table data-testid="products-table">
+      <Table surface data-testid="products-table">
         <TableHeader data-sticky>
           <TableRow>
             <TableHead>

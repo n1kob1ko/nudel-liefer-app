@@ -192,6 +192,10 @@ test("order overview: default date, filters, totals per date, in-tour badge", as
     await expect(noHorizontalScroll(page)).resolves.toBe(true);
     await page.screenshot({ path: testInfo.outputPath("order-overview.png"), fullPage: true });
 
+    // Status and Quelle sit behind the "Filter" button: closed until asked for.
+    await expect(tid(page, "filter-status-CANCELLED")).toHaveCount(0);
+    await tid(page, "filter-more").click();
+
     // Status filter.
     await tid(page, "filter-status-CANCELLED").click();
     await expect(page).toHaveURL(/status=CANCELLED/);

@@ -104,7 +104,7 @@ async function Guarded({
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title={t("title")}
         description={
@@ -134,19 +134,12 @@ async function Guarded({
         </p>
       ) : null}
 
-      {/* Summen in the right rail from 1280 px on (re-design.md §8.3): the table keeps its rows
-          above the fold while the card stays collapsed until someone opens it. Below 1280 px the
-          card sits above the table — the narrow-screen fallback §8.3 allows. Flex (with `order`)
-          instead of a grid: the card is first in the DOM for the narrow layout and moves right
-          without the table's min-content width pushing the rail out of the viewport. */}
-      <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
-        {showTotals ? (
-          <div className="xl:order-2 xl:w-56 xl:shrink-0 2xl:w-64">
-            <OrderTotals totals={overview.totals} orders={overview.rows} />
-          </div>
-        ) : null}
+      {/* The sums are one bar above the list, as wide as the list: one column for the whole page
+          (review 2026-11-13: a rail next to the table made the page look restless). */}
+      <div className="flex flex-col gap-3">
+        {showTotals ? <OrderTotals totals={overview.totals} orders={overview.rows} /> : null}
 
-        <div className="min-w-0 xl:order-1 xl:flex-1">
+        <div className="min-w-0">
           {empty ? (
             <EmptyState
               icon={CalendarOffIcon}

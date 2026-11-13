@@ -1,6 +1,6 @@
 "use client";
 
-import { PanelLeftCloseIcon, PanelLeftOpenIcon, RouteIcon } from "lucide-react";
+import { PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useEffect, useSyncExternalStore, ViewTransition } from "react";
 
@@ -8,13 +8,13 @@ import { AdminBottomNav } from "@/components/admin/admin-bottom-nav";
 import { AdminCommandMenu } from "@/components/admin/admin-command-menu";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { MobileNav } from "@/components/admin/mobile-nav";
-import { activeNavItem } from "@/components/admin/nav-items";
 import { UserMenu } from "@/components/admin/user-menu";
+import { Brand } from "@/components/shared/brand";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Link, usePathname } from "@/i18n/navigation";
+import { usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
 /** `localStorage` key of the desktop sidebar state (re-design.md §8.1). */
@@ -121,21 +121,16 @@ export function AdminShell({
           <div className="sticky top-0 flex h-dvh flex-col">
             <div
               className={cn(
-                "flex h-14 shrink-0 items-center gap-2 px-3",
+                "flex h-14 shrink-0 items-center px-4",
                 collapsed && "justify-center px-0",
               )}
             >
               {/* The app symbol in small: a route in ink on yolk. */}
-              <span
-                aria-hidden
-                data-testid="brand-mark"
-                className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"
-              >
-                <RouteIcon className="size-4" />
-              </span>
-              {collapsed ? null : (
-                <span className="truncate text-lg font-semibold">{t("common.appName")}</span>
-              )}
+              <Brand
+                as="span"
+                size="sm"
+                className={collapsed ? "[&>span:last-child]:hidden" : undefined}
+              />
             </div>
             <div className="min-h-0 flex-1 px-2 py-2">
               <AdminNav collapsed={collapsed} />
@@ -174,19 +169,30 @@ export function AdminShell({
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-4 lg:px-6">
-            <MobileNav />
-            <Breadcrumb pathname={pathname} />
-            <div className="ms-auto flex items-center gap-2">
+          {/* The bar and the page share one column (same width, same gutters), so the left edge of
+              the bar's content is the left edge of the page below it, on every screen width. */}
+          <header className="sticky top-0 z-30 shrink-0 border-b border-border bg-background">
+            <div className="mx-auto flex h-14 w-full max-w-[1440px] items-center gap-2 px-2 sm:px-4 min-[1025px]:px-8">
+              <MobileNav />
+              {/* With the menu closed (phone, tablet) the bar carries the app mark; the page says
+                  its own name in its headline right below. Under 400 px only the symbol fits. */}
+              <Brand
+                as="span"
+                size="sm"
+                className="min-w-0 max-[399px]:[&>span:last-child]:hidden min-[1025px]:hidden"
+              />
               <AdminCommandMenu />
-              <ThemeToggle />
-              <LanguageSwitcher variant="compact" />
-              <UserMenu name={name} locale={locale} />
+              <div className="ms-auto flex items-center gap-1 sm:gap-2">
+                <ThemeToggle />
+                {/* A phone has no room for the written-out language: there the picker is an icon. */}
+                <LanguageSwitcher variant="adaptive" />
+                <UserMenu name={name} locale={locale} />
+              </div>
             </div>
           </header>
           <main id="main" className="min-w-0 flex-1">
             {/* Bottom padding below the rail breakpoint keeps the last row clear of the bottom bar. */}
-            <div className="mx-auto w-full max-w-[1440px] px-6 pt-6 pb-28 lg:px-8 min-[1025px]:pb-6">
+            <div className="mx-auto w-full max-w-[1440px] px-4 pt-5 pb-28 sm:px-6 sm:pt-6 min-[1025px]:px-8 min-[1025px]:pb-8">
               {/* Page change (motion rule 16): the old page fades out while the new one fades in,
                   only the content, the menu and the top bar stay put. Keyed by the path, so a new
                   filter or date on the same page does not fade. `default="none"`: content that
@@ -200,34 +206,5 @@ export function AdminShell({
         </div>
       </div>
     </TooltipProvider>
-  );
-}
-
-/** Breadcrumb derived from the path only (re-design.md §8.1/§14.3) — no data fetching. */
-function Breadcrumb({ pathname }: { pathname: string }) {
-  const t = useTranslations("admin");
-  const current = activeNavItem(pathname);
-  const label = t(`nav.${current.section}`);
-  return (
-    <nav
-      aria-label={t("shell.breadcrumb")}
-      data-testid="admin-breadcrumb"
-      className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground"
-    >
-      {current.section === "dashboard" ? (
-        <span className="truncate font-medium text-foreground">{label}</span>
-      ) : (
-        <>
-          <Link
-            href="/admin"
-            className="truncate rounded-sm outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {t("nav.dashboard")}
-          </Link>
-          <span aria-hidden>/</span>
-          <span className="truncate font-medium text-foreground">{label}</span>
-        </>
-      )}
-    </nav>
   );
 }

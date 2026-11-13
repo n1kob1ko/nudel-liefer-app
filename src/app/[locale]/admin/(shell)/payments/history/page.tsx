@@ -68,16 +68,8 @@ async function Guarded({
     <div className="flex flex-col gap-5">
       <PageHeader
         title={t("history.title")}
-        description={t("history.description")}
         titleTestId="payment-history-title"
-        breadcrumb={
-          <Link
-            href="/admin/payments"
-            className="rounded-sm underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {t("backToPayments")}
-          </Link>
-        }
+        back={{ href: "/admin/payments", label: t("backToPayments") }}
       >
         <PaymentHistoryFilters values={filters} years={result.years} />
       </PageHeader>

@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense } from "react";
 
+import { PageHeader } from "@/components/admin/page-header";
 import { ParkingQueue } from "@/components/admin/parking-queue";
 import { EmptyState, LoadingSkeleton } from "@/components/shared/states";
 import { buttonVariants } from "@/components/ui/button";
@@ -17,15 +18,11 @@ async function Guarded({ locale }: { locale: string }) {
   const version = `${items.length}:${items.reduce((m, i) => (i.updatedAt > m ? i.updatedAt : m), "")}`;
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <Link href="/admin/customers" className="link text-sm">
-          {t("toList")}
-        </Link>
-        <h1 className="text-3xl font-semibold" data-testid="section-title">
-          {t("title")}
-        </h1>
-        <p className="max-w-prose text-muted-foreground">{t("description")}</p>
-      </div>
+      <PageHeader
+        back={{ href: "/admin/customers", label: t("toList") }}
+        title={t("title")}
+        info={t("description")}
+      />
       {items.length === 0 ? (
         <EmptyState title={t("emptyTitle")} description={t("empty")}>
           <Link href="/admin/customers" className={buttonVariants({ variant: "outline" })}>

@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 /**
  * Table (redesign RD-2, re-design.md §5/§8.10).
  *
- * A real `<table>` for accessibility. Row height is 48 px by default and `density="compact"` (40 px)
+ * A real `<table>` for accessibility. The header row is plain: small muted labels above a
+ * hairline, on the same surface as the rows. No grey bar. Row height is 48 px by default and `density="compact"` (40 px)
  * is available for dense admin tables. Zebra striping is off; rows are separated by hairlines and
  * highlighted on hover. Numeric cells get `tabular-nums` through the exported `numericCell` helper.
  * `TableHeader` accepts `sticky` so a long table keeps its header while the page scrolls.
@@ -13,17 +14,28 @@ import { cn } from "@/lib/utils";
 function Table({
   className,
   density = "default",
+  surface = false,
   containerClassName,
   ...props
 }: React.ComponentProps<"table"> & {
   density?: "default" | "compact";
+  /**
+   * A table that stands on the page by itself gets the white surface of a card, so every list in
+   * the office looks the same. A table inside a `Card` leaves this off: cards are never nested.
+   */
+  surface?: boolean;
   /** Class name for the scroll container, e.g. to cap the height of a sticky-header table. */
   containerClassName?: string;
 }) {
   return (
     <div
       data-slot="table-container"
-      className={cn("relative w-full overflow-x-auto", containerClassName)}
+      data-surface={surface ? "" : undefined}
+      className={cn(
+        "relative w-full overflow-x-auto",
+        surface && "rounded-xl border border-border bg-card shadow-xs",
+        containerClassName,
+      )}
     >
       <table
         data-slot="table"
@@ -45,7 +57,7 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
       data-slot="table-header"
       className={cn(
         "[&_tr]:border-b",
-        "data-[sticky]:sticky data-[sticky]:top-0 data-[sticky]:z-10 data-[sticky]:bg-muted data-[sticky]:[&_th]:bg-muted",
+        "data-[sticky]:sticky data-[sticky]:top-0 data-[sticky]:z-10 data-[sticky]:bg-card data-[sticky]:[&_th]:bg-card",
         className,
       )}
       {...props}

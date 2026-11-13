@@ -77,7 +77,7 @@ export function CustomerFilters({ values }: { values: CustomerFilterValues }) {
   return (
     <form
       role="search"
-      className="flex w-full flex-wrap items-center gap-x-4 gap-y-2"
+      className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 max-sm:gap-x-2"
       aria-busy={pending}
       onSubmit={(e) => {
         e.preventDefault();
@@ -192,7 +192,7 @@ function FilterChip({
   return (
     <label
       className={cn(
-        "inline-flex h-10 cursor-pointer items-center gap-2 rounded-full border px-3 text-base transition-colors duration-150 ease-out select-none motion-reduce:transition-none",
+        "inline-flex h-10 cursor-pointer items-center gap-2 rounded-full border px-3 text-base max-sm:gap-1.5 max-sm:px-2.5 max-sm:text-sm transition-colors duration-150 ease-out select-none motion-reduce:transition-none",
         "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 focus-within:ring-offset-background",
         checked
           ? "border-transparent bg-primary-soft text-primary-soft-foreground"

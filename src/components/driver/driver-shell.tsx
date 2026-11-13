@@ -275,7 +275,9 @@ function OutboxSheet({
             <p
               className="flex items-center gap-2 text-base text-muted-foreground"
               data-testid="outbox-state"
-              data-state={sending ? "sending" : failure ? "unreachable" : online ? "online" : "offline"}
+              data-state={
+                sending ? "sending" : failure ? "unreachable" : online ? "online" : "offline"
+              }
             >
               {sending || online ? (
                 <WifiIcon className="size-5 shrink-0" aria-hidden />

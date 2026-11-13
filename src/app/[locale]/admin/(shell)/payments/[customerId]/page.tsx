@@ -75,23 +75,14 @@ async function Guarded({
         title={t("bill.title", { customer: bill.customer.name })}
         description={t("bill.description", { month: monthLabel })}
         titleTestId="monthly-bill-title"
-        breadcrumb={
-          <Link
-            href="/admin/payments"
-            className="rounded-sm underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {t("backToPayments")}
-          </Link>
-        }
+        back={{ href: "/admin/payments", label: t("backToPayments") }}
       />
 
       <Card className="max-w-4xl">
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex flex-col gap-1">
-              <h2 className="text-lg font-semibold tracking-tight">
-                {t("bill.totalHeading")}
-              </h2>
+              <h2 className="text-lg font-semibold tracking-tight">{t("bill.totalHeading")}</h2>
               <CardDescription>
                 {t("bill.customerLine", {
                   number: bill.customer.customerNumber,
@@ -169,9 +160,7 @@ async function Guarded({
       <Card className="max-w-4xl">
         <CardHeader>
           <h2 className="text-lg font-semibold tracking-tight">{t("bill.ordersHeading")}</h2>
-          <CardDescription>
-            {t("bill.ordersCount", { count: bill.orders.length })}
-          </CardDescription>
+          <CardDescription>{t("bill.ordersCount", { count: bill.orders.length })}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
           {bill.orders.length === 0 ? (
@@ -195,10 +184,7 @@ async function Guarded({
                   {bill.orders.map((order) => (
                     <TableRow key={order.id} data-testid={`bill-order-${order.id}`}>
                       <TableCell className="tabular-nums">
-                        <Link
-                          href={`/admin/orders/${order.id}`}
-                          className="link"
-                        >
+                        <Link href={`/admin/orders/${order.id}`} className="link">
                           {fmt.calendarDate(new Date(`${order.date}T00:00:00Z`))}
                         </Link>
                       </TableCell>
@@ -214,9 +200,7 @@ async function Guarded({
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {order.amountCents === null ? (
-                          <span className="text-warning-soft-foreground">
-                            {t("bill.noAmount")}
-                          </span>
+                          <span className="text-warning-soft-foreground">{t("bill.noAmount")}</span>
                         ) : (
                           fmt.amount(order.amountCents)
                         )}

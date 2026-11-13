@@ -120,11 +120,7 @@ export function CustomerDetailView({
   return (
     <div className="flex w-full min-w-0 flex-col gap-8">
       <PageHeader
-        breadcrumb={
-          <Link href="/admin/customers" className="underline-offset-4 hover:underline">
-            {t("title")}
-          </Link>
-        }
+        back={{ href: "/admin/customers", label: t("title") }}
         title={customer.name}
         description={
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">

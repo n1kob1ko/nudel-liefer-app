@@ -135,7 +135,6 @@ export function VehiclesManager({ rows }: { rows: VehicleRow[] }) {
           component, and it belongs next to the title, not on a row of its own. */}
       <PageHeader
         title={t("title")}
-        description={t("description")}
         actions={
           <Button type="button" onClick={() => openForm(EMPTY)} data-testid="new-vehicle">
             <PlusIcon aria-hidden />
@@ -153,7 +152,7 @@ export function VehiclesManager({ rows }: { rows: VehicleRow[] }) {
               <TableHeader data-sticky>
                 <TableRow>
                   <TableHead>{t("columns.name")}</TableHead>
-                  <TableHead>{t("columns.plate")}</TableHead>
+                  <TableHead className="max-sm:hidden">{t("columns.plate")}</TableHead>
                   <TableHead className="text-end">{t("columns.capacity")}</TableHead>
                   <TableHead>{t("columns.status")}</TableHead>
                   <TableHead className="text-end">
@@ -172,7 +171,9 @@ export function VehiclesManager({ rows }: { rows: VehicleRow[] }) {
                     <TableCell className="py-1.5 font-medium" data-testid="vehicle-name">
                       {v.name}
                     </TableCell>
-                    <TableCell className="py-1.5 tabular-nums">{v.plate ?? "–"}</TableCell>
+                    <TableCell className="py-1.5 tabular-nums max-sm:hidden">
+                      {v.plate ?? "–"}
+                    </TableCell>
                     <TableCell
                       className="py-1.5 text-end tabular-nums"
                       data-testid="vehicle-capacity"
@@ -267,7 +268,7 @@ export function VehiclesManager({ rows }: { rows: VehicleRow[] }) {
               <FormField
                 label={t("form.capacity")}
                 htmlFor="vehicle-capacity-input"
-                description={t("form.capacityHint")}
+                info={t("form.capacityHint")}
                 required
               >
                 <Input

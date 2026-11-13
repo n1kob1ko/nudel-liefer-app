@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormField } from "@/components/ui/form-field";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { CHECKLIST_ITEM_MAX, CHECKLIST_ITEMS_MAX } from "@/domain/departure-checklist";
@@ -204,7 +205,6 @@ export function SettingsForm({
         >
           {t("title")}
         </h1>
-        <p className="max-w-prose text-base text-muted-foreground">{t("description")}</p>
       </div>
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
@@ -278,10 +278,10 @@ export function SettingsForm({
                 />
               </FormField>
 
-              <div className="flex flex-col gap-1">
-                <h3 className="text-lg font-medium">{t("depot.pinHeading")}</h3>
-                <p className="max-w-prose text-sm text-muted-foreground">{t("depot.pinHint")}</p>
-              </div>
+              <h3 className="flex items-center gap-2 text-base font-medium">
+                {t("depot.pinHeading")}
+                <InfoTip>{t("depot.pinHint")}</InfoTip>
+              </h3>
               <PinPickerMapLazy
                 value={pin}
                 onChange={changePin}
@@ -361,11 +361,7 @@ export function SettingsForm({
               {/* Two columns: each label and hint gets a full line instead of five short ones, the
                   number fields stay as narrow as their values. */}
               <div className="grid max-w-3xl gap-x-8 gap-y-5 sm:grid-cols-2">
-                <FormField
-                  label={t("planning.departureTime")}
-                  htmlFor="departure"
-                  required
-                >
+                <FormField label={t("planning.departureTime")} htmlFor="departure" required>
                   <Input
                     id="departure"
                     type="time"
@@ -379,7 +375,7 @@ export function SettingsForm({
                   label={t("planning.serviceMinutes")}
                   htmlFor="service-minutes"
                   required
-                  description={t("planning.serviceMinutesHint")}
+                  info={t("planning.serviceMinutesHint")}
                 >
                   <Input
                     id="service-minutes"
@@ -398,7 +394,7 @@ export function SettingsForm({
                   label={t("planning.recurringLeadDays")}
                   htmlFor="recurring-lead-days"
                   required
-                  description={t("planning.recurringLeadDaysHint")}
+                  info={t("planning.recurringLeadDaysHint")}
                 >
                   <Input
                     id="recurring-lead-days"
@@ -418,7 +414,7 @@ export function SettingsForm({
                   label={t("planning.defaultLoadingMinutes")}
                   htmlFor="default-loading-minutes"
                   required
-                  description={t("planning.defaultLoadingMinutesHint")}
+                  info={t("planning.defaultLoadingMinutesHint")}
                 >
                   <Input
                     id="default-loading-minutes"
@@ -437,8 +433,10 @@ export function SettingsForm({
               </div>
 
               <fieldset className="flex flex-col gap-2">
-                <legend className="text-base font-medium">{t("planning.weekdays")}</legend>
-                <p className="text-sm text-muted-foreground">{t("planning.weekdaysHint")}</p>
+                <legend className="flex items-center gap-2 text-base font-medium">
+                  {t("planning.weekdays")}
+                  <InfoTip>{t("planning.weekdaysHint")}</InfoTip>
+                </legend>
                 <div className="flex flex-wrap gap-x-6 gap-y-3" data-testid="weekdays">
                   {ISO_WEEKDAYS.map((day) => (
                     <label key={day} className="flex items-center gap-2 text-base">
@@ -459,8 +457,10 @@ export function SettingsForm({
 
           <Card id="settings-checklist" className="scroll-mt-20">
             <CardHeader>
-              <CardTitle>{t("checklist.heading")}</CardTitle>
-              <p className="max-w-prose text-sm text-muted-foreground">{t("checklist.hint")}</p>
+              <CardTitle className="flex items-center gap-2">
+                {t("checklist.heading")}
+                <InfoTip>{t("checklist.hint")}</InfoTip>
+              </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-3" data-testid="checklist-editor">
               {checklist.length === 0 ? (

@@ -16,7 +16,7 @@ import { PageHeader } from "@/components/admin/page-header";
 import { WeekOrdersChart, type WeekOrdersDay } from "@/components/admin/week-orders-chart";
 import { EmptyState, LoadingSkeleton } from "@/components/shared/states";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { formatCalendarDate, parseCalendarDate } from "@/domain/order";
 import { Link } from "@/i18n/navigation";
 import { type AppFormatters, createAppFormatters } from "@/lib/format";
@@ -130,7 +130,6 @@ async function Dashboard({ locale }: { locale: string }) {
             <h2 className="text-lg font-semibold tracking-tight">
               {t("admin.dashboard.week.title")}
             </h2>
-            <CardDescription>{t("admin.dashboard.week.description")}</CardDescription>
           </CardHeader>
           <CardContent>
             <WeekOrdersChart

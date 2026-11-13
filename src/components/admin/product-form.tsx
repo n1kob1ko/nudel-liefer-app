@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
+import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -125,9 +126,7 @@ export function ProductForm({ productId, initial, unitLocked }: Props) {
           >
             {t("skuTaken")}
           </p>
-        ) : (
-          <p className="-mt-2 max-w-xs text-sm text-muted-foreground">{t("skuHint")}</p>
-        )}
+        ) : null}
         <FormField
           label={t("unit")}
           htmlFor="prod-unit"
@@ -156,7 +155,7 @@ export function ProductForm({ productId, initial, unitLocked }: Props) {
           htmlFor="prod-weight"
           required
           className="max-w-xs"
-          description={t("weightHint")}
+          info={t("weightHint")}
         >
           <Input
             id="prod-weight"
@@ -180,8 +179,8 @@ export function ProductForm({ productId, initial, unitLocked }: Props) {
       >
         <h2 id="prod-names" className="text-lg font-semibold tracking-tight">
           {t("namesHeading")}
+          <InfoTip className="ms-2">{t("namesHint")}</InfoTip>
         </h2>
-        <p className="max-w-prose text-sm text-muted-foreground">{t("namesHint")}</p>
         <FormField label={t("nameDe")} htmlFor="prod-de" required className="max-w-xl">
           <Input
             id="prod-de"

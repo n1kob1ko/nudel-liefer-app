@@ -5,7 +5,6 @@ import { OrderForm } from "@/components/admin/order-form";
 import { PageHeader } from "@/components/admin/page-header";
 import { LoadingSkeleton } from "@/components/shared/states";
 import { formatCalendarDate } from "@/domain/order";
-import { Link } from "@/i18n/navigation";
 import { type AppLocale, LOCALES, pick } from "@/lib/localized-text";
 import { requirePageActor } from "@/server/auth/page-guards";
 import { isOrderExtractorAvailable } from "@/server/order-extractor";
@@ -23,18 +22,7 @@ async function Guarded({ locale }: { locale: string }) {
   ]);
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title={t("newTitle")}
-        description={t("newDescription")}
-        breadcrumb={
-          <Link
-            href="/admin/orders"
-            className="rounded-sm underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {t("backToList")}
-          </Link>
-        }
-      />
+      <PageHeader title={t("newTitle")} back={{ href: "/admin/orders", label: t("backToList") }} />
       <OrderForm
         aiAvailable={isOrderExtractorAvailable()}
         defaultDate={formatCalendarDate(defaultDate)}

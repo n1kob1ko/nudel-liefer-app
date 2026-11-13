@@ -6,7 +6,8 @@ import { MonthExportForm } from "@/components/admin/bill-export";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState, LoadingSkeleton } from "@/components/shared/states";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { InfoTip } from "@/components/ui/info-tip";
 import {
   Table,
   TableBody,
@@ -58,7 +59,7 @@ async function Guarded({ locale }: { locale: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={t("title")} description={t("description")} titleTestId="payments-title" />
+      <PageHeader title={t("title")} titleTestId="payments-title" />
 
       {/* One strip with a hairline between the two sums, like the figures of the overview. */}
       <dl
@@ -88,8 +89,8 @@ async function Guarded({ locale }: { locale: string }) {
           <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
             <BanknoteIcon className="size-5" aria-hidden />
             {t("cash.title")}
+            <InfoTip>{t("cash.body")}</InfoTip>
           </h2>
-          <CardDescription>{t("cash.body")}</CardDescription>
         </CardHeader>
         <CardContent>
           {cash.length === 0 ? (
@@ -106,9 +107,12 @@ async function Guarded({ locale }: { locale: string }) {
                   <TableRow>
                     <TableHead>{t("columns.date")}</TableHead>
                     <TableHead>{t("columns.customer")}</TableHead>
-                    <TableHead>{t("columns.driver")}</TableHead>
-                    <TableHead className="text-right">{t("columns.due")}</TableHead>
-                    <TableHead className="text-right">{t("columns.collected")}</TableHead>
+                    {/* A phone shows the day, the customer and what is still open. */}
+                    <TableHead className="max-md:hidden">{t("columns.driver")}</TableHead>
+                    <TableHead className="text-right max-md:hidden">{t("columns.due")}</TableHead>
+                    <TableHead className="text-right max-md:hidden">
+                      {t("columns.collected")}
+                    </TableHead>
                     <TableHead className="text-right">{t("columns.open")}</TableHead>
                     <TableHead />
                   </TableRow>
@@ -125,11 +129,13 @@ async function Guarded({ locale }: { locale: string }) {
                           {row.customerNumber}
                         </span>
                       </TableCell>
-                      <TableCell>{row.driverName ?? t("columns.noDriver")}</TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell className="max-md:hidden">
+                        {row.driverName ?? t("columns.noDriver")}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums max-md:hidden">
                         {fmt.amount(row.dueCents)}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell className="text-right tabular-nums max-md:hidden">
                         {row.collectedCents === null ? "—" : fmt.amount(row.collectedCents)}
                       </TableCell>
                       <TableCell className="text-right font-semibold tabular-nums">
@@ -141,7 +147,7 @@ async function Guarded({ locale }: { locale: string }) {
                           className="inline-flex items-center gap-1 text-base link"
                           data-testid={`cash-link-${row.stopId}`}
                         >
-                          {t("cash.toTour")}
+                          <span className="max-sm:sr-only">{t("cash.toTour")}</span>
                           <ArrowRightIcon className="size-4 rtl:rotate-180" aria-hidden />
                         </Link>
                       </TableCell>
@@ -159,8 +165,8 @@ async function Guarded({ locale }: { locale: string }) {
           <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
             <ReceiptTextIcon className="size-5" aria-hidden />
             {t("monthly.title")}
+            <InfoTip>{t("monthly.body")}</InfoTip>
           </h2>
-          <CardDescription>{t("monthly.body")}</CardDescription>
         </CardHeader>
         <CardContent>
           {openMonthly.length === 0 ? (
@@ -238,8 +244,8 @@ async function Guarded({ locale }: { locale: string }) {
           <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
             <FileSpreadsheetIcon className="size-5" aria-hidden />
             {t("export.allTitle")}
+            <InfoTip>{t("export.allBody")}</InfoTip>
           </h2>
-          <CardDescription>{t("export.allBody")}</CardDescription>
         </CardHeader>
         <CardContent>
           <MonthExportForm months={exportMonths} defaultMonth={exportMonths[1]?.value} />
@@ -250,7 +256,6 @@ async function Guarded({ locale }: { locale: string }) {
         <Card data-testid="monthly-paid">
           <CardHeader>
             <h2 className="text-lg font-semibold tracking-tight">{t("paid.title")}</h2>
-            <CardDescription>{t("paid.body")}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <ul className="flex flex-col">

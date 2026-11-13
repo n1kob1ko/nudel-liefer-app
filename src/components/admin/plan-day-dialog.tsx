@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { InfoTip } from "@/components/ui/info-tip";
 import { useRouter } from "@/i18n/navigation";
 import { planDayAction } from "@/server/tour-actions";
 import type { TourPlan } from "@/server/tour-planning";
@@ -160,8 +161,10 @@ export function PlanDayDialog({
         </fieldset>
 
         <fieldset className="flex flex-col gap-1">
-          <legend className="mb-1 text-sm font-semibold">{t("planDay.drivers")}</legend>
-          <p className="text-sm text-muted-foreground">{t("planDay.driversHint")}</p>
+          <legend className="mb-1 flex items-center gap-2 text-sm font-semibold">
+            {t("planDay.drivers")}
+            <InfoTip>{t("planDay.driversHint")}</InfoTip>
+          </legend>
           {drivers.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("planDay.noDrivers")}</p>
           ) : (
