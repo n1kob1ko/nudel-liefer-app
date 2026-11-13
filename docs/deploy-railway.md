@@ -148,25 +148,38 @@ Railway buckets have no lifecycle rules, so `scripts/set-bucket-lifecycle.ts` do
 
 ## 9. Moving the data from the old server
 
-The database of the old server listens on `127.0.0.1` only, so the copy has to be pushed from there. Everything below runs **on the old server as root**; it reads the old data and writes nothing there. Do it at a moment nobody is working in the app, and stop the old app first so that nothing changes during the copy (`systemctl stop delivery-app`).
+The database and the photo store of the old server listen on `127.0.0.1` only, so the copy is pushed from there by one script, `scripts/railway/move-from-server.sh`. It only reads on the old server (the old app keeps running) and **replaces** the Railway database and adds to the Railway photo bucket. It can be run again: the database is replaced again, photos that are already there are skipped.
 
-1. Railway dashboard → `Postgres` → Settings → Networking → enable the TCP proxy, copy the public connection URL (`DATABASE_PUBLIC_URL`). Remove the proxy again after step 3.
-2. Stop `app` on Railway for the restore, or accept that it shows errors for a minute.
-3. Database (replaces whatever the Railway database holds):
+**Before (on Railway)**
 
-   ```bash
-   set -a; . /etc/delivery-app.env; set +a
-   read -rs -p "Railway DATABASE_PUBLIC_URL: " TARGET; echo
-   pg_dump -Fc --no-owner --no-acl "$DATABASE_URL" > /root/nudel-move.dump
-   pg_restore --clean --if-exists --no-owner --no-acl -d "$TARGET" /root/nudel-move.dump
-   rm /root/nudel-move.dump
+1. `Postgres` → Settings → Networking → enable the TCP proxy (port 5432). The database is then reachable from the internet with its password; remove the proxy again when the move is done.
+2. One variable that holds everything the script needs, made of references so that nobody types a secret. On the service `backup` (a variable there restarts nothing that serves users):
+
+   ```
+   MOVE_TARGET=postgresql://${{Postgres.PGUSER}}:${{Postgres.POSTGRES_PASSWORD}}@${{Postgres.RAILWAY_TCP_PROXY_DOMAIN}}:${{Postgres.RAILWAY_TCP_PROXY_PORT}}/${{Postgres.PGDATABASE}}|${{photos.ENDPOINT}}|${{photos.REGION}}|${{photos.BUCKET}}|${{photos.ACCESS_KEY_ID}}|${{photos.SECRET_ACCESS_KEY}}
    ```
 
-4. Photos: copy the bucket `nudel-photos` of the server's MinIO into the Railway bucket `photos` (credentials: dashboard → `photos` → Credentials). Any S3 copy tool works; the object keys must stay the same, the database refers to them.
-5. Variables that only the old server knows (`/etc/delivery-app.env`): `MAP_TILE_URL`, `MAP_TILE_ATTRIBUTION`, `DEEPL_API_KEY`, `OPENROUTER_API_KEY` and its options, `SENTRY_DSN`. Enter them in the dashboard → `app` → Variables. Do **not** copy `DATABASE_URL`, `AUTH_SECRET`, `S3_*`, `CRON_SECRET`, `ORS_*`, `PHOTON_*`.
-6. Redeploy `app` (the build reads `MAP_TILE_URL` and `SENTRY_DSN`), then run the checks of section 10.
+   Its **value** (dashboard → `backup` → Variables → copy) is the "Railway line" the script asks for. Delete the variable after the move.
 
-The pre-deploy step runs `prisma migrate deploy`, so a database that is behind the code is migrated on the next deploy.
+**The move (on the old server as root)**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/n1kob1ko/nudel-liefer-app/main/scripts/railway/move-from-server.sh -o /root/umzug.sh && bash /root/umzug.sh
+```
+
+The script reads `/etc/delivery-app.env`, asks for the Railway line (hidden input), shows the row counts of both databases and asks before it replaces the Railway one. Then:
+
+- **Database:** `pg_dump` of the old database into a temporary file, the `public` schema on Railway dropped and restored from it, the file removed. It compares the row count of every table on both sides and stops when one differs.
+- **Photos:** every object of the old bucket is copied under the same key (the database refers to the keys), with its content type; at the end the listing of both buckets is compared. `--skip-db` runs only this part again.
+- **Provider variables:** it prints the lines of `MAP_TILE_URL`, `MAP_TILE_ATTRIBUTION`, `MAP_TILE_CACHE`, `DEEPL_API_KEY`, `DEEPL_API_PLAN`, `OPENROUTER_*`, `SENTRY_DSN`, `SENTRY_ENVIRONMENT` as far as the old server has them. They go into the dashboard → `app` → Variables → Raw Editor. `DATABASE_URL`, `AUTH_SECRET`, `S3_*`, `CRON_SECRET`, `ORS_*`, `PHOTON_*` are **not** copied: Railway has its own.
+
+**After (on Railway)**
+
+1. Redeploy `app`: the pre-deploy step runs `prisma migrate deploy`, which brings the restored database (the old server was some migrations behind) up to the code; the build reads `MAP_TILE_URL` and `SENTRY_DSN`.
+2. Remove the TCP proxy of `Postgres` and the variable `MOVE_TARGET`.
+3. Run the checks of section 10 and log in with an account of the old server (the users came with the database; everybody has to log in again, because `AUTH_SECRET` is new).
+
+The script was tried on 2026-11-13 against a local copy of this setup: a database in the state of the old server (migrations up to `20261103211400_payments`) restored over a migrated one and then migrated to the current code, and 131 objects between two buckets.
 
 ## 10. Checks
 
