@@ -571,6 +571,47 @@
 }
 
 /*
+ * Page change in the office (rule 16, `AdminShell`): the old page fades out while the new one fades
+ * in, the exit 20 % shorter than the entrance (rule 15). Opacity only: a page seen dozens of times
+ * a day does not slide. The overlay lets clicks through, so a fast second click is never lost.
+ */
+@keyframes page-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes page-out {
+  to {
+    opacity: 0;
+  }
+}
+::view-transition {
+  pointer-events: none;
+}
+/* Everything around the page (menu, top bar) is not part of the change: no ghost of the old menu
+   fading over the highlight that travels there (rule 20). */
+::view-transition-old(root) {
+  display: none;
+}
+::view-transition-new(root) {
+  animation: none;
+}
+::view-transition-new(.page-in) {
+  animation: page-in 150ms var(--ease-out) both;
+}
+::view-transition-old(.page-out) {
+  animation: page-out 120ms var(--ease-out) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+  }
+}
+
+/*
  * Reduced motion (NUD-095): nothing slides, grows or travels. Overlays still fade briefly so a
  * change of state is not abrupt; spinners keep turning (they show progress).
  */

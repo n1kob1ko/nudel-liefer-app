@@ -2,7 +2,7 @@
 
 import { PanelLeftCloseIcon, PanelLeftOpenIcon, RouteIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { type ReactNode, useEffect, useSyncExternalStore } from "react";
+import { type ReactNode, useEffect, useSyncExternalStore, ViewTransition } from "react";
 
 import { AdminBottomNav } from "@/components/admin/admin-bottom-nav";
 import { AdminCommandMenu } from "@/components/admin/admin-command-menu";
@@ -187,7 +187,13 @@ export function AdminShell({
           <main id="main" className="min-w-0 flex-1">
             {/* Bottom padding below the rail breakpoint keeps the last row clear of the bottom bar. */}
             <div className="mx-auto w-full max-w-[1440px] px-6 pt-6 pb-28 lg:px-8 min-[1025px]:pb-6">
-              {children}
+              {/* Page change (motion rule 16): the old page fades out while the new one fades in,
+                  only the content, the menu and the top bar stay put. Keyed by the path, so a new
+                  filter or date on the same page does not fade. `default="none"`: content that
+                  loads or updates inside a page never triggers it. */}
+              <ViewTransition key={pathname} enter="page-in" exit="page-out" default="none">
+                <div>{children}</div>
+              </ViewTransition>
             </div>
           </main>
           <AdminBottomNav />
