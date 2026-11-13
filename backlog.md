@@ -358,6 +358,7 @@ Read rule: `pick(text, locale)` returns the requested locale; if empty, the clos
 | NUD-197 | Monatsrechnung: Korrekturzeile (Rabatt, Gutschrift, Zuschlag) | M2.8 | 196 | done |
 | NUD-198 | Monatsrechnung: Export als PDF und CSV für die Buchhaltung | M2.8 | 197 | done |
 | NUD-199 | Zahlungen: Bezahlt-Historie als eigene Seite | M2.8 | 196 | done |
+| NUD-200 | Nightly backup of the master data on the server (no orders, tours or payments; nothing off-site) | M2.7 | 094 | done |
 | NUD-201 | Bezahlte Bestellungen, Touren und Monatsrechnungen automatisch löschen | M2.8 | 196 | done |
 | NUD-100 | AI screenshot extraction (review required) | M3 | 031 | superseded → NUD-150 |
 | NUD-101 | Recurring / standing orders | M3 | 032 | superseded → NUD-149 |
@@ -3859,6 +3860,29 @@ Alle Entscheidungen: Product Owner, 2026-10-29 (§9).
 
 ---
 
+#### NUD-200 · Nightly backup of the master data on the server
+**Status:** done · **depends_on:** 094 · Source: new owner 2026-11-13 (hand-over protocol 6.4 promises a weekly backup; none existed).
+
+**Goal:** Production has a backup that really runs, and it holds only what the owner wants kept. Finding: the workflow of NUD-094 failed on 2026-11-01 and 2026-11-08 because the `BACKUP_*` secrets were never set — and it could not have worked with them either: since 2026-11-04 the database is PostgreSQL 18 on `127.0.0.1` of the dedicated server, which a GitHub runner cannot reach, and the workflow installed `pg_dump` 16. Owner's decisions on 2026-11-13: store on the server only; keep settings, customers and standing tours ("Routen"), never orders, invoices or payments.
+
+**Acceptance criteria**
+- [x] `pnpm backup:db` runs on the server and writes to `BACKUP_LOCAL_DIR`; the database connection falls back to `DATABASE_URL_UNPOOLED` / `DATABASE_URL`.
+- [x] The dump carries the whole schema but rows only for `BACKED_UP_TABLES` (`scripts/lib/backup.ts`): settings, users, working hours, vehicles, products, customers, parking spots, photo records, standing tours, standing orders. Every other table that exists is left out, also one nobody classified; the dump is checked and refused if it contains such rows.
+- [x] A test forces every Prisma model onto `BACKED_UP_TABLES` or `NOT_BACKED_UP_TABLES` and fails when a kept table references a left-out one (the restore could not create that foreign key).
+- [x] `deploy/backup/`: `nudel-backup.service` + `nudel-backup.timer` (every night 02:23 UTC, as `deliveryapp`, hardened) and an idempotent `install.sh` that creates `/var/backups/nudel/db`, a commented `/etc/nudel-backup.env`, enables the timer and takes the first backup.
+- [x] Nothing leaves the server. The bucket destination (`BACKUP_S3_*`, from NUD-094) stays in the code, off; `.github/workflows/backup.yml` no longer dumps and is skipped (green) unless the bucket secrets exist, in which case it checks age (`pnpm backup:verify --max-age-hours`) and test-restores into PostgreSQL 18.
+- [x] `docs/deploy.md` 13, `docs/runbook.md` 5, `docs/privacy.md`, `docs/env.md`, `.env.example`, `AGENTS.md` describe this setup.
+- [x] `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm i18n:check` green.
+
+**Implementation notes (NUD-200)**
+- No UI, no migration, no change to the running app: only `scripts/backup/*`, `scripts/lib/backup.ts`, `deploy/backup/*`, the workflow and docs. A deploy that only brings these files needs no rebuild and no restart.
+- A restore gives a working app (schema, migrations, admin, settings, customers, standing tours) with empty order, tour and payment tables. A full copy, for example before a risky migration or to move to another server, is a one-off `pg_dump` by hand (`docs/runbook.md` 5.1), to be deleted afterwards.
+- Verified locally against real PostgreSQL 16 and 18.7 servers (with the matching `pg_dump` / `pg_restore`) and a real S3 server (MinIO): folder only, folder + bucket, wrong bucket key (folder copy kept, exit 1, key not in the output), test restore from bucket and from folder, age limit; master-data dump of a database with orders, payments and audit rows restores with those tables empty; `install.sh` twice in a row with a stand-in for `systemctl` (an unrelated file in `/var/backups/nudel` stays untouched). **Not verified:** the real systemd sandbox (`ProtectSystem=strict`) on the server — the first run of `install.sh` shows it.
+- 👤 HUMAN: bring the files to the server, then `bash /opt/delivery-app/deploy/backup/install.sh` (`docs/deploy.md` 13.1).
+- Known limits, accepted by the owner: the backups die with the server; nothing alerts when the job stops; photos (MinIO on the same server) have no backup; orders and payments cannot be recovered.
+
+---
+
 #### Ein-Zeilen-Eintrag (aus F13, nicht umgesetzt)
 **NUD-191 · Checklisten-Zeilen brauchen explizite Accessible Names** — Status: todo · Quelle: Blackbox-QA 2026-10-29, F13. Die Zeilen sind bereits `<button role="checkbox" aria-checked>` (e2e klickt sie per Rolle); offen ist nur der vorlesbare Name (bisher der zusammengesetzte Kindtext). Aufwand S, ein e2e-Locator per Name. Kein Ticket im QA-Block, weil der Befund als solcher nicht reproduzierbar war.
 
@@ -4418,6 +4442,12 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 | 2026-11-13 | NUD-197 | Keine Korrektur in einem Monat ohne bestätigte Bestellung auf Monatsrechnung | Ein solcher Monat taucht weder in der Liste der offenen Monate noch im Export auf; die Korrektur wäre gebucht, aber unsichtbar |
 | 2026-11-13 | NUD-198 | Bezahlte Monate tragen den bezahlten Betrag in CSV und PDF | Der Vermerk ist ein Snapshot; ändert sich danach eine Bestellung, muss die Buchhaltung sehen, was wirklich bezahlt wurde |
 | 2026-11-13 | NUD-197…199 | Ein PR mit drei Commits statt drei PRs | Export und Historie bauen auf den Korrekturzeilen auf (Summe, Snapshot); einzeln wären die PRs nicht unabhängig prüfbar |
+| 2026-11-13 | NUD-200 | The dump is taken on the server by a systemd timer, not by GitHub Actions | The database listens on 127.0.0.1 only; opening it to the internet or giving GitHub an SSH key to production would both be worse than a job next to the database |
+| 2026-11-13 | NUD-200 | A backup holds master data only (allow-list of tables, everything else without rows); no full backup exists | Owner: only settings and standing tours are to be kept, orders, invoices and payments are not to be stored; an allow-list keeps a table added later out by default |
+| 2026-11-13 | NUD-200 | Standing (recurring) orders, products, vehicles, users and photo records count as master data | They are what the standing tours and the day planning are built from, and without users nobody can log in after a restore; they are settings per customer, not deliveries |
+| 2026-11-13 | NUD-200 | Backups stay on the server; the bucket destination of NUD-094 remains in the code, switched off, and its GitHub check is skipped | Owner: store it on the server only. Deleting tested code would only make a later change of mind expensive |
+| 2026-11-13 | NUD-200 | Nightly instead of weekly, same 8 weeks retention | A dump of the master data is a few hundred kB; a week of changed customers and standing tours is more than anybody wants to retype |
+| 2026-11-13 | NUD-200 | The job uses the app's `DATABASE_URL` unless `BACKUP_DATABASE_URL` is set | One secret less to copy and rotate on a single host; `pg_dump` only reads, a read-only role stays possible |
 | 2026-11-13 | NUD-201 | Bezahlte Bestellungen, Touren und Monatsrechnungen werden 30 Tage nach der Bezahlung endgültig gelöscht; Unbezahltes bleibt. Das Archiv (erster Ansatz) ist verworfen | Entscheidung des Kunden (13.11.2026): außer Einstellungen, Kunden und Stammtouren soll nichts aufbewahrt werden. Auf mögliche gesetzliche Aufbewahrungspflichten für Rechnungen wurde hingewiesen. Hebt für diese Daten die Regel „never hard-delete business data" (4.3) auf |
 | 2026-11-13 | NUD-201 | Bar bei Lieferung zählt ab dem vollständigen Kassieren; offene und zum Teil bezahlte Barbeträge werden nie gelöscht | „Unbezahltes bleibt" gilt für beide Zahlungsarten; sonst verschwände eine offene Forderung |
 | 2026-11-13 | NUD-201 | Stornierte Bestellungen, Entwürfe und nie gelieferte Barbestellungen gehen 30 Tage nach dem Liefertag | Für sie ist nichts zu bezahlen; ohne eigene Regel blieben sie für immer liegen |

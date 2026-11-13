@@ -1,14 +1,21 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
+  BACKED_UP_TABLES,
+  backupAgeHours,
   backupFileName,
   databaseIdentity,
+  NOT_BACKED_UP_TABLES,
   parseBackupTime,
   parseToolMajor,
   pgEnvFromUrl,
   readBackupConfig,
   redactSecrets,
   selectExpiredBackups,
+  tablesWithoutData,
 } from "./backup";
 
 const env = {
@@ -28,10 +35,13 @@ describe("readBackupConfig", () => {
     expect(parsed.config.prefix).toBe("db/");
     expect(parsed.config.retentionWeeks).toBe(8);
     expect(parsed.config.keepNewest).toBe(4);
-    expect(parsed.config.s3.region).toBe("auto");
+    expect(parsed.config.s3?.region).toBe("auto");
   });
   it("names missing variables but never prints a value", () => {
-    const parsed = readBackupConfig({ BACKUP_DATABASE_URL: "postgresql://u:topsecret@h/db" });
+    const parsed = readBackupConfig({
+      BACKUP_DATABASE_URL: "postgresql://u:topsecret@h/db",
+      BACKUP_S3_ENDPOINT: "https://abc.eu.r2.cloudflarestorage.com",
+    });
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
     expect(parsed.errors).toEqual(
@@ -42,6 +52,50 @@ describe("readBackupConfig", () => {
       ]),
     );
     expect(JSON.stringify(parsed.errors)).not.toContain("topsecret");
+  });
+  it("accepts a folder on the server as the only destination", () => {
+    const parsed = readBackupConfig({
+      BACKUP_DATABASE_URL: "postgresql://u:p@127.0.0.1:5432/nudel",
+      BACKUP_LOCAL_DIR: "/var/backups/nudel/",
+    });
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.config.localDir).toBe("/var/backups/nudel");
+    expect(parsed.config.s3).toBeUndefined();
+  });
+  it("accepts a folder and a bucket together", () => {
+    const parsed = readBackupConfig({ ...env, BACKUP_LOCAL_DIR: "/var/backups/nudel" });
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.config.localDir).toBe("/var/backups/nudel");
+    expect(parsed.config.s3?.bucket).toBe("nudel-backups");
+  });
+  it("refuses a configuration without any destination, a half-configured bucket and a relative folder", () => {
+    const errors = (input: Record<string, string>) => {
+      const parsed = readBackupConfig(input);
+      return parsed.ok ? [] : parsed.errors;
+    };
+    const db = { BACKUP_DATABASE_URL: "postgresql://u:p@h/db" };
+    expect(errors(db).join()).toMatch(/BACKUP_LOCAL_DIR.*BACKUP_S3_/);
+    expect(errors({ ...db, BACKUP_LOCAL_DIR: "/b", BACKUP_S3_BUCKET: "nudel-backups" })).toEqual([
+      "BACKUP_S3_ACCESS_KEY_ID is not set",
+      "BACKUP_S3_SECRET_ACCESS_KEY is not set",
+    ]);
+    expect(errors({ ...db, BACKUP_LOCAL_DIR: "backups" }).join()).toMatch(/absolute/);
+  });
+  it("falls back to the app's own connection when BACKUP_DATABASE_URL is not set", () => {
+    const url = (input: Record<string, string>) => {
+      const parsed = readBackupConfig({ BACKUP_LOCAL_DIR: "/b", ...input });
+      return parsed.ok ? parsed.config.databaseUrl : parsed.errors.join();
+    };
+    expect(url({ DATABASE_URL: "postgresql://app@h/a" })).toBe("postgresql://app@h/a");
+    expect(
+      url({ DATABASE_URL: "postgresql://app@h/a", DATABASE_URL_UNPOOLED: "postgresql://app@h/b" }),
+    ).toBe("postgresql://app@h/b");
+    expect(
+      url({ DATABASE_URL: "postgresql://app@h/a", BACKUP_DATABASE_URL: "postgresql://ro@h/c" }),
+    ).toBe("postgresql://ro@h/c");
+    expect(url({})).toMatch(/BACKUP_DATABASE_URL \(or DATABASE_URL\) is not set/);
   });
   it("rejects a pooled Neon URL, a wrong scheme and silly values", () => {
     const bad = (patch: Record<string, string>) => {
@@ -124,6 +178,73 @@ describe("backup names and retention", () => {
       keepNewest: 4,
     });
     expect(expired).toEqual([weekly(30)]);
+  });
+});
+
+describe("what a backup holds: master data only (NUD-200)", () => {
+  const models = [
+    ...readFileSync(path.join(process.cwd(), "prisma", "schema.prisma"), "utf8").matchAll(
+      /^model (\w+) \{/gm,
+    ),
+  ].map((m) => m[1]!);
+
+  it("keeps settings, people, customers, standing tours, products and standing orders", () => {
+    expect(tablesWithoutData([...models, "_prisma_migrations"]).sort()).toEqual(
+      [
+        "AuditLog",
+        "LoginAttempt",
+        "MonthlyAdjustment",
+        "MonthlyPayment",
+        "Order",
+        "OrderItem",
+        "Screenshot",
+        "Stop",
+        "StopMutation",
+        "StopOrder",
+        "Tour",
+      ].sort(),
+    );
+  });
+
+  it("leaves out the data of a table nobody has classified yet", () => {
+    expect(tablesWithoutData(["User", "Settings", "SomethingNew"])).toEqual(["SomethingNew"]);
+  });
+
+  it("every model of the Prisma schema is classified, exactly once", () => {
+    // A new model must be put on one of the two lists on purpose: "is this kept in a backup?"
+    const classified = [...BACKED_UP_TABLES, ...NOT_BACKED_UP_TABLES];
+    expect(new Set(classified).size).toBe(classified.length);
+    expect([...classified].filter((t) => t !== "_prisma_migrations").sort()).toEqual(
+      [...models].sort(),
+    );
+  });
+
+  it("no kept table points at a table that is left out", () => {
+    // Otherwise the foreign key could not be created when a backup is restored.
+    const schema = readFileSync(path.join(process.cwd(), "prisma", "schema.prisma"), "utf8");
+    const broken: string[] = [];
+    for (const block of schema.split(/^model /m).slice(1)) {
+      const model = /^(\w+)/.exec(block)![1]!;
+      if (!(BACKED_UP_TABLES as readonly string[]).includes(model)) continue;
+      for (const m of block.matchAll(/^\s+\w+\s+(\w+)\??\s+@relation\([^)]*fields:/gm)) {
+        if ((NOT_BACKED_UP_TABLES as readonly string[]).includes(m[1]!))
+          broken.push(`${model} -> ${m[1]}`);
+      }
+    }
+    expect(broken).toEqual([]);
+  });
+});
+
+describe("backupAgeHours", () => {
+  const now = new Date("2026-11-13T04:23:00Z");
+  it("reads the age of a backup from its name, with or without a folder in front", () => {
+    expect(backupAgeHours("db/nudel-20261113T022300Z.dump", now)).toBe(2);
+    expect(backupAgeHours("nudel-20261111T042300Z.dump", now)).toBe(48);
+    expect(backupAgeHours("/var/backups/nudel/db/nudel-20261112T162300Z.dump", now)).toBe(12);
+  });
+  it("is null for a name this script did not make", () => {
+    expect(backupAgeHours("db/manual.dump", now)).toBeNull();
+    expect(backupAgeHours("db/nudel-20261318T022300Z.dump", now)).toBeNull();
   });
 });
 

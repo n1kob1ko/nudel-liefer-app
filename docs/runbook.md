@@ -10,11 +10,11 @@ Commands run from the repository root with `pnpm` (Node 22+). Production connect
 
 | What                                    | Where                                                        |
 | --------------------------------------- | ------------------------------------------------------------ |
-| Code, CI, backup workflow               | GitHub repository (`.github/workflows/ci.yml`, `backup.yml`) |
+| Code, CI, backup check                  | GitHub repository (`.github/workflows/ci.yml`, `backup.yml`) |
 | App, environment variables, logs, crons | Vercel project                                               |
 | Database                                | Neon project, branch `main`                                  |
 | Photos, screenshots                     | Cloudflare R2 bucket `nudel-photos`                          |
-| Weekly database backups                 | R2 bucket `nudel-backups`, folder `db/`                      |
+| Nightly backups (master data only)      | On the server: `/var/backups/nudel/db/` (section 5)          |
 | Errors                                  | Sentry project (optional)                                    |
 
 ## 2. Deploy
@@ -40,32 +40,46 @@ Use for "someone deleted data / a migration went wrong a few hours or days ago".
 5. Everything written after the chosen time is lost. Tell the dispatchers which deliveries and notes to enter again. Drivers' queued offline taps from before the incident are applied when their phones reconnect; check for duplicates.
 6. After restoring data older than 24 h, the retention job (`/api/cron/retention`) will delete again what was already deleted; nothing to do. See `privacy.md` for what a restored copy contains.
 
-## 5. Restore from the weekly backup
+## 5. Restore from the nightly backup
 
-For when point-in-time restore is not enough (project deleted, damage older than the Neon window, Neon down for long). Backups are custom-format dumps `nudel-<UTC timestamp>.dump` in the R2 bucket `nudel-backups` under `db/`, made Sundays 02:23 UTC, kept 8 weeks (the newest 4 never expire). They hold the database only, not photos.
+Backups are custom-format dumps `nudel-<UTC timestamp>.dump` in `/var/backups/nudel/db/` on the production server, made every night at 02:23 UTC by the systemd timer `nudel-backup.timer` (`deploy/backup/`, NUD-200), kept 8 weeks (the newest 4 never expire). Setup: `deploy.md` section 13.1.
+
+**They hold master data only**: settings, users and working hours, vehicles, products, customers with parking spots and photo records, standing tours and standing orders. Orders, tours, stops, payments, monthly invoices and the change history are **never** in a backup (decision of the owner; the list is `BACKED_UP_TABLES` in `scripts/lib/backup.ts`). A restore therefore brings back a working app without any order, tour or payment. Photos are not in it either.
 
 ### 5.1 Take a backup now
 
-GitHub > **Actions > Database backup > Run workflow**. Wait for both jobs (_backup_ and _verify_) to turn green. The summary lists the file. Do this before risky migrations.
+On the server, as root:
+
+```bash
+systemctl start nudel-backup && journalctl -u nudel-backup -n 20 --no-pager
+ls -l /var/backups/nudel/db
+```
+
+The log ends with `[backup] done: db/nudel-<time>.dump (...)` and names the tables it left out.
+
+**Before a risky migration** (one that deletes or rewrites data) the nightly backup is not enough, because it has no orders. Take a one-off full dump by hand and delete it once the migration has proved itself, so that no copy of the orders stays behind:
+
+```bash
+sudo -u postgres pg_dump --format=custom --file=/var/lib/postgresql/before-migration.dump nudel
+# back out: restore it into a NEW database (section 5.2 step 1), then
+#   sudo -u postgres pg_restore --no-owner --dbname=nudel_restore /var/lib/postgresql/before-migration.dump
+# afterwards: rm /var/lib/postgresql/before-migration.dump
+```
 
 ### 5.2 Restore into a new database
 
-1. Create a new empty database: Neon console > **Branches > Create branch** is not suitable (it copies data); instead create a new **project** (or a new database in the project: _Databases > New database_). Copy its direct (unpooled) connection string.
-2. Download the dump: R2 > `nudel-backups` > `db/` > the file (or `aws s3 cp --endpoint-url https://<ACCOUNT_ID>.eu.r2.cloudflarestorage.com s3://nudel-backups/db/<file> ./`). Treat the file as confidential (it contains password hashes and customer data) and delete it when done.
-3. Check and restore with the tested script, which refuses a target that is not empty:
+1. Create a new **empty** database. On the server: `sudo -u postgres createdb -O <app role> nudel_restore` (the app role is the user name in `DATABASE_URL` of `/etc/delivery-app.env`).
+2. Pick the dump: the newest file in `/var/backups/nudel/db/`. Treat it as confidential (it contains password hashes and customer data).
+3. Check and restore with the tested script, which refuses a target that is not empty and the live database. On the server (`cd /opt/delivery-app && set -a && . /etc/delivery-app.env && set +a` first):
 
    ```
-   RESTORE_DATABASE_URL='postgresql://...new-empty-db...?sslmode=require' \
-   BACKUP_S3_ENDPOINT=... BACKUP_S3_BUCKET=nudel-backups \
-   BACKUP_S3_ACCESS_KEY_ID=... BACKUP_S3_SECRET_ACCESS_KEY=... \
-   pnpm backup:verify --key db/<file>
-   # or, with the file already downloaded:
-   RESTORE_DATABASE_URL='...' pnpm backup:verify --file ./<file>
+   RESTORE_DATABASE_URL='postgresql://<app role>:<password>@127.0.0.1:5432/nudel_restore' \
+   pnpm backup:verify --file /var/backups/nudel/db/<file>
    ```
 
-   It restores in one transaction (all or nothing) and checks: all migrations finished, an active admin exists, exactly one Settings row, no LoginAttempt rows, row counts. It prints the counts; compare them with what you expect.
+   It restores in one transaction (all or nothing) and checks: all migrations finished, an active admin exists, exactly one Settings row, no LoginAttempt rows, row counts. It prints the counts; the order, tour and payment tables are 0, compare the others with what you expect.
 
-4. Point the app at it: set `DATABASE_URL` (pooled) and `DATABASE_URL_UNPOOLED` (direct) in Vercel, redeploy, check `/api/health`, log in.
+4. Point the app at it: `systemctl stop delivery-app`, change the database name in `DATABASE_URL` in `/etc/delivery-app.env`, `systemctl start delivery-app`, check `/api/health`, log in. Keep the damaged database until you are sure; drop it later.
 5. Run `pnpm admin:reset-password` (section 8) if the admin password is unknown. Sessions survive a restore (they are signed with `AUTH_SECRET`).
 6. Photos: the objects in `nudel-photos` are untouched. Rows from the dump refer to them by key; a photo uploaded after the backup exists as an unreferenced object (the orphan job deals with it, section 10).
 
@@ -73,17 +87,26 @@ Do not run `pg_restore` by hand against a database that has data: the script exi
 
 ### 5.3 Notes
 
-- `pg_dump` must be at least the version of the Neon server. The workflow installs version `PG_MAJOR` (16). When Neon's version goes up, raise `PG_MAJOR` in `backup.yml`; the run fails loudly otherwise.
-- The workflow uses a read-only role (`backup_reader`); it cannot change data.
-- `LoginAttempt` data is not in the dump on purpose (login attempt rate limiting restarts empty).
+- `pg_dump` / `pg_restore` must be at least the version of the database server. On the server they come with PostgreSQL itself.
+- The backup only reads. It uses the app's `DATABASE_URL` unless `/etc/nudel-backup.env` sets `BACKUP_DATABASE_URL` (a read-only role).
+- The backups are on the same machine as the database. They do not survive the loss of the server (`deploy.md` section 13.2 describes the optional second copy, which is not set up).
 
 ### 5.4 Restore drill (every quarter, 30 minutes)
 
-1. Run section 5.2 steps 1-3 into a throwaway Neon project with the newest dump.
-2. Check the printed counts against the Neon console (tables > row counts) within a few percent; open a connection and look at the newest delivery.
-3. Delete the throwaway project and the downloaded file. Write the date of the drill into the log of your choice (a ticket comment is enough).
+1. Run section 5.2 steps 1-3 into a throwaway database with the newest dump.
+2. Check the printed counts of customers, users and standing tours against the live database; open a connection and look at one customer.
+3. Drop the throwaway database (`sudo -u postgres dropdb nudel_restore`). Write the date of the drill into the log of your choice (a ticket comment is enough).
 
-The workflow's _verify_ job does steps 1-3 automatically with a disposable Postgres after every backup, which proves the dump is readable; the drill proves that **you** can do it with real credentials.
+### 5.5 When the backup fails
+
+Nothing sends an alert for the backup on the server; look once a month.
+
+| Sign | Meaning | Do |
+| --- | --- | --- |
+| No file of last night in `/var/backups/nudel/db` | The timer is off or the run failed. | `systemctl status nudel-backup.timer nudel-backup.service`, `journalctl -u nudel-backup -n 50 --no-pager`. |
+| `journalctl` shows `folder ...: FAILED` | Disk full or the folder's owner changed. | `df -h /var/backups`, then `bash /opt/delivery-app/deploy/backup/install.sh` (repairs the folder). |
+| `journalctl` shows `dump contains data that must be left out` | The dump would have held orders or payments; nothing was stored. | A bug: do not work around it, fix `scripts/backup/core.ts`. |
+| Only with the optional bucket: GitHub e-mail "Database backup check" failed | _half-configured_: a secret is missing in the environment `backup`. _N hours old_: the job on the server stopped or cannot reach the bucket. | `deploy.md` section 13.2; on the server `journalctl -u nudel-backup -n 50 --no-pager` names the failing destination. |
 
 ## 6. Rotate keys
 
@@ -97,7 +120,7 @@ Always: change the value at the provider, set the new value in Vercel (Productio
 | `DEEPL_API_KEY`                             | DeepL account > API keys: create, set, redeploy, delete the old key. While missing or invalid, texts are saved untranslated and retried (section 9).                                                                                                                                                     |
 | `CRON_SECRET`                               | Vercel sends it to the cron routes automatically from the variable; set a new random value (`openssl rand -hex 32`), redeploy. It also protects `/api/monitoring/test-error`. Anything that calls these routes by hand needs the new value.                                                              |
 | `SENTRY_AUTH_TOKEN`                         | Sentry > Developer Settings > the integration > create a new token, set it in Vercel, delete the old one. Only needed at build time.                                                                                                                                                                     |
-| `BACKUP_*`                                  | GitHub > Settings > Environments > `backup`: replace the secrets; create the new R2 token and database role password first, run the workflow once, then revoke the old ones.                                                                                                                             |
+| `BACKUP_*`                                  | Only if the optional bucket is used (`deploy.md` section 13.2): create the new bucket token first, put it into `/etc/nudel-backup.env` on the server **and** into GitHub > Settings > Environments > `backup`, run `systemctl start nudel-backup` and the workflow once, then revoke the old token.                                                                                                                             |
 | Database password                           | Neon console > Roles > reset password, update `DATABASE_URL` and `DATABASE_URL_UNPOOLED` in Vercel, redeploy. Do the same for `backup_reader` in the `backup` environment.                                                                                                                               |
 
 ## 7. Sentry
@@ -151,7 +174,7 @@ First check `/api/health` (section 11) to see which part is meant. Status pages:
 | **R2** (storage)            | Photos and screenshots do not load or upload; `/api/health` is 503 with storage failing. Deliveries and routes still work.                                                     | Check Cloudflare status and the R2 token (expired or deleted token: section 6). Photo uploads are queued in the phone and retried.                                                                                                                                        |
 | **Vercel**                  | App unreachable.                                                                                                                                                               | Wait for Vercel; nothing in this repository helps.                                                                                                                                                                                                                        |
 | **Sentry**                  | Nothing visible to users.                                                                                                                                                      | The app does not wait for Sentry.                                                                                                                                                                                                                                         |
-| **GitHub Actions** (backup) | No new backup.                                                                                                                                                                 | Look at the Actions tab; re-run the workflow.                                                                                                                                                                                                                             |
+| **GitHub Actions** | Nothing visible to users; the nightly backup runs on the server and does not need GitHub. | Wait for GitHub. |
 
 ## 10. Orphaned storage objects
 
@@ -225,7 +248,7 @@ A person asks what the app holds about them, or asks for their name to be remove
 - Build and migration output: Vercel > **Deployments** > the deployment > **Build Logs**.
 - Cron runs: Vercel > **Settings > Cron Jobs** (and the Logs, source _Cron_).
 - Application errors with stack traces and release: Sentry (section 7), if configured.
-- Backup runs: GitHub > **Actions**.
+- Backup runs: on the server `journalctl -u nudel-backup`.
 - Database queries and size: Neon console > Monitoring.
 - Logs never contain passwords, PINs, cookies or signed URLs (checked by tests); report it if you ever see one.
 
@@ -235,7 +258,7 @@ The code is verified locally with substitutes; these need your accounts:
 
 1. **Sentry:** create the EU project, set `SENTRY_DSN` (and the token variables), redeploy, run section 7, add the e-mail alert rule.
 2. **Uptime monitor** for `/api/health` (`deploy.md` section 12.2).
-3. **Backups:** `deploy.md` section 13.1 (bucket, token, `backup_reader`, GitHub environment `backup`), first manual run, then the first restore drill (section 5.4). Confirm the GitHub failure e-mail arrives (for example by temporarily wrong secret).
+3. **Backups:** `deploy.md` section 13.1 (`install.sh` on the server), then the first restore drill (section 5.4).
 4. **Neon point-in-time:** open _Backup & Restore_ once and note the real history window of your plan here in section 4.
 5. **Orphan cleanup:** read the first dry-run reports, then decide on `ORPHAN_CLEANUP_MODE=delete`.
 6. Check that `postgresql-client-16` installs on the GitHub runner (first CI run after merge) and that `PG_MAJOR` matches the Neon version.

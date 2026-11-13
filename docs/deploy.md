@@ -364,44 +364,41 @@ What to know:
 
 `GET https://<production-url>/api/health` answers 200 when database and storage work and 503 otherwise (section 9). Point an external monitor at it: e.g. UptimeRobot (free plan, 5-minute interval) or Better Stack, alert by e-mail/SMS after 2 failed checks. Optionally add the keyword `"status":"ok"` as the expected content. Vercel's own status page and Neon's/Cloudflare's status pages are linked in `runbook.md` section 9.
 
-## 13. Backups (NUD-094)
+## 13. Backups (NUD-094, NUD-200)
 
-Two layers:
+The production database is PostgreSQL on `127.0.0.1` of the dedicated server, so the backup runs **on the server**: a systemd timer starts `pnpm backup:db` every night at 02:23 UTC and stores the dump in `/var/backups/nudel/db/`. Nothing leaves the server. (Until 2026-11-13 a GitHub workflow tried to take the dump itself, which needed a database reachable from the internet - the Neon setup of sections 2-9. It never produced a backup.)
 
-| Layer                      | What                                                                   | Restore                                                   | Retention                                                                                                                                             |
-| -------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Neon point-in-time restore | continuous history of the database                                     | Neon console, minutes (`runbook.md` section 4)            | free plan about 6 hours; paid plans up to 7 days (Launch) or 30 days (Scale) - check the current numbers in the Neon console under _Backup & Restore_ |
-| Weekly logical backup      | `pg_dump` of the whole database to R2 (`.github/workflows/backup.yml`) | `pg_restore` into a new database (`runbook.md` section 5) | 8 weeks; the newest 4 backups are never deleted                                                                                                       |
+**A backup holds master data only** (decision of the owner, 2026-11-13): the dump carries the complete schema but rows only for
 
-Photos and screenshots are objects in the photo bucket and are **not** part of either layer (R2 is replicated by Cloudflare, but a deleted or overwritten object is gone). Acceptable for v1: photos can be taken again; losing the database cannot be repaired that way.
+| Kept (`BACKED_UP_TABLES` in `scripts/lib/backup.ts`) | Never in a backup |
+| --- | --- |
+| settings, users and working hours, vehicles, products, customers with parking spots and photo records, standing tours, standing (recurring) orders | orders and their items, order screenshots, tours, stops, payments and monthly invoices, the change history (audit log), login attempts |
+
+A table added later is left out until it is put on the list of kept tables (a test makes that a decision). After a restore the app works with its settings, people, customers and standing tours, and **without any order, tour or payment**. Retention: 8 weeks, the newest 4 backups are never deleted. Restore: `runbook.md` section 5.
+
+The backups are on the same machine as the database: they protect against mistakes in the app (a bad migration, deleted customers), **not against the loss of the server**. Photos and screenshots are objects in the photo bucket (MinIO on the same server) and are not part of the backup.
 
 ### 13.1 One-time setup (human)
 
-1. **Backup bucket** (Cloudflare R2): create bucket `nudel-backups` in the **EU jurisdiction**, keep it private (same as section 3 steps 2-3). No CORS rule (nothing in a browser touches it), no lifecycle rule (the script prunes; a bucket rule could delete everything if the schedule ever stalls).
-2. **Token:** R2 > Manage API tokens > Create API token: name `nudel-backups`, permission **Object Read & Write**, specify bucket `nudel-backups` only. Copy Access Key ID and Secret Access Key (shown once). Never reuse the photo token.
-3. **Read-only database role** (Neon console > project > **Roles**; or the SQL editor on branch `main`): create role `backup_reader` with a long password and run in the SQL editor:
+As root on the server, after the app with NUD-200 is deployed (section 13.0):
 
-   ```sql
-   GRANT pg_read_all_data TO backup_reader;
-   ```
+```bash
+bash /opt/delivery-app/deploy/backup/install.sh
+```
 
-   `pg_read_all_data` lets the role read every table and sequence and nothing more (PostgreSQL 14 and newer, Neon has it). Copy the **direct** (unpooled, no `-pooler`) connection string for this role and branch `main`, with `?sslmode=require`.
+It creates `/var/backups/nudel/db` (owner `deliveryapp`, `0700`), `/etc/nudel-backup.env` (root, `0600`, everything commented out, nothing in it is needed), installs `nudel-backup.service` + `nudel-backup.timer`, takes the first backup and lists it. It can be run again at any time. The job uses the app's own `DATABASE_URL` from `/etc/delivery-app.env` (`BACKUP_DATABASE_URL` in `/etc/nudel-backup.env` wins if you prefer a read-only role: `CREATE ROLE backup_reader LOGIN PASSWORD '...'; GRANT pg_read_all_data TO backup_reader;`).
 
-4. **GitHub environment:** repository > **Settings > Environments > New environment**, name **`backup`**. (Optional: restrict it to the `main` branch under _Deployment branches_.) Under _Environment secrets_ add:
+Nothing watches the job: `systemctl status nudel-backup` and `ls -l /var/backups/nudel/db` show the last run (`runbook.md` section 5.5).
 
-   | Secret                                                    | Value                                              |
-   | --------------------------------------------------------- | -------------------------------------------------- |
-   | `BACKUP_DATABASE_URL`                                     | the `backup_reader` direct connection string       |
-   | `BACKUP_S3_ENDPOINT`                                      | `https://<ACCOUNT_ID>.eu.r2.cloudflarestorage.com` |
-   | `BACKUP_S3_BUCKET`                                        | `nudel-backups`                                    |
-   | `BACKUP_S3_ACCESS_KEY_ID` / `BACKUP_S3_SECRET_ACCESS_KEY` | the `nudel-backups` token                          |
+**Moving to another server:** deploy the app there and run `install.sh` again. To bring **all** data over (orders included) do not use these backups; take a one-off full dump by hand (`runbook.md` section 5.1).
 
-   Optional variables can be set as secrets too: `BACKUP_PREFIX` (default `db/`), `BACKUP_RETENTION_WEEKS` (default 8) - only if you also add them to the `env:` block of the workflow.
+### 13.2 Optional: a second copy outside the server
 
-5. **First run:** repository > **Actions > Database backup > Run workflow**. Both jobs (_backup_, then _verify_, the automatic test restore) must be green; the run summary shows file name, size and checksum. Check in R2 that `db/nudel-<date>.dump` exists.
-6. If the Neon project is not on PostgreSQL 16, change `PG_MAJOR` at the top of `.github/workflows/backup.yml` to the project's major version (the script stops with a clear message when `pg_dump` is older than the server).
+Not set up, on purpose (the owner wants the data on the server only). The code for it exists and is off until somebody fills in the keys:
 
-The schedule is Sundays 02:23 UTC. A failed run sends GitHub's standard e-mail to the people who watch the repository's Actions; check that your address receives them (GitHub > Settings > Notifications > Actions). Do not rely on it alone: look at the _Actions_ tab once a month (`runbook.md` section 5.4, the restore drill).
+1. A private bucket for backups only (for example Cloudflare R2, EU jurisdiction), never the photo bucket or the MinIO on the server, and a token limited to it (Object Read & Write). No lifecycle rule (the script prunes).
+2. On the server: fill in the four `BACKUP_S3_*` lines in `/etc/nudel-backup.env`, then `systemctl start nudel-backup && journalctl -u nudel-backup -n 20 --no-pager`. The log must show `bucket <name>: stored db/nudel-<time>.dump`.
+3. For a daily check of that copy: GitHub > **Settings > Environments** > environment **`backup`** with the same four values as secrets. The workflow `.github/workflows/backup.yml` (04:23 UTC) then downloads the newest backup, fails when it is older than 50 hours and restores it into an empty PostgreSQL. **Without these secrets every run is skipped and stays green.** `PG_MAJOR` at the top of the workflow must be at least the PostgreSQL major version of the server (18).
 
 ---
 

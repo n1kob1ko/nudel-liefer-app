@@ -20,7 +20,7 @@ notes, people in a photo or chat screenshot).
 | Machine translation                  | DeepL API, only when `DEEPL_API_KEY` is set                                 | Texts of notes and driver problem reports (section 4)                    |
 | Map tiles                            | Provider chosen with `MAP_TILE_URL` (production: MapTiler or Stadia Maps)   | The browser requests tiles directly: IP address and map area (section 4) |
 | Error reports (optional)             | Sentry, EU data region (project setting), only when `SENTRY_DSN` is set     | Scrubbed error events: no personal data by design (section 4)            |
-| Database backups                     | Cloudflare R2, **EU jurisdiction**, separate private bucket `nudel-backups` | A full copy of the database, weekly, 8 weeks (section 3, "Backups")      |
+| Database backups                     | The production server itself (`/var/backups/nudel/db`), nothing external    | Master data only, nightly, 8 weeks (section 3, "Backups")                |
 
 To confirm: Vercel and Cloudflare are US companies. Data stays in the EU regions above, but a
 data processing agreement with the standard contractual clauses (or the EU-US Data Privacy Framework
@@ -80,23 +80,29 @@ call is answered with 401).
 - The run is not written to the audit log (no user action); the counts are in the cron response and
   the Vercel function log.
 
-### Backups (NUD-094)
+### Backups (NUD-094, NUD-200)
 
-A GitHub Action (`.github/workflows/backup.yml`) copies the whole database every Sunday into a
-separate private R2 bucket (EU jurisdiction) and deletes copies older than 8 weeks. A backup holds
-everything in section 2 that is in the database, including **password hashes** and the personal
-data of customers and drivers, **except `LoginAttempt` rows** (user names and IP addresses; the dump
-leaves their content out because they are kept 24 hours at most). Consequences to know:
+A job on the production server (`nudel-backup.timer`, `deploy/backup/`) writes a backup every night
+into the folder `/var/backups/nudel/db/` on that server (readable by the app user and root only)
+and deletes backups older than 8 weeks. Nothing is copied off the server.
 
-- Data deleted in the app (screenshots after 180 days, archived records, changed texts) can still
-  exist in a backup for up to 8 weeks plus the time to the next run. A request to erase personal data
-  is answered in the app at once and in the backups by the 8-week expiry; a restore of an old backup
-  must be followed by running the retention job again (`docs/runbook.md`, "Restore the database").
-- Access is limited to the people who hold the Cloudflare account and the GitHub environment
-  `backup` secrets. The bucket is never public. Photos and screenshots are **not** in the backups
-  (objects stay in the photo bucket).
-- The read-only database role used by the backup (`backup_reader`) can read everything but change
-  nothing.
+A backup holds **master data only**: settings, users (with their **password hashes**) and working
+hours, vehicles, products, customers with their address data, parking spots and photo records,
+standing tours and standing orders. It never holds orders, tours, stops, payments, monthly
+invoices, order screenshots, the change history or `LoginAttempt` rows (decision of the owner,
+2026-11-13; the script checks every dump and refuses to store one that contains such rows).
+Consequences to know:
+
+- A customer or user deleted or changed in the app can still exist in a backup for up to 8 weeks
+  plus the time to the next run. A request to erase personal data is answered in the app at once
+  and in the backups by the 8-week expiry.
+- Orders and payments cannot be recovered from a backup. Whatever the app deletes of them is gone.
+- Access is limited to the people with root access to the server. Photos and screenshots are
+  **not** in the backups (objects stay in the photo bucket).
+- The backup only reads the database (`pg_dump`). It uses the app's connection unless the operator
+  gives it a read-only role (`BACKUP_DATABASE_URL`).
+- An optional second copy in an external bucket exists in the code and is **not** configured
+  (`docs/deploy.md` section 13.2); switching it on would add that storage provider to section 1.
 
 ### Orphaned storage objects (NUD-094)
 

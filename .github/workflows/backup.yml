@@ -1,18 +1,25 @@
-# Weekly logical backup of the production database (NUD-094).
+# Daily check of the off-site database backup (NUD-094, NUD-200).
 #
-#   pg_dump (custom format) -> checked -> uploaded to a PRIVATE Cloudflare R2 bucket -> backups older
-#   than 8 weeks pruned (the newest 4 are never pruned) -> the new backup is restored into a scratch
-#   PostgreSQL and checked ("test restore"), so a backup that cannot be restored fails this run.
+# The backup itself does NOT run here. The production database listens on 127.0.0.1 of the
+# dedicated server, so a GitHub runner cannot reach it: `pnpm backup:db` runs on the server every
+# night (systemd timer, deploy/backup/) and stores the dump in /var/backups/nudel/db on the server.
 #
-# Secrets live in the GitHub *environment* "backup" (Settings > Environments), not in the repository
-# secrets, and are used by nothing else. Setup, secret list, restore and drill: docs/runbook.md
-# section "Backups". A failed run e-mails the repository admins (GitHub default).
-name: Database backup
+# An off-site copy in a private bucket is OPTIONAL (docs/deploy.md section 13.2). Only when it is
+# configured does this workflow have something to do: it downloads the newest backup from the
+# bucket, fails when it is older than BACKUP_MAX_AGE_HOURS (the job on the server has stopped or
+# cannot reach the bucket), restores it into a scratch PostgreSQL and checks the data. A failed run
+# e-mails the repository admins (GitHub default). Without a bucket every run is skipped (green).
+#
+# Secrets live in the GitHub *environment* "backup" (Settings > Environments), not in the
+# repository secrets: BACKUP_S3_ENDPOINT, BACKUP_S3_BUCKET, BACKUP_S3_ACCESS_KEY_ID,
+# BACKUP_S3_SECRET_ACCESS_KEY (the same bucket values as in /etc/nudel-backup.env on the server; a
+# read-only token is enough here). Setup, restore and drill: docs/runbook.md section 5.
+name: Database backup check
 
 on:
   schedule:
-    # Sundays 02:23 UTC (04:23 Vienna in summer): the factory does not deliver on Sundays.
-    - cron: "23 2 * * 0"
+    # 04:23 UTC every day, two hours after the backup on the server (02:23 UTC).
+    - cron: "23 4 * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -23,44 +30,22 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # Must be >= the major version of the Neon project (docs/deploy.md: PostgreSQL 16).
-  PG_MAJOR: "16"
+  # Must be >= the major version of the production PostgreSQL (the dedicated server runs 18):
+  # pg_restore cannot read a dump made by a newer pg_dump.
+  PG_MAJOR: "18"
+  # Two nights: one missed run is tolerated, a second one fails the check.
+  BACKUP_MAX_AGE_HOURS: "50"
 
 jobs:
-  backup:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    environment: backup
-    outputs:
-      key: ${{ steps.dump.outputs.key }}
-    env:
-      BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
-      BACKUP_S3_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT }}
-      BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
-      BACKUP_S3_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
-      BACKUP_S3_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: pnpm }
-      - name: Install PostgreSQL client ${{ env.PG_MAJOR }}
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-${PG_MAJOR}
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Dump, check, upload, prune
-        id: dump
-        run: pnpm backup:db
-
   verify:
-    # Restores the backup that was just uploaded into a throw-away database and checks the data.
-    needs: backup
-    runs-on: ubuntu-latest
+    # Pinned, not `ubuntu-latest`: the client is installed from the PostgreSQL apt repository of
+    # this Ubuntu release, and a moving label breaks that the day it moves.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: backup
     services:
       postgres:
-        image: postgres:16
+        image: postgres:18
         env: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: restore_check }
         ports: ["5432:5432"]
         options: >-
@@ -70,17 +55,49 @@ jobs:
       BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
       BACKUP_S3_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
       BACKUP_S3_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
-      # Placeholder so that the shared config parser is satisfied; the verify job never connects to it.
+      # Placeholder so that the shared config parser is satisfied; this job never connects to it.
       BACKUP_DATABASE_URL: postgresql://unused:unused@localhost/unused
       RESTORE_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/restore_check
     steps:
+      - name: Is an off-site bucket configured?
+        id: bucket
+        run: |
+          set=""; missing=""
+          for name in BACKUP_S3_BUCKET BACKUP_S3_ACCESS_KEY_ID BACKUP_S3_SECRET_ACCESS_KEY; do
+            if [ -n "${!name}" ]; then set="$set $name"; else missing="$missing $name"; fi
+          done
+          if [ -z "$set" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No off-site bucket is configured (environment \"backup\" has no BACKUP_S3_* secrets): the backups exist on the server only and there is nothing to check here."
+            echo "### Database backup check: skipped" >> "$GITHUB_STEP_SUMMARY"
+            echo "No off-site bucket is configured. The nightly backups are stored on the server only (\`/var/backups/nudel/db\`); this check starts working once the bucket secrets are set (docs/deploy.md section 13.2)." >> "$GITHUB_STEP_SUMMARY"
+          elif [ -n "$missing" ]; then
+            echo "::error::The off-site bucket is half-configured: these secrets are missing in the GitHub environment \"backup\":$missing. See docs/runbook.md section 5.5."
+            exit 1
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@v4
+        if: steps.bucket.outputs.configured == 'true'
       - uses: pnpm/action-setup@v4
+        if: steps.bucket.outputs.configured == 'true'
       - uses: actions/setup-node@v4
+        if: steps.bucket.outputs.configured == 'true'
         with: { node-version: 22, cache: pnpm }
       - name: Install PostgreSQL client ${{ env.PG_MAJOR }}
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-${PG_MAJOR}
+        if: steps.bucket.outputs.configured == 'true'
+        # From the PostgreSQL project's own apt repository: Ubuntu ships an older major version.
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg-nudel.list >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq "postgresql-client-${PG_MAJOR}"
+          echo "/usr/lib/postgresql/${PG_MAJOR}/bin" >> "$GITHUB_PATH"
       - name: Install dependencies
+        if: steps.bucket.outputs.configured == 'true'
         run: pnpm install --frozen-lockfile
-      - name: Test restore of the new backup
-        run: pnpm backup:verify --key "${{ needs.backup.outputs.key }}"
+      - name: Newest backup is fresh and restores
+        if: steps.bucket.outputs.configured == 'true'
+        run: pnpm backup:verify --max-age-hours "$BACKUP_MAX_AGE_HOURS"

@@ -1,0 +1,12 @@
+# Starts nudel-backup.service every night (NUD-200).
+[Unit]
+Description=Nudel Liefer App: nightly backup of the master data
+
+[Timer]
+# 02:23 UTC = 03:23 / 04:23 in Vienna: nobody plans or drives at that time.
+OnCalendar=*-*-* 02:23:00 UTC
+# A run missed while the server was off is made up at the next start.
+Persistent=true
+
+[Install]
+WantedBy=timers.target
