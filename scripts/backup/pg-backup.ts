@@ -1,14 +1,13 @@
 /**
- * Weekly logical backup (NUD-094): `pnpm backup:db`. Reads BACKUP_* from the environment (the
- * GitHub Action passes them from encrypted secrets, docs/runbook.md), dumps the database with
- * pg_dump, uploads the dump to the backup bucket and prunes backups older than 8 weeks.
- * Never prints connection strings or keys. Exit code 1 on any problem.
+ * Database backup (NUD-094, NUD-197): `pnpm backup:db`. Runs where the database is reachable: on
+ * the production server, started every night by the systemd timer of deploy/backup/. Dumps the
+ * database with pg_dump, checks the dump, copies it to a folder on the server (BACKUP_LOCAL_DIR)
+ * and/or to an off-site bucket (BACKUP_S3_*) and prunes backups older than 8 weeks in each.
+ * Never prints connection strings or keys. Exit code 1 on any problem. See docs/runbook.md.
  */
-import { appendFileSync } from "node:fs";
-
 import { readBackupConfig, redactSecrets } from "../lib/backup";
-import { runBackup } from "./core";
-import { createS3BackupStore } from "./store";
+import { type BackupDestination, runBackup } from "./core";
+import { createLocalBackupStore, createS3BackupStore } from "./store";
 
 async function main() {
   const parsed = readBackupConfig(process.env);
@@ -19,26 +18,41 @@ async function main() {
     process.exit(1);
   }
   const { config } = parsed;
+  const destinations: BackupDestination[] = [];
+  if (config.localDir) {
+    destinations.push({
+      name: `folder ${config.localDir}`,
+      store: createLocalBackupStore(config.localDir),
+    });
+  }
+  if (config.s3) {
+    destinations.push({
+      name: `bucket ${config.s3.bucket}`,
+      store: createS3BackupStore(config.s3),
+    });
+  }
   const summary = await runBackup(config, {
-    store: createS3BackupStore(config.s3),
+    destinations,
     log: (line) => console.log(`[backup] ${line}`),
   });
   console.log(
-    `[backup] done: ${summary.key} (${summary.bytes} bytes), ${summary.remaining} backups kept`,
+    `[backup] done: ${summary.key} (${summary.bytes} bytes, sha256 ${summary.sha256}, ${summary.dataTables} tables with data)`,
   );
-  if (process.env.GITHUB_STEP_SUMMARY) {
-    appendFileSync(
-      process.env.GITHUB_STEP_SUMMARY,
-      `### Database backup\n\n- file: \`${summary.key}\`\n- size: ${summary.bytes} bytes\n- sha256: \`${summary.sha256}\`\n- tables with data: ${summary.dataTables}\n- backups kept: ${summary.remaining}, pruned: ${summary.pruned.length}\n`,
+  for (const d of summary.destinations) {
+    console.log(`[backup] ${d.name}: ${d.remaining} backups kept, ${d.pruned.length} pruned`);
+  }
+  if (!config.s3) {
+    console.warn(
+      "[backup] WARNING: no off-site copy (BACKUP_S3_* is not set). These backups are on the same machine as the database and are lost together with it.",
     );
   }
-  // For the verify job of the workflow.
-  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `key=${summary.key}\n`);
 }
 
 main().catch((error: unknown) => {
   const secrets = [
     process.env.BACKUP_DATABASE_URL,
+    process.env.DATABASE_URL_UNPOOLED,
+    process.env.DATABASE_URL,
     process.env.BACKUP_S3_SECRET_ACCESS_KEY,
     process.env.BACKUP_S3_ACCESS_KEY_ID,
   ];

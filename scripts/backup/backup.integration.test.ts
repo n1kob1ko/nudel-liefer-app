@@ -1,7 +1,8 @@
 // @vitest-environment node
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { Client } from "pg";
@@ -9,7 +10,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { type BackupConfig, backupFileName } from "../lib/backup";
 import { countRows, run, runBackup, runRestoreVerify, tocDataTables } from "./core";
-import type { BackupObject, BackupStore } from "./store";
+import { type BackupObject, type BackupStore, createLocalBackupStore } from "./store";
 
 /**
  * Real pg_dump / pg_restore against real databases (NUD-094). Needs DATABASE_URL (a server where
@@ -53,7 +54,7 @@ class MemoryStore implements BackupStore {
 }
 
 describe.skipIf(!process.env.DATABASE_URL || !haveTools)(
-  "weekly backup and test restore (pg_dump, pg_restore)",
+  "backup and test restore (pg_dump, pg_restore)",
   { timeout: 120_000 },
   () => {
     const base = process.env.DATABASE_URL!;
@@ -61,13 +62,15 @@ describe.skipIf(!process.env.DATABASE_URL || !haveTools)(
     const source = `bk_src_${suffix}`;
     const scratch = `bk_dst_${suffix}`;
     const scratch2 = `bk_dst2_${suffix}`;
+    const scratch3 = `bk_dst3_${suffix}`;
+    const scratch4 = `bk_dst4_${suffix}`;
     let admin: Client;
     let config: BackupConfig;
 
     beforeAll(async () => {
       admin = new Client({ connectionString: base });
       await admin.connect();
-      for (const name of [source, scratch, scratch2])
+      for (const name of [source, scratch, scratch2, scratch3, scratch4])
         await admin.query(`CREATE DATABASE "${name}"`);
       const db = new Client({ connectionString: urlFor(base, source) });
       await db.connect();
@@ -97,7 +100,7 @@ describe.skipIf(!process.env.DATABASE_URL || !haveTools)(
       await db.end();
       config = {
         databaseUrl: urlFor(base, source),
-        s3: { region: "auto", bucket: "b", accessKeyId: "k", secretAccessKey: "s" },
+        localDir: "/unused-in-tests",
         prefix: "db/",
         retentionWeeks: 8,
         keepNewest: 4,
@@ -105,7 +108,7 @@ describe.skipIf(!process.env.DATABASE_URL || !haveTools)(
     }, 120_000);
 
     afterAll(async () => {
-      for (const name of [source, scratch, scratch2]) {
+      for (const name of [source, scratch, scratch2, scratch3, scratch4]) {
         await admin?.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`).catch(() => {});
       }
       await admin?.end();
@@ -129,10 +132,17 @@ describe.skipIf(!process.env.DATABASE_URL || !haveTools)(
         sha256: "x",
       });
       const lines: string[] = [];
-      const summary = await runBackup(config, { store, now, log: (l) => lines.push(l) });
+      const summary = await runBackup(config, {
+        destinations: [{ name: "bucket", store }],
+        now,
+        log: (l) => lines.push(l),
+      });
 
       expect(summary.key).toBe(`db/${backupFileName(now)}`);
-      expect(summary.pruned).toHaveLength(2);
+      expect(summary.destinations).toEqual([
+        { name: "bucket", pruned: expect.any(Array), remaining: 5 },
+      ]);
+      expect(summary.destinations[0]!.pruned).toHaveLength(2);
       expect(store.objects.has("db/README.txt")).toBe(true);
       expect(store.objects.has(summary.key)).toBe(true);
       expect(lines.join("\n")).not.toMatch(/postgres(ql)?:\/\//);
@@ -176,7 +186,10 @@ describe.skipIf(!process.env.DATABASE_URL || !haveTools)(
 
     it("refuses to restore into a non-empty database or into a protected one", async () => {
       const store = new MemoryStore();
-      await runBackup(config, { store, now: new Date("2026-10-19T02:00:00Z") });
+      await runBackup(config, {
+        destinations: [{ name: "bucket", store }],
+        now: new Date("2026-10-19T02:00:00Z"),
+      });
       await expect(
         runRestoreVerify({ targetUrl: urlFor(base, source), store, prefix: "db/" }),
       ).rejects.toThrow(/not empty/);
@@ -203,8 +216,97 @@ describe.skipIf(!process.env.DATABASE_URL || !haveTools)(
         });
       }
       store.failPut = true;
-      await expect(runBackup(config, { store, now })).rejects.toThrow(/unreachable/);
+      await expect(
+        runBackup(config, { destinations: [{ name: "bucket", store }], now }),
+      ).rejects.toThrow(/bucket: bucket unreachable/);
       expect(store.objects.size).toBe(6);
+    });
+
+    it("writes to the folder on the server and to the bucket; one failing destination does not cost the other its backup", async () => {
+      const dir = mkdtempSync(path.join(tmpdir(), "nudel-local-"));
+      try {
+        const local = createLocalBackupStore(dir);
+        const bucket = new MemoryStore();
+        const now = new Date("2026-10-20T02:23:00Z");
+        const both = [
+          { name: "server folder", store: local },
+          { name: "bucket", store: bucket },
+        ];
+
+        const summary = await runBackup(config, { destinations: both, now });
+        expect(summary.destinations.map((d) => d.name)).toEqual(["server folder", "bucket"]);
+        expect(statSync(path.join(dir, summary.key)).size).toBe(summary.bytes);
+        expect(bucket.objects.get(summary.key)!.data.length).toBe(summary.bytes);
+
+        // The bucket is down the next night: the run fails loudly, the folder still got its copy.
+        bucket.failPut = true;
+        const next = new Date("2026-10-21T02:23:00Z");
+        await expect(runBackup(config, { destinations: both, now: next })).rejects.toThrow(
+          /bucket: bucket unreachable/,
+        );
+        expect((await local.list("db/")).map((o) => o.key)).toContain(`db/${backupFileName(next)}`);
+        expect(bucket.objects.size).toBe(1);
+
+        // And the other way round: the folder is not writable, the bucket still gets the backup.
+        bucket.failPut = false;
+        // (A folder below a regular file can never be created, whoever runs the test.)
+        writeFileSync(path.join(dir, "a-file"), "");
+        const broken = createLocalBackupStore(path.join(dir, "a-file", "backups"));
+        const third = new Date("2026-10-22T02:23:00Z");
+        await expect(
+          runBackup(config, {
+            destinations: [
+              { name: "server folder", store: broken },
+              { name: "bucket", store: bucket },
+            ],
+            now: third,
+          }),
+        ).rejects.toThrow(/server folder: /);
+        expect(bucket.objects.has(`db/${backupFileName(third)}`)).toBe(true);
+
+        // The copy in the folder restores like the one in the bucket.
+        const verify = await runRestoreVerify({
+          targetUrl: urlFor(base, scratch3),
+          store: local,
+          prefix: "db/",
+          protectedUrls: [config.databaseUrl],
+        });
+        expect(verify.key).toBe(`db/${backupFileName(next)}`);
+        expect(verify.admins).toBe(1);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it("the check refuses a newest backup that is older than the limit, before it restores anything", async () => {
+      const store = new MemoryStore();
+      const taken = new Date("2026-10-23T02:23:00Z");
+      await runBackup(config, { destinations: [{ name: "bucket", store }], now: taken });
+      const error = await runRestoreVerify({
+        targetUrl: urlFor(base, scratch4),
+        store,
+        prefix: "db/",
+        maxAgeHours: 48,
+        now: new Date("2026-10-26T04:23:00Z"),
+      }).then(
+        () => null,
+        (e: Error) => e,
+      );
+      expect(error?.message).toMatch(/74 hours old.*limit: 48/);
+
+      // Fresh enough: restored and checked. (The failed check above must not have touched the target.)
+      const ok = await runRestoreVerify({
+        targetUrl: urlFor(base, scratch4),
+        store,
+        prefix: "db/",
+        maxAgeHours: 48,
+        now: new Date("2026-10-24T04:23:00Z"),
+      });
+      expect(ok.ageHours).toBe(26);
+    });
+
+    it("a run without any destination is an error, not a silent success", async () => {
+      await expect(runBackup(config, { destinations: [] })).rejects.toThrow(/destination/);
     });
 
     it("never leaks the database password in an error", async () => {
@@ -212,7 +314,9 @@ describe.skipIf(!process.env.DATABASE_URL || !haveTools)(
         ...config,
         databaseUrl: urlFor(base, source).replace(/\/\/[^@]*@/, "//postgres:wrong-pass-123@"),
       };
-      const error = await runBackup(bad, { store: new MemoryStore() }).then(
+      const error = await runBackup(bad, {
+        destinations: [{ name: "bucket", store: new MemoryStore() }],
+      }).then(
         () => null,
         (e: Error) => e,
       );

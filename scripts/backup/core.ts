@@ -7,9 +7,11 @@ import path from "node:path";
 import { Client } from "pg";
 
 import {
+  backupAgeHours,
   type BackupConfig,
   backupFileName,
   databaseIdentity,
+  parseBackupTime,
   parseToolMajor,
   pgEnvFromUrl,
   redactSecrets,
@@ -74,30 +76,36 @@ export function tocDataTables(list: string): string[] {
   return [...list.matchAll(/^\d+; \d+ \d+ TABLE DATA public (\S+) /gm)].map((m) => m[1]!);
 }
 
+/** One place the dump is copied to; `name` is what the log and the error messages call it. */
+export type BackupDestination = { name: string; store: BackupStore };
+
 export type BackupSummary = {
   key: string;
   bytes: number;
   sha256: string;
   dataTables: number;
-  pruned: string[];
-  remaining: number;
+  /** Per destination: the backups pruned by this run and how many it holds now. */
+  destinations: Array<{ name: string; pruned: string[]; remaining: number }>;
 };
 
 /**
- * Dump -> verify the dump file -> upload -> verify the upload -> prune old backups.
- * Pruning happens only after the new backup is stored and its size matches, so a failing run can
- * never reduce the number of good backups.
+ * Dump -> verify the dump file -> copy to every destination -> verify each copy -> prune old
+ * backups. Every destination is tried even when another one fails (a full disk must not cost the
+ * off-site copy, an unreachable bucket not the local one); the run then fails with all problems.
+ * A destination is pruned only after its new backup is stored and its size matches, so a failing
+ * run can never reduce the number of good backups.
  */
 export async function runBackup(
   config: BackupConfig,
-  deps: { store: BackupStore; now?: Date; log?: (line: string) => void },
+  deps: { destinations: BackupDestination[]; now?: Date; log?: (line: string) => void },
 ): Promise<BackupSummary> {
+  if (deps.destinations.length === 0) throw new Error("no backup destination configured");
   const log = deps.log ?? (() => {});
   const now = deps.now ?? new Date();
   const secrets = [
     config.databaseUrl,
     new URL(config.databaseUrl).password,
-    config.s3.secretAccessKey,
+    config.s3?.secretAccessKey,
   ];
   const dir = mkdtempSync(path.join(tmpdir(), "nudel-backup-"));
   const fileName = backupFileName(now);
@@ -166,39 +174,43 @@ export async function runBackup(
     const sha256 = await sha256File(file);
     log(`dump ok: ${bytes} bytes, ${tables.length} tables with data`);
 
-    // 4. Upload and check what arrived.
-    await deps.store.put(key, file, bytes, sha256);
-    const stored = await deps.store.head(key);
-    if (!stored || stored.bytes !== bytes) {
-      throw new Error(
-        `upload check failed: expected ${bytes} bytes, found ${stored?.bytes ?? "nothing"}`,
-      );
-    }
-    log(`uploaded ${key}`);
+    // 4. Copy to every destination and check what arrived; 5. prune there (only names this
+    //    script makes; the newest backups are always kept).
+    const done: BackupSummary["destinations"] = [];
+    const failures: string[] = [];
+    for (const { name, store } of deps.destinations) {
+      try {
+        await store.put(key, file, bytes, sha256);
+        const stored = await store.head(key);
+        if (!stored || stored.bytes !== bytes) {
+          throw new Error(
+            `upload check failed: expected ${bytes} bytes, found ${stored?.bytes ?? "nothing"}`,
+          );
+        }
+        log(`${name}: stored ${key}`);
 
-    // 5. Prune (only names this script makes; the newest backups are always kept).
-    const all = await deps.store.list(config.prefix);
-    const expired = selectExpiredBackups(
-      all.map((o) => o.key),
-      {
-        prefix: config.prefix,
-        now,
-        retentionWeeks: config.retentionWeeks,
-        keepNewest: config.keepNewest,
-      },
-    );
-    for (const old of expired) {
-      await deps.store.delete(old);
-      log(`pruned ${old}`);
+        const backups = (await store.list(config.prefix))
+          .map((o) => o.key)
+          .filter((k) => parseBackupTime(k, config.prefix) !== null);
+        const expired = selectExpiredBackups(backups, {
+          prefix: config.prefix,
+          now,
+          retentionWeeks: config.retentionWeeks,
+          keepNewest: config.keepNewest,
+        });
+        for (const old of expired) {
+          await store.delete(old);
+          log(`${name}: pruned ${old}`);
+        }
+        done.push({ name, pruned: expired, remaining: backups.length - expired.length });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        failures.push(`${name}: ${redactSecrets(message, secrets)}`);
+        log(`${name}: FAILED`);
+      }
     }
-    return {
-      key,
-      bytes,
-      sha256,
-      dataTables: tables.length,
-      pruned: expired,
-      remaining: all.length - expired.length,
-    };
+    if (failures.length > 0) throw new Error(failures.join("; "));
+    return { key, bytes, sha256, dataTables: tables.length, destinations: done };
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -206,6 +218,8 @@ export async function runBackup(
 
 export type VerifySummary = {
   key: string | null;
+  /** Whole hours since the backup was taken (from its name); null for a file with another name. */
+  ageHours: number | null;
   tables: number;
   migrations: number;
   admins: number;
@@ -231,6 +245,8 @@ export async function countRows(client: Client): Promise<Record<string, number>>
  * Restores a backup into an EMPTY scratch database and checks that the data is really there:
  * migrations table complete, an active admin, the settings row, and row counts per table.
  * Refuses a non-empty target and the production database (compared with the given identities).
+ * With `maxAgeHours` it also refuses a backup that is too old: that is how a backup job that has
+ * silently stopped on the server is noticed.
  */
 export async function runRestoreVerify(options: {
   targetUrl: string;
@@ -241,9 +257,13 @@ export async function runRestoreVerify(options: {
   key?: string;
   /** Databases that must never be a restore target (the production URLs). */
   protectedUrls?: Array<string | undefined>;
+  /** The backup must not be older than this (age from its name). */
+  maxAgeHours?: number;
+  now?: Date;
   log?: (line: string) => void;
 }): Promise<VerifySummary> {
   const log = options.log ?? (() => {});
+  const now = options.now ?? new Date();
   const targetIdentity = databaseIdentity(options.targetUrl);
   for (const url of options.protectedUrls ?? []) {
     if (url && databaseIdentity(url) === targetIdentity) {
@@ -255,6 +275,20 @@ export async function runRestoreVerify(options: {
   try {
     let file = options.file;
     let key: string | null = options.key ?? null;
+    let ageHours: number | null = null;
+    const checkAge = (name: string) => {
+      ageHours = backupAgeHours(name, now);
+      if (options.maxAgeHours === undefined) return;
+      if (ageHours === null) {
+        throw new Error(`cannot tell the age of "${path.basename(name)}" from its name`);
+      }
+      if (ageHours > options.maxAgeHours) {
+        throw new Error(
+          `the newest backup ${name} is ${ageHours} hours old (limit: ${options.maxAgeHours}): the backup job has stopped or cannot reach its destination`,
+        );
+      }
+    };
+    if (file) checkAge(file);
     if (!file) {
       if (!options.store) throw new Error("either a file or a store is required");
       if (!key) {
@@ -265,6 +299,7 @@ export async function runRestoreVerify(options: {
         if (candidates.length === 0) throw new Error(`no backup found under "${prefix}"`);
         key = candidates[0]!.key;
       }
+      checkAge(key);
       file = path.join(dir, path.basename(key));
       await options.store.get(key, file);
       log(`downloaded ${key}`);
@@ -323,6 +358,7 @@ export async function runRestoreVerify(options: {
       const rowCounts = await countRows(target);
       return {
         key,
+        ageHours,
         tables: Object.keys(rowCounts).length,
         migrations: migrations.rows[0].total,
         admins: admins.rows[0].n,

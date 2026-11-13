@@ -1,12 +1,15 @@
 /**
- * Pure helpers of the weekly database backup (NUD-094): configuration, object names, retention
+ * Pure helpers of the database backup (NUD-094, NUD-197): configuration, object names, retention
  * and the PG* environment for the child processes. No I/O here, so everything is unit-tested.
  */
 
 export type BackupConfig = {
   /** Direct (unpooled) connection string of the database to dump; a read-only role is enough. */
   databaseUrl: string;
-  s3: {
+  /** A folder on the machine that runs the backup (the server). At least one destination is set. */
+  localDir?: string;
+  /** The off-site bucket: the copy that survives the loss of the server. */
+  s3?: {
     endpoint?: string;
     region: string;
     bucket: string;
@@ -35,7 +38,14 @@ export function readBackupConfig(
     if (!value) errors.push(`${name} is not set`);
     return value ?? "";
   };
-  const databaseUrl = need("BACKUP_DATABASE_URL");
+  // On the server the backup runs next to the app and may use the app's own connection.
+  const databaseUrl = (
+    env.BACKUP_DATABASE_URL ||
+    env.DATABASE_URL_UNPOOLED ||
+    env.DATABASE_URL ||
+    ""
+  ).trim();
+  if (!databaseUrl) errors.push("BACKUP_DATABASE_URL (or DATABASE_URL) is not set");
   if (databaseUrl && !/^postgres(ql)?:\/\//.test(databaseUrl)) {
     errors.push("BACKUP_DATABASE_URL must start with postgresql://");
   }
@@ -44,12 +54,28 @@ export function readBackupConfig(
       "BACKUP_DATABASE_URL is a pooled Neon URL: use the direct connection (no -pooler in the host name)",
     );
   }
-  const bucket = need("BACKUP_S3_BUCKET");
-  const accessKeyId = need("BACKUP_S3_ACCESS_KEY_ID");
-  const secretAccessKey = need("BACKUP_S3_SECRET_ACCESS_KEY");
+  const localDir = env.BACKUP_LOCAL_DIR?.trim().replace(/(?!^)\/+$/, "") || undefined;
+  if (localDir && !localDir.startsWith("/")) {
+    errors.push("BACKUP_LOCAL_DIR must be an absolute path");
+  }
+  // The bucket is optional, but never half-configured: one BACKUP_S3_* variable asks for all.
+  const wantsS3 = [
+    "BACKUP_S3_ENDPOINT",
+    "BACKUP_S3_BUCKET",
+    "BACKUP_S3_ACCESS_KEY_ID",
+    "BACKUP_S3_SECRET_ACCESS_KEY",
+  ].some((name) => env[name]?.trim());
+  const bucket = wantsS3 ? need("BACKUP_S3_BUCKET") : "";
+  const accessKeyId = wantsS3 ? need("BACKUP_S3_ACCESS_KEY_ID") : "";
+  const secretAccessKey = wantsS3 ? need("BACKUP_S3_SECRET_ACCESS_KEY") : "";
   const endpoint = env.BACKUP_S3_ENDPOINT?.trim() || undefined;
   if (endpoint && !/^https?:\/\//.test(endpoint)) {
     errors.push("BACKUP_S3_ENDPOINT must be an http(s) URL");
+  }
+  if (!localDir && !wantsS3) {
+    errors.push(
+      "no backup destination: set BACKUP_LOCAL_DIR (a folder on this machine) and/or the BACKUP_S3_* variables (a bucket)",
+    );
   }
   const retention = env.BACKUP_RETENTION_WEEKS?.trim();
   let retentionWeeks = DEFAULT_RETENTION_WEEKS;
@@ -66,13 +92,16 @@ export function readBackupConfig(
     ok: true,
     config: {
       databaseUrl,
-      s3: {
-        endpoint,
-        region: env.BACKUP_S3_REGION?.trim() || "auto",
-        bucket,
-        accessKeyId,
-        secretAccessKey,
-      },
+      localDir,
+      s3: wantsS3
+        ? {
+            endpoint,
+            region: env.BACKUP_S3_REGION?.trim() || "auto",
+            bucket,
+            accessKeyId,
+            secretAccessKey,
+          }
+        : undefined,
       prefix,
       retentionWeeks,
       keepNewest: DEFAULT_KEEP_NEWEST,
@@ -108,6 +137,15 @@ export function parseBackupTime(key: string, prefix: string): Date | null {
     date.getUTCMinutes() === mi &&
     date.getUTCSeconds() === s;
   return same ? date : null;
+}
+
+/**
+ * Whole hours since the backup was taken, read from its name (any folder in front is ignored);
+ * null when the name is not one this script makes.
+ */
+export function backupAgeHours(key: string, now: Date): number | null {
+  const taken = parseBackupTime(key.slice(key.lastIndexOf("/") + 1), "");
+  return taken ? Math.floor((now.getTime() - taken.getTime()) / (60 * 60 * 1000)) : null;
 }
 
 /**

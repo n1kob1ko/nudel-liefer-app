@@ -1,0 +1,33 @@
+# Nightly database backup of the Nudel Liefer App (NUD-197). Installed by deploy/backup/install.sh
+# together with nudel-backup.timer; kept in the repo so that a new server gets the same job.
+#
+# Runs `pnpm backup:db` (scripts/backup/pg-backup.ts) as the app user, next to the database:
+#   - the database connection is the app's own (DATABASE_URL in /etc/delivery-app.env),
+#   - a copy always goes to /var/backups/nudel/db/ on this machine,
+#   - when /etc/nudel-backup.env holds the BACKUP_S3_* keys, a second copy goes to the off-site
+#     bucket (the only copy that survives the loss of this server).
+# Check it: systemctl status nudel-backup; journalctl -u nudel-backup -n 50 --no-pager
+[Unit]
+Description=Nudel Liefer App: database backup (pg_dump)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deliveryapp
+Group=deliveryapp
+WorkingDirectory=/opt/delivery-app
+EnvironmentFile=/etc/delivery-app.env
+# Optional (the leading "-"): the off-site bucket. Values here win over the lines below.
+EnvironmentFile=-/etc/nudel-backup.env
+Environment=HOME=/var/lib/delivery-app
+Environment=BACKUP_LOCAL_DIR=/var/backups/nudel
+# tsx directly, not through pnpm: nothing to download or cache at run time.
+ExecStart=/usr/bin/node node_modules/tsx/dist/cli.mjs scripts/backup/pg-backup.ts
+TimeoutStartSec=30min
+# Hardening: the job may write its backup folder and nothing else.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/backups/nudel/db
