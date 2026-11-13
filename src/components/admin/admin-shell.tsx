@@ -1,6 +1,6 @@
 "use client";
 
-import { PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
+import { PanelLeftCloseIcon, PanelLeftOpenIcon, RouteIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useEffect, useSyncExternalStore } from "react";
 
@@ -124,7 +124,14 @@ export function AdminShell({
                 collapsed && "justify-center px-0",
               )}
             >
-              <span aria-hidden className="size-2.5 shrink-0 rounded-full bg-primary" />
+              {/* The app symbol in small: a route in ink on yolk. */}
+              <span
+                aria-hidden
+                data-testid="brand-mark"
+                className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"
+              >
+                <RouteIcon className="size-4" />
+              </span>
               {collapsed ? null : (
                 <span className="truncate text-lg font-semibold">{t("common.appName")}</span>
               )}
