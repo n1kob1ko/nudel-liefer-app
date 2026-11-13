@@ -31,6 +31,11 @@ export const ORDER_RETENTION_BATCH_SIZE = 200;
 export const ORDER_RETENTION_MAX_BATCHES = 25;
 /** How often a batch follows "this stop also carries that order" before it lets the rest wait. */
 const MAX_LINK_ROUNDS = 5;
+/**
+ * Two runs at once (the cron and a call by hand) take their batches in turn instead of locking
+ * each other's rows in different order. Held until the end of the transaction that took it.
+ */
+const takeTurn = (tx: Tx) => tx.$executeRaw`SELECT pg_advisory_xact_lock(2026111320100::bigint)`;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -47,29 +52,34 @@ export function orderRetentionMode(
 }
 
 /**
- * `ORDER_RETENTION_DAYS` as whole days (7..3650). Unset, empty, non-numeric or out-of-range values
- * fall back to 30: a typo must never delete earlier than intended.
+ * `ORDER_RETENTION_DAYS` as whole days (7..3650); 30 when it is not set. A value that is set but
+ * unusable (`60d`, `4000`, `1.5`) gives `null` and the run refuses to start: unlike the other
+ * retention jobs this one must not fall back to the default, because the default is the shortest
+ * sensible period and a typo would delete earlier than intended, for good.
  */
 export function orderRetentionDays(
   raw: string | undefined = process.env.ORDER_RETENTION_DAYS,
-): number {
+): number | null {
   const value = raw?.trim();
-  if (!value || !/^\d+$/.test(value)) return DEFAULT_ORDER_RETENTION_DAYS;
+  if (!value) return DEFAULT_ORDER_RETENTION_DAYS;
+  if (!/^\d+$/.test(value)) return null;
   const days = Number(value);
-  if (days < MIN_ORDER_RETENTION_DAYS || days > MAX_ORDER_RETENTION_DAYS) {
-    return DEFAULT_ORDER_RETENTION_DAYS;
-  }
+  if (days < MIN_ORDER_RETENTION_DAYS || days > MAX_ORDER_RETENTION_DAYS) return null;
   return days;
 }
 
-/** For the pages: is deleting switched on, and after how many days. */
+/**
+ * For the pages: is deleting switched on, and after how many days. With an unusable period the
+ * run refuses to delete, so the pages announce nothing.
+ */
 export function orderRetentionPolicy(env: Record<string, string | undefined> = process.env): {
   active: boolean;
   days: number;
 } {
+  const days = orderRetentionDays(env.ORDER_RETENTION_DAYS);
   return {
-    active: orderRetentionMode(env.ORDER_RETENTION_MODE) === "delete",
-    days: orderRetentionDays(env.ORDER_RETENTION_DAYS),
+    active: days !== null && orderRetentionMode(env.ORDER_RETENTION_MODE) === "delete",
+    days: days ?? DEFAULT_ORDER_RETENTION_DAYS,
   };
 }
 
@@ -113,11 +123,23 @@ type Limits = { cutoffIso: string; cutoffDay: string; cutoffDate: Date };
  * - a draft or a cancelled order: nothing was ever to be paid;
  * - an order on the monthly bill: its month is marked paid (not taken back) long enough;
  * - a cash order: no delivery of it has money open or paid in part, and the money (or, with
- *   nothing to collect, the delivery) is old enough. Never delivered = nothing to pay.
+ *   nothing to collect, the delivery) is old enough. A delivery without any recorded time never
+ *   counts as old enough. A stop the driver never ticked off on a tour that was released keeps
+ *   the order too while money is due there: nobody knows whether it was delivered and paid. Only
+ *   an order that is on no such stop (no tour at all, a tour that never left the office, or a
+ *   reported problem) was never delivered, and nothing is to pay.
  * The times are compared in UTC whatever the time zone of the database session is.
  */
 function settledSql({ cutoffIso, cutoffDay }: Limits): Prisma.Sql {
   const cutoff = Prisma.sql`(${cutoffIso}::timestamptz AT TIME ZONE 'UTC')`;
+  // Cash still owed at stop `s`: what its confirmed cash orders add up to (`cashDueCents`) is more
+  // than what was collected (`cashState` open or short).
+  const owed = Prisma.sql`(
+              SELECT COALESCE(SUM(o2."amountCents"), 0)
+              FROM "StopOrder" so2 JOIN "Order" o2 ON o2."id" = so2."orderId"
+              WHERE so2."stopId" = s."id"
+                AND o2."status" = 'CONFIRMED' AND o2."paymentTerm" = 'ON_DELIVERY'
+            ) > COALESCE(s."collectedCents", 0)`;
   return Prisma.sql`
     o."deliveryDate" < ${cutoffDay}::date
     AND (
@@ -129,16 +151,17 @@ function settledSql({ cutoffIso, cutoffDay }: Limits): Prisma.Sql {
           AND p."voidedAt" IS NULL
           AND p."paidAt" < ${cutoff}))
       OR (o."status" = 'CONFIRMED' AND o."paymentTerm" = 'ON_DELIVERY' AND NOT EXISTS (
-        SELECT 1 FROM "StopOrder" so JOIN "Stop" s ON s."id" = so."stopId"
-        WHERE so."orderId" = o."id" AND s."status" = 'DELIVERED'
+        SELECT 1 FROM "StopOrder" so
+          JOIN "Stop" s ON s."id" = so."stopId"
+          JOIN "Tour" t ON t."id" = s."tourId"
+        WHERE so."orderId" = o."id"
           AND (
-            COALESCE(s."collectedAt", s."completedAt") >= ${cutoff}
-            OR (
-              SELECT COALESCE(SUM(o2."amountCents"), 0)
-              FROM "StopOrder" so2 JOIN "Order" o2 ON o2."id" = so2."orderId"
-              WHERE so2."stopId" = s."id"
-                AND o2."status" = 'CONFIRMED' AND o2."paymentTerm" = 'ON_DELIVERY'
-            ) > COALESCE(s."collectedCents", 0)
+            (s."status" = 'DELIVERED' AND (
+              COALESCE(s."collectedAt", s."completedAt", 'infinity'::timestamp) >= ${cutoff}
+              OR ${owed}))
+            OR (s."status" = 'PENDING'
+              AND t."status" IN ('RELEASED', 'IN_PROGRESS', 'COMPLETED')
+              AND ${owed})
           )))
     )`;
 }
@@ -224,6 +247,7 @@ async function runBatch(
 ): Promise<BatchResult> {
   return db.$transaction(
     async (tx) => {
+      await takeTurn(tx);
       const behindCursor = cursor
         ? Prisma.sql`AND (o."deliveryDate", o."id") > (${cursor.day}::date, ${cursor.id})`
         : Prisma.empty;
@@ -333,6 +357,7 @@ async function purgeOrphanScreenshots(db: Db, storage: Storage, ids: readonly st
  */
 async function purgePaidNotes(db: Db, limits: Limits) {
   return db.$transaction(async (tx) => {
+    await takeTurn(tx);
     const notes = await tx.$queryRaw<{ customerId: string; periodStart: Date }[]>`
       DELETE FROM "MonthlyPayment" p
       WHERE p."voidedAt" IS NULL
@@ -376,13 +401,20 @@ export async function purgeSettledOrders(deps: {
   /** IANA zone of the factory; read from the settings when left out. */
   timezone?: string;
   mode?: OrderRetentionMode;
-  retentionDays?: number;
+  /** `null` = configured but unusable: the run refuses. */
+  retentionDays?: number | null;
   batchSize?: number;
   maxBatches?: number;
 }): Promise<OrderRetentionReport> {
   const { db, storage } = deps;
   const mode = deps.mode ?? orderRetentionMode();
-  const retentionDays = deps.retentionDays ?? orderRetentionDays();
+  const retentionDays =
+    deps.retentionDays === undefined ? orderRetentionDays() : deps.retentionDays;
+  if (retentionDays === null) {
+    throw new Error(
+      `ORDER_RETENTION_DAYS is not a whole number of days from ${MIN_ORDER_RETENTION_DAYS} to ${MAX_ORDER_RETENTION_DAYS}; nothing was deleted`,
+    );
+  }
   if (!Number.isInteger(retentionDays) || retentionDays < MIN_ORDER_RETENTION_DAYS) {
     throw new Error(`order retention below ${MIN_ORDER_RETENTION_DAYS} days refused`);
   }

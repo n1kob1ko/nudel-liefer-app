@@ -6,6 +6,7 @@ import {
   orderRetentionMode,
   orderRetentionPolicy,
   type OrderRetentionReport,
+  purgeSettledOrders,
 } from "./order-retention";
 import { handleOrderRetentionCron } from "./order-retention-cron";
 
@@ -19,12 +20,28 @@ describe("env parsing", () => {
     expect(orderRetentionMode("true")).toBe("dry-run");
   });
 
-  it("period defaults to 30 days and falls back for typos and out-of-range values", () => {
+  it("period defaults to 30 days when it is not set", () => {
     expect(orderRetentionDays(undefined)).toBe(30);
+    expect(orderRetentionDays("")).toBe(30);
+    expect(orderRetentionDays("  ")).toBe(30);
     expect(orderRetentionDays(" 60 ")).toBe(60);
     expect(orderRetentionDays("7")).toBe(7);
-    for (const bad of ["0", "1", "6", "-1", "1.5", "abc", "1e3", "3651", ""]) {
-      expect(orderRetentionDays(bad), bad).toBe(30);
+    expect(orderRetentionDays("3650")).toBe(3650);
+  });
+
+  it("a period that is set but unusable is no period at all: a typo must not turn 60 days into 30", () => {
+    for (const bad of ["0", "1", "6", "-1", "1.5", "abc", "1e3", "3651", "60d", "90 days"]) {
+      expect(orderRetentionDays(bad), bad).toBeNull();
+    }
+  });
+
+  it("refuses to run with an unusable period, in every mode that would look at orders", async () => {
+    const db = {} as never;
+    const storage = {} as never;
+    for (const mode of ["delete", "dry-run"] as const) {
+      await expect(purgeSettledOrders({ db, storage, mode, retentionDays: null })).rejects.toThrow(
+        /ORDER_RETENTION_DAYS/,
+      );
     }
   });
 
@@ -39,6 +56,10 @@ describe("env parsing", () => {
     expect(orderRetentionPolicy({ ORDER_RETENTION_MODE: "dry-run" }).active).toBe(false);
     expect(orderRetentionPolicy({ ORDER_RETENTION_MODE: "off" }).active).toBe(false);
     expect(orderRetentionPolicy({}).active).toBe(false);
+    // Deleting is on, but the period is a typo: the run refuses, so the pages promise nothing.
+    expect(
+      orderRetentionPolicy({ ORDER_RETENTION_MODE: "delete", ORDER_RETENTION_DAYS: "60d" }).active,
+    ).toBe(false);
   });
 });
 

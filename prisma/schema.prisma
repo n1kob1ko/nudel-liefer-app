@@ -451,6 +451,10 @@ model RecurringOrder {
   /// included (they happened).
   endsOn           DateTime?  @db.Date
   maxDeliveries    Int?
+  /// Orders this rule has created so far (NUD-201). `maxDeliveries` is checked against this number
+  /// and not against the orders that still exist: paid orders are deleted after 30 days, and a
+  /// used-up rule must not start again because of that.
+  generatedCount   Int        @default(0)
   active           Boolean    @default(true)
   /// Paused because the customer was set inactive; reactivating the customer resumes exactly these rules.
   pausedByCustomer Boolean    @default(false)

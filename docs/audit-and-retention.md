@@ -132,7 +132,9 @@ parses `DRIVER_TEXT_RETENTION_DAYS` (default 365, range 30..3650, fallback 365).
 The client does not want orders, tours and bills kept (decision of 2026-11-13,
 NUD-201). `purgeSettledOrders` deletes them for good once they are paid and the
 period after the payment is over (`ORDER_RETENTION_DAYS`, default 30, range
-7..3650, fallback 30; a period below 7 is refused). **What is not paid is never
+7..3650). A value that is set but unusable gives `null` from `orderRetentionDays`
+and the run throws instead of falling back to 30: the default is the shortest
+sensible period, so a typo must not select it. **What is not paid is never
 deleted.** `ORDER_RETENTION_MODE` is `off` | `dry-run` | `delete`; unset or
 anything else is `dry-run`, which only counts orders and stops. A deployment
 therefore never starts deleting by itself.
@@ -145,8 +147,11 @@ period and
   (`MonthlyPayment`, not voided) with `paidAt` older than the period, or
 - it is a `CONFIRMED` cash order and none of its `DELIVERED` stops has cash open
   or paid in part, and the collection (`collectedAt`, else `completedAt`) is
-  older than the period. A cash order that was never delivered counts from its
-  delivery day.
+  older than the period (a delivery without any recorded time never counts as
+  old enough). A `PENDING` stop on a released, running or completed tour with
+  cash due keeps the order as well: nobody knows whether it was delivered and
+  paid. Only a cash order on no such stop (no tour, a tour that was never
+  released, a reported problem) counts from its delivery day.
 
 What goes together (`purgeSelection`, pure): a stop goes only when its tour is
 older than the period and every one of its orders goes; an order goes only when
@@ -154,6 +159,7 @@ every stop it is on goes. So one unpaid order keeps its stop, and with it the
 other orders of that stop. A batch also follows these links to orders outside
 itself, so two settled orders on one stop never wait for each other.
 
+Two runs at once take their batches in turn (`pg_advisory_xact_lock`).
 Per batch (200 orders, at most 25 batches per run, keyset cursor over
 `deliveryDate, id` so waiting orders do not hold up later ones) one transaction
 selects, locks the stops, the orders and their paid notes, selects again and
@@ -175,7 +181,17 @@ while the mode is `delete` (`orderRetentionPolicy`).
 
 Consequences to know: the utilization statistics, the paid history and the
 exports only cover what is not deleted yet, and a tour loses its paid stops one
-by one before it disappears (its counts shrink with them).
+by one before it disappears (its counts shrink with them). While one order of
+a paid month has to wait, the bill page shows the month with the orders that
+are left next to the amount that was paid. Paid notes that were taken back and
+correction lines of unpaid months are never deleted.
+
+Nothing may conclude a lasting fact from "an order row exists". Two places did
+and were changed with this job: the delivery limit of a standing order counts
+`RecurringOrder.generatedCount` (incremented when an order is generated,
+backfilled by the migration `20261113100000_recurring_generated_count`) instead
+of the orders that exist, and the unit of a product stays locked while a
+standing order uses it (`products.ts`).
 
 ### Screenshots and failed-login rows (`retention-cron.ts`)
 

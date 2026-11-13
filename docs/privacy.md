@@ -199,8 +199,10 @@ payment (next subsection). Until that job is switched on, nothing is deleted.
 - **When:** `ORDER_RETENTION_DAYS` days (default **30**, 7 to 3650) after the payment. Monthly bill:
   after the office marked the month paid. Cash: after the driver collected the full amount.
   Cancelled orders, drafts and cash orders that were never delivered: after their delivery day.
-- **What stays:** everything that is not paid (an open month, open or partly paid cash), whatever
-  its age, and an order that shares a stop with something unpaid. Customers, products, users,
+- **What stays:** everything that is not paid (an open month, a month whose paid note was taken
+  back, open or partly paid cash, a cash order whose stop was never ticked off on a released
+  tour), whatever its age, and an order that shares a stop with something unpaid. Paid notes that
+  were taken back and the correction lines of unpaid months stay with them. Customers, products, users,
   settings, standing tours, standing orders, customer photos and parking spots are never touched.
 - **Default is `ORDER_RETENTION_MODE=dry-run`**: the job only counts and logs
   `[order-retention] {...}`. Set `ORDER_RETENTION_MODE=delete` to delete (`off` does nothing).

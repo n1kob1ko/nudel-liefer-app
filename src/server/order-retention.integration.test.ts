@@ -118,12 +118,15 @@ describe.skipIf(!process.env.DATABASE_URL)(
         })
       ).id;
 
-    const tour = async (date: string) =>
+    const tour = async (
+      date: string,
+      status: "DRAFT" | "RELEASED" | "IN_PROGRESS" | "COMPLETED" = "COMPLETED",
+    ) =>
       (
         await db().tour.create({
           data: {
             date: day(date),
-            status: "COMPLETED",
+            status,
             driverId,
             depotSnapshot: { name: "Depot", address: "x", lat: 48.2, lng: 16.3 },
           },
@@ -132,7 +135,7 @@ describe.skipIf(!process.env.DATABASE_URL)(
 
     type StopOptions = {
       status?: "PENDING" | "DELIVERED" | "PROBLEM";
-      completedAt?: Date;
+      completedAt?: Date | null;
       collectedCents?: number | null;
       collectedAt?: Date;
     };
@@ -150,7 +153,7 @@ describe.skipIf(!process.env.DATABASE_URL)(
             customerId,
             sequence: ++sequence,
             status: options.status ?? "DELIVERED",
-            completedAt: options.completedAt ?? ago(60),
+            completedAt: "completedAt" in options ? options.completedAt : ago(60),
             collectedCents: options.collectedCents,
             collectedAt: options.collectedAt,
             collectedById: options.collectedCents == null ? undefined : driverId,
@@ -354,6 +357,60 @@ describe.skipIf(!process.env.DATABASE_URL)(
         expect(await left()).toEqual(NOTHING);
       });
 
+      it("deletes a delivery where the driver collected more than was due", async () => {
+        const o = await order(c1, AUGUST, cash);
+        await stop(await tour(AUGUST), c1, [o], { collectedCents: 3000, collectedAt: ago(31) });
+
+        await run();
+
+        expect(await left()).toEqual(NOTHING);
+      });
+
+      it("keeps a cash order whose stop the driver never ticked off: nobody knows whether it is paid", async () => {
+        const o = await order(c1, "2024-03-05", cash);
+        await stop(await tour("2024-03-05", "IN_PROGRESS"), c1, [o], {
+          status: "PENDING",
+          completedAt: null,
+        });
+
+        await run();
+
+        expect(await left()).toMatchObject({ orders: 1, stops: 1, tours: 1 });
+      });
+
+      it("deletes a cash order whose untouched stop sits on a tour that never left the office", async () => {
+        const o = await order(c1, AUGUST, cash);
+        await stop(await tour(AUGUST, "DRAFT"), c1, [o], { status: "PENDING", completedAt: null });
+
+        await run();
+
+        expect(await left()).toEqual(NOTHING);
+      });
+
+      it("keeps a delivered cash order when nobody recorded when it was delivered or paid", async () => {
+        const o = await order(c1, AUGUST, cash);
+        await stop(await tour(AUGUST), c1, [o], { completedAt: null, collectedCents: 2500 });
+
+        await run();
+
+        expect(await left()).toMatchObject({ orders: 1, stops: 1, tours: 1 });
+      });
+
+      it("keeps a failed delivery and its second try together until the second try is paid long enough", async () => {
+        const o = await order(c1, AUGUST, cash);
+        await stop(await tour(AUGUST), c1, [o], { status: "PROBLEM" });
+        await stop(await tour("2026-08-12"), c1, [o], {
+          collectedCents: 2500,
+          collectedAt: ago(10),
+        });
+
+        await run();
+        expect(await left()).toMatchObject({ orders: 1, stops: 2, tours: 2 });
+
+        await run({ now: new Date(NOW.getTime() + 25 * DAY) });
+        expect(await left()).toEqual(NOTHING);
+      });
+
       it("deletes a cash order that was never delivered 30 days after its delivery day", async () => {
         const never = await order(c1, AUGUST, cash);
         const problem = await order(c2, AUGUST, cash);
@@ -473,6 +530,40 @@ describe.skipIf(!process.env.DATABASE_URL)(
     describe("what always stays", () => {
       it("leaves customers, products, users and the change log alone", async () => {
         const o = await order(c1, AUGUST);
+        // Things the office set up once: a standing order (the deleted order came from it), a
+        // standing tour, a vehicle and the settings.
+        const standing = await db().recurringOrder.create({
+          data: {
+            customerId: c1,
+            weekdays: [1],
+            anchorDate: day("2026-08-03"),
+            confirmedById: adminId,
+            items: { create: [{ productId, quantity: 2 }] },
+          },
+        });
+        await db().order.update({
+          where: { id: o },
+          data: { recurringOrderId: standing.id, recurringDate: day(AUGUST) },
+        });
+        await db().standingTour.create({
+          data: { name: "Route 1", customers: { create: [{ customerId: c1 }] } },
+        });
+        await db().vehicle.create({ data: { name: "Bus", capacityKg: 800 } });
+        await db().settings.upsert({
+          where: { id: 1 },
+          update: {},
+          create: { depotName: "Depot", depotAddress: "x", depotLat: 48.2, depotLng: 16.3 },
+        });
+        const setUp = async () => ({
+          standingOrders: await db().recurringOrder.count(),
+          standingOrderLines: await db().recurringOrderItem.count(),
+          standingTours: await db().standingTour.count(),
+          standingTourCustomers: await db().standingTourCustomer.count(),
+          vehicles: await db().vehicle.count(),
+          settings: await db().settings.count(),
+        });
+        const setUpBefore = await setUp();
+        expect(setUpBefore).toMatchObject({ standingOrders: 1, standingTours: 1, vehicles: 1 });
         await stop(await tour(AUGUST), c1, [o]);
         await paidNote(c1, ago(31));
         await db().auditLog.create({
@@ -500,6 +591,7 @@ describe.skipIf(!process.env.DATABASE_URL)(
           users: await db().user.count(),
           audit: await db().auditLog.count(),
         }).toEqual(before);
+        expect(await setUp()).toEqual(setUpBefore);
       });
     });
 

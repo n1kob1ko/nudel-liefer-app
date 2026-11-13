@@ -220,7 +220,18 @@ export async function updateProduct(
   if (!stored) return { ok: false, error: "not_found" };
   if (await skuTaken(db, v.sku, stored.id)) return { ok: false, error: "sku_taken" };
   if (v.unit !== stored.unit) {
-    const used = await db.orderItem.count({ where: { productId: stored.id } });
+    // Orders and standing orders both mean "n of this unit". Standing orders count on their own:
+    // the orders of a product may all be deleted once they are paid (NUD-201).
+    const used = await db.product.count({
+      where: {
+        id: stored.id,
+        OR: [
+          { orderItems: { some: {} } },
+          { recurringOrderItems: { some: {} } },
+          { recurringDayItems: { some: {} } },
+        ],
+      },
+    });
     if (used > 0) return { ok: false, error: "unit_locked" };
   }
   try {
@@ -346,13 +357,18 @@ export async function getProduct(
   if (!id.success) return null;
   const row = await db.product.findUnique({
     where: { id: id.data },
-    include: { _count: { select: { orderItems: true } } },
+    include: {
+      _count: {
+        select: { orderItems: true, recurringOrderItems: true, recurringDayItems: true },
+      },
+    },
   });
   if (!row) return null;
   return {
     id: row.id,
     active: row.active,
-    unitLocked: row._count.orderItems > 0,
+    unitLocked:
+      row._count.orderItems + row._count.recurringOrderItems + row._count.recurringDayItems > 0,
     ...toFormValues(row),
   };
 }

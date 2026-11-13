@@ -3936,13 +3936,14 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 
 **Acceptance criteria**
 - [x] Monatsrechnung: 30 Tage nachdem das Büro den Monat als bezahlt markiert hat, gehen die Bestellungen des Monats, ihre Stopps, der Bezahlt-Vermerk und die Korrekturzeilen des Monats. Ein offener oder zurückgenommener Monat bleibt.
-- [x] Bar bei Lieferung: 30 Tage nachdem der Fahrer den vollen Betrag kassiert hat. Offene oder nur zum Teil bezahlte Barbeträge bleiben. Eine gelieferte Barbestellung ohne Betrag zählt ab der Lieferung.
-- [x] Stornierte Bestellungen, Entwürfe und Barbestellungen, die nie geliefert wurden: 30 Tage nach dem Liefertag.
+- [x] Bar bei Lieferung: 30 Tage nachdem der Fahrer den vollen Betrag kassiert hat. Offene oder nur zum Teil bezahlte Barbeträge bleiben. Eine gelieferte Barbestellung ohne Betrag zählt ab der Lieferung. Hat der Fahrer den Stopp einer freigegebenen Tour nie abgehakt und es ist dort Geld fällig, bleibt die Bestellung (niemand weiß, ob bezahlt wurde).
+- [x] Stornierte Bestellungen, Entwürfe und Barbestellungen, die nie geliefert wurden (keine Tour, Tour nie freigegeben oder Problem gemeldet): 30 Tage nach dem Liefertag.
 - [x] Eine Bestellung und ihr Stopp gehen nur zusammen: liegt an einem Stopp noch etwas Unbezahltes, bleiben der Stopp und alle seine Bestellungen. Eine Tour verliert ihre bezahlten Stopps einzeln und verschwindet, wenn kein Stopp mehr übrig ist.
 - [x] Screenshots, die zu keiner Bestellung mehr gehören, werden mit gelöscht (Datei und Zeile).
 - [x] Nie angefasst: Kunden, Produkte, Benutzer, Einstellungen, Stammtouren, Daueraufträge, Kundenfotos, Parkplätze, das Änderungsprotokoll.
-- [x] Schalter `ORDER_RETENTION_MODE` (`dry-run` als Standard: zählt nur; `delete`; `off`) und `ORDER_RETENTION_DAYS` (Standard 30, 7 bis 3650). Ohne ausdrückliches `delete` wird nichts gelöscht.
+- [x] Schalter `ORDER_RETENTION_MODE` (`dry-run` als Standard: zählt nur; `delete`; `off`) und `ORDER_RETENTION_DAYS` (Standard 30, 7 bis 3650). Ohne ausdrückliches `delete` wird nichts gelöscht. Ein gesetzter, aber unbrauchbarer Wert (`60d`, `4000`) fällt nicht auf 30 zurück: der Lauf verweigert.
 - [x] Route `GET /api/cron/order-retention` (Bearer `CRON_SECRET`), täglich 03:57 UTC; Zeile in der Autorisierungs-Matrix.
+- [x] Daueraufträge mit „nach N Lieferungen" zählen ihre erzeugten Bestellungen selbst (`RecurringOrder.generatedCount`), damit gelöschte Bestellungen das Kontingent nicht zurückgeben. Die Einheit eines Produkts bleibt gesperrt, solange ein Dauerauftrag es benutzt.
 - [x] Die Monatsseite und die Bezahlt-Historie sagen, ab wann gelöscht wird, aber nur wenn das Löschen eingeschaltet ist. Texte in `de`, `en`, `zh-Hans`.
 
 **Implementation notes**
@@ -3950,12 +3951,14 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 - Ablauf je Lauf: Stapel von 200 Bestellungen (höchstens 25 je Lauf, der Rest am nächsten Tag), jeder Stapel in einer Transaktion. Vor dem Löschen werden Stopps, Bestellungen und Bezahlt-Vermerke gesperrt und die Auswahl noch einmal getroffen; nimmt das Büro in dem Moment einen Vermerk zurück, löscht der Stapel nichts. Danach: alte Stopps ohne Bestellung, alte Touren ohne Stopp, Bezahlt-Vermerke und Korrekturen von Monaten ohne Bestellung, dann die Screenshots.
 - Ein Bezahlt-Vermerk bleibt, solange eine Bestellung seines Monats noch warten muss (sie teilt sich einen Stopp mit etwas Unbezahltem); ohne den Vermerk sähe sie wieder offen aus.
 - Zeiten werden in UTC verglichen, der Liefertag in der Zeitzone der Fabrik (`Settings.timezone`).
-- Keine Migration, keine neue Abhängigkeit. Neue Umgebungsvariablen: `ORDER_RETENTION_DAYS`, `ORDER_RETENTION_MODE` (`.env.example`, `docs/env.md`).
+- Migration `20261113100000_recurring_generated_count` (neue Spalte, gefüllt mit der heutigen Zahl der Bestellungen je Dauerauftrag). Keine neue Abhängigkeit. Neue Umgebungsvariablen: `ORDER_RETENTION_DAYS`, `ORDER_RETENTION_MODE` (`.env.example`, `docs/env.md`).
 - Der Lauf schreibt keinen Eintrag ins Änderungsprotokoll (Systemlauf ohne Benutzer, Ausnahme in `audit-coverage.test.ts` begründet); die Zahlen stehen in der Antwort und in einer Logzeile `[order-retention]`.
 - Folgen, die man kennen muss: Auslastung, Bezahlt-Historie und Export zeigen nur noch, was nicht gelöscht ist. Das Änderungsprotokoll behält seine Einträge zu gelöschten Bestellungen bis zu seiner eigenen Frist (`AUDIT_RETENTION_DAYS`, Standard 730 Tage, mindestens 90).
+- Zwei Läufe gleichzeitig (Cron und Aufruf von Hand) arbeiten ihre Stapel abwechselnd ab (`pg_advisory_xact_lock`).
+- Aus der Code-Durchsicht: Dauerauftrags-Kontingent und Einheiten-Sperre (oben), strengere Bar-Regel für nie abgehakte Stopps, kein stiller Rückfall auf 30 Tage bei einem Tippfehler, eine Lieferung ohne jede Zeitangabe gilt nie als alt genug.
 - Der zuerst gebaute Ansatz (Archiv mit eigenem Zugriff) ist verworfen und nicht im Repository.
 - Doku: `docs/audit-and-retention.md` (Regeln), `docs/privacy.md` Abschnitt 6, `docs/runbook.md` Abschnitt 10 (Einschalten), `docs/deploy.md` (Cron-Zeile), `AGENTS.md`, Hilfeseite (`content/hand-off`).
-- Tests: `order-retention.test.ts` in `src/domain` (Auswahlregel) und `src/server` (Schalter, Route), `order-retention.integration.test.ts` (30 Fälle auf echter Datenbank), `deletion-notice.test.tsx`.
+- Tests: `order-retention.test.ts` in `src/domain` (Auswahlregel) und `src/server` (Schalter, Route), `order-retention.integration.test.ts` (35 Fälle auf echter Datenbank), `recurring-order-patterns.integration.test.ts` (Kontingent nach dem Löschen), `product-actions.integration.test.ts` (Einheiten-Sperre), `deletion-notice.test.tsx`.
 
 ## 9. Decision log (append-only, one line per decision taken during implementation)
 
@@ -4420,6 +4423,9 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 | 2026-11-13 | NUD-201 | Stornierte Bestellungen, Entwürfe und nie gelieferte Barbestellungen gehen 30 Tage nach dem Liefertag | Für sie ist nichts zu bezahlen; ohne eigene Regel blieben sie für immer liegen |
 | 2026-11-13 | NUD-201 | Bestellung und Stopp gehen nur zusammen; eine Tour verschwindet erst mit ihrem letzten Stopp | Ein unbezahlter Auftrag braucht seinen Stopp (Lieferstatus, kassierter Betrag). Halbe Stopps darf es nicht geben; dass eine alte Tour dabei Stopps verliert, nimmt die Entscheidung des Kunden in Kauf |
 | 2026-11-13 | NUD-201 | Standard ist `dry-run`; gelöscht wird erst nach `ORDER_RETENTION_MODE=delete` auf dem Server | Löschen lässt sich nicht zurücknehmen. Ein Deploy darf nicht von selbst damit anfangen; der Betreiber liest erst die Zählungen |
+| 2026-11-13 | NUD-201 | Eine Barbestellung, deren Stopp auf einer freigegebenen Tour nie abgehakt wurde, bleibt, solange dort Geld fällig ist | Der Zustand ist unbekannt, nicht „nichts offen". Löschen ist endgültig, also im Zweifel behalten; das Büro lässt den Stopp abschließen oder storniert die Bestellung |
+| 2026-11-13 | NUD-201 | Ein unbrauchbarer Wert in `ORDER_RETENTION_DAYS` stoppt den Lauf, statt auf 30 zurückzufallen | Bei den anderen Aufräum-Jobs ist der Rückfall die vorsichtige Richtung, hier wäre er die kürzeste Frist |
+| 2026-11-13 | NUD-201 | `maxDeliveries` eines Dauerauftrags wird gegen einen eigenen Zähler geprüft, nicht gegen die vorhandenen Bestellungen | Gelöschte Bestellungen hätten einem aufgebrauchten Dauerauftrag sein Kontingent zurückgegeben; der Kunde bekäme Lieferungen, die er nicht bestellt hat |
 | 2026-11-13 | NUD-201 | Das Änderungsprotokoll wird nicht mitgelöscht | Es ist append-only (Trigger) und hat seine eigene Frist (NUD-111). Wer die Spuren früher loswerden will, senkt `AUDIT_RETENTION_DAYS` (mindestens 90) |
 
 ## 10. Open questions for the client (do not block on these – use placeholders)

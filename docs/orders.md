@@ -179,7 +179,7 @@ sums without a product name next to them use `driver.unitsTotal` ("3 Stück").
   `0..n-1`, which also repairs ties; no-op at the ends.
 - Reads: `listProducts` (all, in `sortOrder`), `getActiveProducts` (active only, the picker
   of NUD-030), `getProduct` (detail for the form plus `unitLocked` from the order-items
-  count). Corrupt name JSON falls back to the `sku` so the list never crashes.
+  and standing-order-items counts). Corrupt name JSON falls back to the `sku` so the list never crashes.
 
 `product-actions.ts` wraps the writes, `product-queries.ts` the reads. Both check
 `requireRole("ADMIN")` first.
@@ -196,4 +196,5 @@ sums without a product name next to them use `driver.unitsTotal` ("3 Stück").
 - Delivery dates must be today or later; overview totals and late-order maths count
   `CONFIRMED` orders only.
 - Quantities are aggregated as whole numbers and never summed across units; a product's
-  unit is locked once the product appears on an order.
+  unit is locked once the product appears on an order or a standing order (orders are
+  deleted after they were paid, NUD-201; the standing order keeps the lock).
