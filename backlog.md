@@ -366,6 +366,7 @@ Read rule: `pick(text, locale)` returns the requested locale; if empty, the clos
 | NUD-205 | The driver sees the tours released for the coming days | M2.8 | 051 | done |
 | NUD-206 | Delete a user account for good (not only deactivate) | M2.8 | 008 | done |
 | NUD-207 | Order photos and translations are read by the Claude API instead of OpenRouter | M2.8 | 150 | in-progress |
+| NUD-208 | Findings of a simulated three-day run (toasts, cash on the quick "Geliefert", offline chip, release text) | M2.8 | 196 | done |
 | NUD-100 | AI screenshot extraction (review required) | M3 | 031 | superseded → NUD-150 |
 | NUD-101 | Recurring / standing orders | M3 | 032 | superseded → NUD-149 |
 | NUD-102 | Multiple drivers / tours per day | M3 | 043 | superseded → NUD-147 |
@@ -4102,6 +4103,22 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 - `src/server/claude/client.ts` (`ClaudeClient.complete`, error mapping, one log line per failed request without prompt, photo or key), `src/server/order-extractor/claude.ts`, `src/server/translator/claude.ts`. Removed: `src/server/openrouter/`, both `openrouter.ts` providers, the six `OPENROUTER_*` variables.
 - Variables: `ANTHROPIC_API_KEY`, optional `ANTHROPIC_MODEL` (default `claude-opus-5-5`) and `ANTHROPIC_EFFORT` (default `low`). Railway had no OpenRouter key, so nothing has to be removed there.
 - Tests: `src/server/order-extractor.test.ts` (request shape, headers, every error path, provider selection).
+#### NUD-208 · Findings of a simulated three-day run
+**Status:** done · **depends_on:** 196 · Source: owner 2026-11-13 ("simuliere jetzt ... einige tage mit vielen bestellungen und 2-3 fahrern. teste es aus und schau ob probleme auftreten").
+
+**Goal:** Three delivery days were played through on a local copy with invented data (20 customers, 20 to 21 orders a day, up to 1,260 kg, three drivers and vehicles, standing tours, a driver who drops out, offline taps, cash, monthly bills, the retention job). What broke in daily use is fixed here; the questions for the owner are listed below.
+
+**Acceptance criteria**
+- [x] Toasts have a background again. `--normal-bg` pointed at `var(--popover)`, a bare HSL triple ("0 0% 100%"), so every toast in both apps was see-through and its text ran over the page.
+- [x] The driver's toasts sit at the top below the header. At the bottom, the "Rückgängig" of a quick "Geliefert" lay exactly over the next card's "Geliefert" for 10 s: a second quick tap undid the stop just delivered. The office's toasts moved from top-right (over the title-row buttons and the date arrows of "Touren") to bottom-right.
+- [x] The next-stop card says when cash is to be collected, and a quick "Geliefert" on such a stop opens the stop screen with the "Kassiert" card. Before, a quick tap delivered the goods without ever showing the amount; the office saw every such stop as open cash and cannot close it itself.
+- [x] Taps waiting in a dead spot show the orange "waiting" chip with the count, not a red "Fehler" (a `network` flush failure is the normal offline case).
+- [x] The release dialog no longer says the tour cannot be changed afterwards: driver, vehicle and order can still be changed with "Bearbeiten" (D29).
+
+**Implementation notes (NUD-208)**
+- Checked and working: Tagesplanung for two days ahead, a second order of a customer merged into one stop, three tours released ahead and shown as "Kommende Touren", a driver swap on a released tour (the new driver sees both tours at once, the old one none), "Erneut freigeben" after a quantity change, photo upload offline, four offline messages resent once each with the tap time, monthly bills, paid marks, the retention job in delete mode (nine paid orders and three paid marks gone after 31 days, everything else and every screen intact). No page overflowed at 390 px or 1280 px.
+- The local copy ran with the system clock set forward (presigned photo URLs and Postgres need the same clock as the app). Google Maps was not used (heuristic routing, fake geocoder).
+- Open for the owner, not changed here: "Touren planen" fills the largest vehicle first and ignores the standing tours (19 stops for one driver, one for the next, none for the third; split by hand with "Bearbeiten"); a monthly bill counts an order whose stop ended as a problem (not delivered); the office has no way to settle open cash a driver did not record; a driver with two tours sees both timed from 07:00.
 
 ## 9. Decision log (append-only, one line per decision taken during implementation)
 

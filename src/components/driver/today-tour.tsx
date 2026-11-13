@@ -2,6 +2,7 @@
 
 import {
   AlertTriangleIcon,
+  BanknoteIcon,
   CheckIcon,
   ChevronRightIcon,
   ChevronUpIcon,
@@ -273,6 +274,23 @@ function NoteStrip({ text }: { text: string }) {
   );
 }
 
+/** Cash to collect at the next stop (D33): said on the card, because "Geliefert" is one tap here. */
+function CashStrip({ cents }: { cents: number }) {
+  const t = useTranslations("driver.payment");
+  const format = useFormatter();
+  return (
+    <p
+      className="flex items-center gap-2 rounded-md bg-info-soft px-3 py-2 text-base leading-tight font-semibold text-info-soft-foreground tabular-nums"
+      data-testid="next-stop-cash"
+    >
+      <BanknoteIcon className="size-5 shrink-0" aria-hidden />
+      <span className="min-w-0">
+        {t("due", { amount: format.number(cents / 100, { style: "currency", currency: "EUR" }) })}
+      </span>
+    </p>
+  );
+}
+
 function NextStopCard({
   stop,
   stops,
@@ -360,6 +378,9 @@ function NextStopCard({
         </div>
       ) : null}
       <ItemSummary items={stop.items} />
+      {(stop.cashDueCents ?? 0) > 0 && stop.collectedCents == null ? (
+        <CashStrip cents={stop.cashDueCents ?? 0} />
+      ) : null}
       {stop.noteText ? <NoteStrip text={stop.noteText} /> : null}
       {unseen ? <ChangeHighlight stop={stop} /> : null}
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-stretch gap-2">

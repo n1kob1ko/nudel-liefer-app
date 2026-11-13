@@ -42,9 +42,12 @@ function Toaster({
       }}
       style={
         {
-          "--normal-bg": "var(--popover)",
-          "--normal-text": "var(--popover-foreground)",
-          "--normal-border": "var(--border)",
+          // The theme tokens are bare HSL triples ("0 0% 100%"), not colours: `var(--popover)` here
+          // gave an invalid background, so every toast was see-through and its text ran over the
+          // buttons below it (the driver's "Rückgängig" sat on top of the next "Geliefert").
+          "--normal-bg": "var(--color-popover)",
+          "--normal-text": "var(--color-popover-foreground)",
+          "--normal-border": "var(--color-border)",
         } as React.CSSProperties
       }
       {...props}

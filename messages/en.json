@@ -1543,7 +1543,7 @@
       },
       "dialog": {
         "title": "Release the tour?",
-        "description": "The tour becomes visible to the driver. After that it can no longer be changed here.",
+        "description": "The tour becomes visible to the driver. Driver, vehicle and order can still be changed afterwards with “Edit”.",
         "stops": "Stops",
         "duration": "Total duration",
         "driver": "Driver",
