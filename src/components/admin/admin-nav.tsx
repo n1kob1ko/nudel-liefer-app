@@ -1,7 +1,11 @@
 "use client";
 
+import * as m from "motion/react-m";
 import { useTranslations } from "next-intl";
+import { useId } from "react";
 
+import { LayoutThumb } from "@/components/motion/layout-thumb";
+import { MotionProvider } from "@/components/motion/motion-provider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
@@ -12,6 +16,10 @@ import { ADMIN_NAV_GROUPS, isNavActive, navItem } from "./nav-items";
  * Sidebar navigation (re-design.md §8.1): grouped by Betrieb / Stammdaten / System, the current
  * section as a `primary-soft` pill. In the collapsed 72 px rail the group labels disappear and the
  * label moves into a tooltip; every row is a real link with `aria-current="page"` when active.
+ *
+ * Redesign RD2: the pill is one element that travels from the old section to the new one (motion
+ * rule 20, `LayoutThumb`) instead of vanishing here and appearing there, and an entry gives way a
+ * little while it is pressed (rule 4).
  */
 export function AdminNav({
   onNavigate,
@@ -30,7 +38,46 @@ export function AdminNav({
 }) {
   const t = useTranslations("admin");
   const pathname = usePathname();
+  const thumbId = useId();
 
+  return (
+    <MotionProvider>
+      {/* `layoutRoot`: the pill travels relative to the list, not to the page (the sidebar is
+          sticky, a scrolled page must not send it flying). */}
+      <m.div
+        layout
+        layoutRoot
+        transition={{ layout: { duration: 0 } }}
+        className="flex min-h-0 flex-col"
+      >
+        <NavList
+          t={t}
+          pathname={pathname}
+          thumbId={thumbId}
+          onNavigate={onNavigate}
+          collapsed={collapsed}
+          touch={touch}
+        />
+      </m.div>
+    </MotionProvider>
+  );
+}
+
+function NavList({
+  t,
+  pathname,
+  thumbId,
+  onNavigate,
+  collapsed,
+  touch,
+}: {
+  t: ReturnType<typeof useTranslations<"admin">>;
+  pathname: string;
+  thumbId: string;
+  onNavigate?: () => void;
+  collapsed: boolean;
+  touch: boolean;
+}) {
   return (
     <nav
       aria-label={t("shell.mainNavigation")}
@@ -62,16 +109,19 @@ export function AdminNav({
                   data-testid={`nav-${section}`}
                   className={cn(
                     // 48 px in the drawer (`touch`), the redesign's 40 px density in the desktop rail.
-                    "flex items-center gap-3 rounded-lg px-3 text-base outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card",
+                    "relative flex items-center gap-3 rounded-lg px-3 text-base outline-none transition-[background-color,color,transform] duration-[140ms] ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card active:scale-[.98]",
                     touch ? "min-h-12" : "h-10",
                     collapsed && "justify-center px-0",
                     active
-                      ? "bg-primary-soft font-semibold text-primary-soft-foreground"
-                      : "text-foreground",
+                      ? "font-semibold text-primary-soft-foreground"
+                      : "text-foreground hover:bg-muted",
                   )}
                 >
-                  <Icon className="size-5 shrink-0" aria-hidden />
-                  {collapsed ? null : <span className="truncate">{label}</span>}
+                  {active ? (
+                    <LayoutThumb layoutId={thumbId} className="rounded-lg bg-primary-soft" />
+                  ) : null}
+                  <Icon className="relative size-5 shrink-0" aria-hidden />
+                  {collapsed ? null : <span className="relative truncate">{label}</span>}
                 </Link>
               );
               return (

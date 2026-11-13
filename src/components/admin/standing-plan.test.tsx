@@ -152,7 +152,7 @@ describe("StandingPlan (NUD-194)", () => {
 
     expect(screen.getByText("Stammtour 1")).toBeInTheDocument();
     // One product column per table (the standing tour and the off-route list).
-    expect(screen.getAllByText("Nudeln (Sackerl)")).toHaveLength(2);
+    expect(screen.getAllByRole("columnheader", { name: /Nudeln \(Sackerl\)/ })).toHaveLength(2);
     expect(screen.getByText("Bistro Eins")).toBeInTheDocument();
     expect(screen.getByTestId("qty-c1-p-pack")).toHaveValue("2");
     expect(screen.getByTestId("qty-c1-p-crate")).toHaveValue("0");
@@ -261,5 +261,58 @@ describe("StandingPlan (NUD-194)", () => {
     fireEvent.click(option);
 
     await waitFor(() => expect(setStandingTourDriverAction).toHaveBeenCalledWith("r1", "u2"));
+  });
+  it("keeps a zero quiet and marks a field that holds a quantity", () => {
+    renderPlan();
+
+    expect(screen.getByTestId("qty-c1-p-pack")).toHaveAttribute("data-filled", "true");
+    expect(screen.getByTestId("qty-c1-p-crate")).toHaveAttribute("data-filled", "false");
+  });
+
+  it("moves down and up in the same column with Enter and the arrow keys", () => {
+    renderPlan();
+    const first = screen.getByTestId("qty-c1-p-crate");
+    const second = screen.getByTestId("qty-c2-p-crate");
+
+    first.focus();
+    fireEvent.keyDown(first, { key: "Enter" });
+    expect(second).toHaveFocus();
+    fireEvent.keyDown(second, { key: "ArrowUp" });
+    expect(first).toHaveFocus();
+    fireEvent.keyDown(first, { key: "ArrowDown" });
+    expect(second).toHaveFocus();
+    // The last row has nowhere to go: the focus stays where it is.
+    fireEvent.keyDown(second, { key: "ArrowDown" });
+    expect(second).toHaveFocus();
+  });
+
+  it("counts the customers whose quantities differ from the saved ones", () => {
+    renderPlan();
+    expect(screen.queryByTestId("planning-dirty")).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId("qty-c1-p-pack"), { target: { value: "5" } });
+    fireEvent.change(screen.getByTestId("qty-c1-p-crate"), { target: { value: "1" } });
+    expect(screen.getByTestId("planning-dirty")).toHaveTextContent("1 Kunde geändert");
+
+    fireEvent.change(screen.getByTestId("qty-c2-p-pack"), { target: { value: "3" } });
+    expect(screen.getByTestId("planning-dirty")).toHaveTextContent("2 Kunden geändert");
+
+    // Typing the saved quantity again is no change.
+    fireEvent.change(screen.getByTestId("qty-c2-p-pack"), { target: { value: "0" } });
+    fireEvent.change(screen.getByTestId("qty-c1-p-pack"), { target: { value: "2" } });
+    fireEvent.change(screen.getByTestId("qty-c1-p-crate"), { target: { value: "" } });
+    expect(screen.queryByTestId("planning-dirty")).not.toBeInTheDocument();
+  });
+
+  it("sums the whole day next to the save button, across every tour", () => {
+    renderPlan();
+    const total = screen.getByTestId("planning-day-total");
+    expect(total).toHaveTextContent("Nudeln (Sackerl) 2");
+    expect(total).toHaveTextContent("Nudeln (Kiste) 0");
+    expect(total).toHaveTextContent("6 kg");
+
+    fireEvent.change(screen.getByTestId("qty-c2-p-crate"), { target: { value: "2" } });
+    expect(total).toHaveTextContent("Nudeln (Kiste) 2");
+    expect(total).toHaveTextContent("26 kg");
   });
 });

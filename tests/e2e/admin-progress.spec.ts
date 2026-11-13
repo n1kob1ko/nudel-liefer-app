@@ -176,9 +176,11 @@ test("a stop the driver completes shows up on the dashboard and the tour page wi
   // Start: nothing done, first stop is next, no problems.
   const card = visible(dash, "today-card");
   await expect(card).toBeVisible();
-  await expect(visible(dash, "today-progress")).toContainText("0 von 3");
-  await expect(visible(dash, "today-next-name")).toHaveText(names[0]);
-  await expect(visible(dash, "today-problem-count")).toContainText("Keine Probleme");
+  // Redesign RD2: the overview has one lane per driver; this spec looks at the lane of its own tour.
+  const lane = dash.locator(`[data-testid="driver-lane"][data-tour-id="${tourId}"]`);
+  await expect(lane.getByTestId("lane-progress")).toContainText("0 von 3");
+  await expect(lane.getByTestId("lane-next-name")).toHaveText(names[0]);
+  await expect(lane.getByTestId("lane-problems")).toHaveCount(0);
   await expect(dash.locator('[data-testid="live-refresh"]')).toHaveAttribute(
     "data-interval-ms",
     String(POLL_MS),
@@ -206,7 +208,7 @@ test("a stop the driver completes shows up on the dashboard and the tour page wi
   const deliveredAt = Date.now();
 
   // Without any reload by the test, both admin pages catch up within the polling limit.
-  await expect(visible(dash, "today-progress")).toContainText("1 von 3", {
+  await expect(lane.getByTestId("lane-progress")).toContainText("1 von 3", {
     timeout: POLL_LIMIT_MS,
   });
   await expect(visible(tours, "tour-progress-text")).toContainText("1 von 3", {
@@ -218,8 +220,8 @@ test("a stop the driver completes shows up on the dashboard and the tour page wi
   );
   testInfo.annotations.push({ type: "poll-latency-ms", description: String(elapsed) });
 
-  await expect(visible(dash, "today-next-name")).toHaveText(names[1]);
-  await expect(dash.getByTestId("today-status")).toHaveText("Unterwegs");
+  await expect(lane.getByTestId("lane-next-name")).toHaveText(names[1]);
+  await expect(lane.getByTestId("lane-status")).toHaveText("Unterwegs");
   const row1 = tours.locator(`[data-stop-id="${stopIds[0]}"]`);
   await expect(row1.getByTestId("stop-status")).toHaveAttribute("data-status", "DELIVERED");
   await expect(row1.getByTestId("stop-completed-at")).toContainText(/Erledigt um \d{2}:\d{2}/);
@@ -246,15 +248,16 @@ test("a stop the driver completes shows up on the dashboard and the tour page wi
   await expect.poll(() => stopStatus(2)).toBe("DELIVERED");
   const finishedAt = Date.now();
 
-  await expect(visible(dash, "today-all-done")).toBeVisible({ timeout: POLL_LIMIT_MS });
+  await expect(lane.getByTestId("lane-all-done")).toBeVisible({ timeout: POLL_LIMIT_MS });
   await expect(visible(tours, "tour-progress-text")).toContainText("3 von 3", {
     timeout: POLL_LIMIT_MS,
   });
   expect(Date.now() - finishedAt).toBeLessThanOrEqual(POLL_LIMIT_MS);
-  await expect(visible(dash, "today-problem-count")).toContainText("1 Problem");
-  await expect(visible(dash, "today-problem")).toContainText(names[1]);
-  await expect(visible(dash, "today-problem")).toContainText("Kein Parkplatz");
-  await expect(dash.getByTestId("today-status")).toHaveText("Abgeschlossen");
+  await expect(lane.getByTestId("lane-problems")).toContainText("1 Problem");
+  // The problem is a red row above the lanes, with the customer and the reason.
+  const problem = dash.locator('[data-testid="day-problem"]', { hasText: names[1] });
+  await expect(problem).toContainText("Kein Parkplatz");
+  await expect(lane.getByTestId("lane-status")).toHaveText("Abgeschlossen");
   await expect(tours.getByTestId("tour-status")).toHaveText("Abgeschlossen");
 
   const row2 = tours.locator(`[data-stop-id="${stopIds[1]}"]`);

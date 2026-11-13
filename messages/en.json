@@ -167,32 +167,18 @@
       "today": {
         "title": "Today",
         "noTour": "There is no tour for today.",
-        "notReleased": "Today’s tour has not been released yet.",
         "progressLabel": "Progress of today’s tour",
         "progress": "{done} of {total} stops done",
-        "percent": "({percent} %)",
-        "counts": "{delivered} delivered · {open} open",
         "next": "Next stop",
         "eta": "Arrival approx. {time}",
         "allDone": "All stops are done.",
         "problemsHeading": "Problems",
-        "problems": "{count, plural, =0 {No problems} one {# problem} other {# problems}}",
-        "driver": "Driver: {name}",
-        "openTour": "View tour",
         "openPlanning": "Plan tour",
         "lateOrders": "{count, plural, one {# order for today arrived after the tour was completed and is in no tour.} other {# orders for today arrived after the tour was completed and are in no tour.}} Please create a follow-up tour.",
         "countsBreakdown": "{delivered} delivered · {problems, plural, =0 {no problems} one {# problem} other {# problems}} · {open} open"
       },
       "description": "Progress of today’s tour, what needs to be done and the latest changes.",
       "tiles": {
-        "title": "Key figures",
-        "delivered": "Delivered today",
-        "problems": "Problems",
-        "problemsSub": "reported today",
-        "tour": "Tour today",
-        "noTour": "not created",
-        "tourSub": "No tour is planned for today.",
-        "done": "Done today",
         "nextDay": "Next delivery day",
         "nextDaySub": "{date} · {drafts, plural, =0 {all confirmed} one {# draft open} other {# drafts open}}",
         "nextDayValue": "{count, plural, one {# order} other {# orders}}"
@@ -227,14 +213,45 @@
         "orders": "Orders",
         "bar": "{day}: {count, plural, one {# order} other {# orders}}"
       },
-      "gauge": {
-        "title": "Tour progress",
-        "summary": "{done} of {total} stops done: {delivered} delivered, {problems, plural, one {# problem} other {# problems}}, {open} open",
-        "center": "{done} of {total} done",
-        "delivered": "{count} delivered",
-        "problems": "{count, plural, one {# problem} other {# problems}}",
-        "open": "{count} open",
-        "empty": "Progress appears here once the tour is released."
+      "board": {
+        "kpiTitle": "The day at a glance",
+        "stops": "Stops done",
+        "stopsValue": "{done} of {total}",
+        "stopsNone": "nothing released yet",
+        "drivers": "Drivers on the road",
+        "driversValue": "{onRoad} of {tours}",
+        "driversSub": "{tours, plural, =0 {no tour today} one {# tour today} other {# tours today}}",
+        "problems": "Problems",
+        "problemsNone": "all fine",
+        "problemsSome": "reported today",
+        "back": "Last driver back",
+        "backValue": "about {time}",
+        "backSub": "according to the tour plan",
+        "backNone": "nobody on the road",
+        "lanesTitle": "Drivers today",
+        "phase": {
+          "planning": "Being planned",
+          "waiting": "Not left yet",
+          "onRoad": "On the road"
+        },
+        "tourNumber": "Tour {number}",
+        "noDriver": "No driver assigned",
+        "progress": "{done} of {total}",
+        "finish": "Ends about {time}",
+        "finished": "all stops done",
+        "notHanded": "not released yet",
+        "problemChip": "{count, plural, one {# problem} other {# problems}}",
+        "onTime": "on time",
+        "late": "{minutes} min late",
+        "last": "Last: {name}, {time}",
+        "lastNone": "No stop ticked off yet",
+        "openTour": "Open tour {number}",
+        "problemAt": "at {name}",
+        "reported": "reported {time}",
+        "view": "View",
+        "mapTitle": "Where are the drivers?",
+        "mapHint": "last stop ticked off",
+        "mapEmpty": "A driver appears here as soon as a stop is ticked off."
       }
     },
     "shell": {
@@ -246,7 +263,19 @@
       "collapseSidebar": "Collapse sidebar",
       "expandSidebar": "Expand sidebar",
       "more": "More",
-      "bottomNavigation": "Quick navigation"
+      "bottomNavigation": "Quick navigation",
+      "command": {
+        "open": "Search and jump",
+        "shortcut": "Ctrl K",
+        "title": "Command menu",
+        "description": "Search for a page or an action and open it with Enter.",
+        "placeholder": "Search for a page or an action …",
+        "empty": "Nothing found.",
+        "create": "Create",
+        "pages": "Pages",
+        "newOrder": "New order",
+        "newCustomer": "New customer"
+      }
     },
     "nav": {
       "dashboard": "Overview",
@@ -268,12 +297,15 @@
     },
     "planning": {
       "title": "Daily planning",
-      "description": "The standing tours for one delivery day: the same customers as always, quantities adjusted right here, or a customer added for this day only.",
+      "day": "Delivery day {date}",
       "save": "Save quantities",
       "saving": "Saving …",
       "saved": "{count, plural, one {# order saved.} other {# orders saved.}}",
       "savedMerged": "{count, plural, one {# duplicate order merged.} other {# duplicate orders merged.}}",
       "savedNothing": "No change: nothing was saved.",
+      "dayTotal": "Day total",
+      "dayWeight": "{weight} kg",
+      "dirty": "{count, plural, one {# customer changed} other {# customers changed}}",
       "readOnly": {
         "released": {
           "title": "Tours of this day are released",
@@ -466,7 +498,6 @@
     },
     "customers": {
       "title": "Customers",
-      "description": "Search the customer list. The search ignores case and accents.",
       "new": "New customer",
       "backToList": "Back to the customer list",
       "search": {
@@ -1503,7 +1534,8 @@
           "late": "Window {from}–{to} missed: arrival too late",
           "early": "Window {from}–{to}: arrival too early",
           "conflict": "The windows of the orders do not fit together ({from}–{to})"
-        }
+        },
+        "missingCount": "{count} missing"
       },
       "dialog": {
         "title": "Release the tour?",
@@ -1661,7 +1693,7 @@
         "stops": "{count, plural, one {# stop} other {# stops}}",
         "tour": "Tour {number}",
         "withDriver": "Tour {number} · {driver}",
-        "add": "+ Tour",
+        "add": "New tour",
         "added": "Empty tour created."
       },
       "edit": {

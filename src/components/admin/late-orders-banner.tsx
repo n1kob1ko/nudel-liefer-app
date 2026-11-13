@@ -218,8 +218,12 @@ export function TourTabs({ plan }: { plan: TourPlan }) {
                 data-tour-id={tab.id}
                 data-status={tab.status}
                 className={
-                  "inline-flex min-h-10 items-center gap-2 rounded-md border px-3 py-2 text-base font-medium " +
-                  (current ? "border-primary bg-primary text-primary-foreground" : "bg-background")
+                  // The selected tour is pale yolk (a selection), not a filled yolk button: the one
+                  // yolk button of the page is the tour's next step below (redesign RD2).
+                  "inline-flex min-h-10 items-center gap-2 rounded-md border px-3 py-2 text-base outline-none transition-[background-color,border-color,transform] duration-[140ms] ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[.98] " +
+                  (current
+                    ? "border-foreground/25 bg-primary-soft font-semibold text-primary-soft-foreground"
+                    : "border-border bg-card font-medium hover:bg-muted")
                 }
               >
                 {tab.driverName

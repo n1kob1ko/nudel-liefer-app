@@ -197,7 +197,7 @@ async function Guarded({
                       <TableCell className="tabular-nums">
                         <Link
                           href={`/admin/orders/${order.id}`}
-                          className="underline underline-offset-4"
+                          className="link"
                         >
                           {fmt.calendarDate(new Date(`${order.date}T00:00:00Z`))}
                         </Link>

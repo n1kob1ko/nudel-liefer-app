@@ -167,32 +167,18 @@
       "today": {
         "title": "今天",
         "noTour": "今天没有行程。",
-        "notReleased": "今天的行程还没有发布。",
         "progressLabel": "今日行程进度",
         "progress": "已完成 {done} / {total} 个站点",
-        "percent": "（{percent}%）",
-        "counts": "已送达 {delivered} · 未完成 {open}",
         "next": "下一站",
         "eta": "预计 {time} 到达",
         "allDone": "所有站点都已完成。",
         "problemsHeading": "问题",
-        "problems": "{count, plural, =0 {没有问题} other {# 个问题}}",
-        "driver": "司机：{name}",
-        "openTour": "查看行程",
         "openPlanning": "规划行程",
         "lateOrders": "{count, plural, other {今天有 # 个订单}}是在配送线路完成之后才收到的，不在任何配送线路中。请创建补充线路。",
         "countsBreakdown": "已送达 {delivered} · {problems, plural, =0 {无问题} other {# 个问题}} · 待处理 {open}"
       },
       "description": "今日路线的进度、待处理事项和最近的变更。",
       "tiles": {
-        "title": "关键指标",
-        "delivered": "今日已送达",
-        "problems": "问题",
-        "problemsSub": "今日上报",
-        "tour": "今日路线",
-        "noTour": "未创建",
-        "tourSub": "今天尚未安排路线。",
-        "done": "今日已完成",
         "nextDay": "下一个配送日",
         "nextDaySub": "{date} · {drafts, plural, =0 {全部已确认} other {# 个草稿待确认}}",
         "nextDayValue": "{count, plural, other {# 个订单}}"
@@ -227,14 +213,45 @@
         "orders": "订单",
         "bar": "{day}：{count, plural, other {# 个订单}}"
       },
-      "gauge": {
-        "title": "路线进度",
-        "summary": "{total} 个站点中已完成 {done} 个：{delivered} 个已送达，{problems, plural, other {# 个问题}}，{open} 个未完成",
-        "center": "已完成 {done}/{total}",
-        "delivered": "{count} 个已送达",
-        "problems": "{count, plural, other {# 个问题}}",
-        "open": "{count} 个未完成",
-        "empty": "路线发布后，这里会显示进度。"
+      "board": {
+        "kpiTitle": "今日概览",
+        "stops": "已完成站点",
+        "stopsValue": "{done} / {total}",
+        "stopsNone": "尚未发布路线",
+        "drivers": "在途司机",
+        "driversValue": "{onRoad} / {tours}",
+        "driversSub": "{tours, plural, =0 {今天没有路线} other {今天 # 条路线}}",
+        "problems": "问题",
+        "problemsNone": "一切正常",
+        "problemsSome": "今日上报",
+        "back": "最后一位司机返回",
+        "backValue": "约 {time}",
+        "backSub": "按路线计划",
+        "backNone": "没有司机在途",
+        "lanesTitle": "今日司机",
+        "phase": {
+          "planning": "规划中",
+          "waiting": "尚未出发",
+          "onRoad": "在途"
+        },
+        "tourNumber": "路线 {number}",
+        "noDriver": "未分配司机",
+        "progress": "{done} / {total}",
+        "finish": "预计 {time} 结束",
+        "finished": "所有站点已完成",
+        "notHanded": "尚未发布",
+        "problemChip": "{count, plural, other {# 个问题}}",
+        "onTime": "准时",
+        "late": "晚 {minutes} 分钟",
+        "last": "上一站：{name}，{time}",
+        "lastNone": "尚未完成任何站点",
+        "openTour": "查看路线 {number}",
+        "problemAt": "{name}",
+        "reported": "{time} 上报",
+        "view": "查看",
+        "mapTitle": "司机在哪里？",
+        "mapHint": "最后完成的站点",
+        "mapEmpty": "司机完成第一个站点后会显示在这里。"
       }
     },
     "shell": {
@@ -246,7 +263,19 @@
       "collapseSidebar": "收起侧边栏",
       "expandSidebar": "展开侧边栏",
       "more": "更多",
-      "bottomNavigation": "快速导航"
+      "bottomNavigation": "快速导航",
+      "command": {
+        "open": "搜索并跳转",
+        "shortcut": "Ctrl K",
+        "title": "命令菜单",
+        "description": "搜索页面或操作，按回车键打开。",
+        "placeholder": "搜索页面或操作…",
+        "empty": "未找到任何内容。",
+        "create": "新建",
+        "pages": "页面",
+        "newOrder": "新建订单",
+        "newCustomer": "新建客户"
+      }
     },
     "nav": {
       "dashboard": "总览",
@@ -268,12 +297,15 @@
     },
     "planning": {
       "title": "每日规划",
-      "description": "某一天的固定线路：始终相同的客户，可在此直接调整数量，或仅为这一天添加客户。",
+      "day": "配送日 {date}",
       "save": "保存数量",
       "saving": "保存中…",
       "saved": "{count, plural, other {已保存 # 个订单。}}",
       "savedMerged": "{count, plural, other {已合并 # 个重复订单。}}",
       "savedNothing": "没有变化：未保存任何内容。",
+      "dayTotal": "当日合计",
+      "dayWeight": "{weight} kg",
+      "dirty": "已修改 {count} 位客户",
       "readOnly": {
         "released": {
           "title": "这一天的线路已发布",
@@ -466,7 +498,6 @@
     },
     "customers": {
       "title": "客户",
-      "description": "搜索客户资料。搜索不区分大小写和重音符号。",
       "new": "新增客户",
       "backToList": "返回客户列表",
       "search": {
@@ -1503,7 +1534,8 @@
           "late": "未赶上时间段 {from}–{to}：到达过晚",
           "early": "时间段 {from}–{to}：到达过早",
           "conflict": "订单的时间段互相冲突（{from}–{to}）"
-        }
+        },
+        "missingCount": "缺 {count} 项"
       },
       "dialog": {
         "title": "发布配送线路？",
@@ -1661,7 +1693,7 @@
         "stops": "{count, plural, other {# 个站点}}",
         "tour": "线路 {number}",
         "withDriver": "线路 {number} · {driver}",
-        "add": "+ 线路",
+        "add": "新线路",
         "added": "已创建空线路。"
       },
       "edit": {

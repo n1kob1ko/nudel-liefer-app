@@ -358,16 +358,18 @@ export function SettingsForm({
                 </select>
               </FormField>
 
-              <div className="flex flex-wrap gap-6">
+              {/* Two columns: each label and hint gets a full line instead of five short ones, the
+                  number fields stay as narrow as their values. */}
+              <div className="grid max-w-3xl gap-x-8 gap-y-5 sm:grid-cols-2">
                 <FormField
                   label={t("planning.departureTime")}
                   htmlFor="departure"
                   required
-                  className="w-44"
                 >
                   <Input
                     id="departure"
                     type="time"
+                    className="w-36"
                     value={departure}
                     onChange={(e) => setDeparture(e.target.value)}
                     required
@@ -377,12 +379,12 @@ export function SettingsForm({
                   label={t("planning.serviceMinutes")}
                   htmlFor="service-minutes"
                   required
-                  className="w-44"
                   description={t("planning.serviceMinutesHint")}
                 >
                   <Input
                     id="service-minutes"
                     type="number"
+                    className="w-28"
                     inputMode="numeric"
                     min={0}
                     max={180}
@@ -396,12 +398,12 @@ export function SettingsForm({
                   label={t("planning.recurringLeadDays")}
                   htmlFor="recurring-lead-days"
                   required
-                  className="w-44"
                   description={t("planning.recurringLeadDaysHint")}
                 >
                   <Input
                     id="recurring-lead-days"
                     type="number"
+                    className="w-28"
                     inputMode="numeric"
                     min={1}
                     max={60}
@@ -416,12 +418,12 @@ export function SettingsForm({
                   label={t("planning.defaultLoadingMinutes")}
                   htmlFor="default-loading-minutes"
                   required
-                  className="w-44"
                   description={t("planning.defaultLoadingMinutesHint")}
                 >
                   <Input
                     id="default-loading-minutes"
                     type="number"
+                    className="w-28"
                     inputMode="numeric"
                     min={0}
                     max={180}

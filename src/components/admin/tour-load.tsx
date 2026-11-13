@@ -49,8 +49,9 @@ export function TourLoad({
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 rounded-lg border px-4 py-3",
-        over ? "border-destructive bg-destructive/5" : "border-border bg-card",
+        // A cell of the tour summary (redesign RD2): no frame of its own.
+        "flex h-full flex-col gap-2 px-4 py-3",
+        over && "bg-destructive/5",
       )}
       data-testid="tour-load"
       data-state={state.status}
@@ -64,7 +65,7 @@ export function TourLoad({
           </span>
         ) : (
           <>
-            <span className="text-lg font-semibold tabular-nums" data-testid="tour-load-text">
+            <span className="text-base font-semibold tabular-nums" data-testid="tour-load-text">
               {trips
                 ? t("tripsTotal", { load: kg(loadKg), count: trips.length })
                 : t("value", { load: kg(loadKg), capacity: kg(state.capacityKg ?? 0) })}

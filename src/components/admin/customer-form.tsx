@@ -439,7 +439,7 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
             />
             <div className="pointer-events-none absolute top-3 right-3 left-14 z-[800] flex flex-col gap-2">
               <div className="pointer-events-auto flex w-full max-w-md flex-col gap-2">
-                <div className="flex flex-col gap-2 rounded-lg border bg-card/95 p-2 shadow-md backdrop-blur sm:flex-row sm:items-end">
+                <div className="flex flex-col gap-2 rounded-lg border bg-card p-2 shadow-md sm:flex-row sm:items-end">
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <label htmlFor="cust-pin-search" className="sr-only">
                       {t("pinSearchLabel")}
@@ -467,7 +467,7 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
                   </Button>
                 </div>
                 <p
-                  className="rounded-md bg-card/95 px-2 py-1 text-sm text-muted-foreground backdrop-blur empty:hidden"
+                  className="rounded-md bg-card px-2 py-1 text-sm text-muted-foreground empty:hidden"
                   role="status"
                   data-testid="find-message"
                 >
@@ -475,7 +475,7 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
                 </p>
                 {search.state === "results" ? (
                   <div
-                    className="flex max-h-56 flex-col gap-1 overflow-y-auto rounded-lg border bg-card/95 p-2 shadow-md backdrop-blur"
+                    className="flex max-h-56 flex-col gap-1 overflow-y-auto rounded-lg border bg-card p-2 shadow-md"
                     data-testid="candidates"
                   >
                     <h3 className="text-sm font-medium">{t("candidatesHeading")}</h3>

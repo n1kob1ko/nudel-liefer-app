@@ -299,9 +299,11 @@ for (const { locale, username } of DRIVER_LOCALES) {
 
     // ---------------------------------------------------------------- admin sees the status
     await admin.goto("/de/admin");
-    await expect(visible(admin, "today-progress")).toContainText("1 von 1");
-    await expect(admin.getByTestId("today-status")).toHaveText("Abgeschlossen");
-    await expect(visible(admin, "today-all-done")).toBeVisible();
+    // Redesign RD2: one lane per driver on the overview.
+    const lane = admin.locator('[data-testid="driver-lane"]', { hasText: driverRow!.displayName });
+    await expect(lane.getByTestId("lane-progress")).toContainText("1 von 1");
+    await expect(lane.getByTestId("lane-status")).toHaveText("Abgeschlossen");
+    await expect(lane.getByTestId("lane-all-done")).toBeVisible();
     await admin.goto(`/de/admin/tours?date=${today}`);
     await expect(visible(admin, "tour-status")).toHaveText("Abgeschlossen");
     await expect(visible(admin, "tour-progress-text")).toContainText("1 von 1");

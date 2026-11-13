@@ -60,30 +60,28 @@ async function Guarded({ locale }: { locale: string }) {
     <div className="flex flex-col gap-6">
       <PageHeader title={t("title")} description={t("description")} titleTestId="payments-title" />
 
-      <section className="grid gap-3 sm:grid-cols-2" aria-label={t("summary")}>
-        <Card>
-          <CardHeader>
-            <CardDescription>{t("cash.openTotal", { count: cash.length })}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold tabular-nums" data-testid="cash-open-total">
-              {fmt.amount(cashTotal)}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription>
-              {t("monthly.openTotal", { count: openMonthly.length })}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold tabular-nums" data-testid="monthly-open-total">
-              {fmt.amount(monthlyTotal)}
-            </p>
-          </CardContent>
-        </Card>
-      </section>
+      {/* One strip with a hairline between the two sums, like the figures of the overview. */}
+      <dl
+        className="grid gap-px overflow-hidden rounded-xl border border-border bg-border shadow-xs sm:grid-cols-2"
+        aria-label={t("summary")}
+      >
+        <div className="flex flex-col gap-1 bg-card px-5 py-4">
+          <dt className="text-sm text-muted-foreground">
+            {t("cash.openTotal", { count: cash.length })}
+          </dt>
+          <dd className="text-2xl font-semibold tabular-nums" data-testid="cash-open-total">
+            {fmt.amount(cashTotal)}
+          </dd>
+        </div>
+        <div className="flex flex-col gap-1 bg-card px-5 py-4">
+          <dt className="text-sm text-muted-foreground">
+            {t("monthly.openTotal", { count: openMonthly.length })}
+          </dt>
+          <dd className="text-2xl font-semibold tabular-nums" data-testid="monthly-open-total">
+            {fmt.amount(monthlyTotal)}
+          </dd>
+        </div>
+      </dl>
 
       <Card data-testid="cash-open">
         <CardHeader>
@@ -140,7 +138,7 @@ async function Guarded({ locale }: { locale: string }) {
                       <TableCell>
                         <Link
                           href={`/admin/tours?date=${row.date}&tour=${row.tourId}`}
-                          className="inline-flex items-center gap-1 text-base font-medium underline underline-offset-4"
+                          className="inline-flex items-center gap-1 text-base link"
                           data-testid={`cash-link-${row.stopId}`}
                         >
                           {t("cash.toTour")}
@@ -219,7 +217,7 @@ async function Guarded({ locale }: { locale: string }) {
                       <TableCell>
                         <Link
                           href={`/admin/payments/${row.customerId}?month=${row.monthKey}`}
-                          className="inline-flex items-center gap-1 text-base font-medium underline underline-offset-4"
+                          className="inline-flex items-center gap-1 text-base link"
                           data-testid={`monthly-link-${row.customerId}-${row.monthKey}`}
                         >
                           {t("monthly.open")}
@@ -283,7 +281,7 @@ async function Guarded({ locale }: { locale: string }) {
             </ul>
             <Link
               href="/admin/payments/history"
-              className="inline-flex items-center gap-1 self-start text-base font-medium underline underline-offset-4"
+              className="inline-flex items-center gap-1 self-start text-base link"
               data-testid="payment-history-link"
             >
               {t("paid.all", { count: paidHistory.total })}

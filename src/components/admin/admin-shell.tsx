@@ -1,10 +1,11 @@
 "use client";
 
-import { PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
+import { PanelLeftCloseIcon, PanelLeftOpenIcon, RouteIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { type ReactNode, useEffect, useSyncExternalStore } from "react";
+import { type ReactNode, useEffect, useSyncExternalStore, ViewTransition } from "react";
 
 import { AdminBottomNav } from "@/components/admin/admin-bottom-nav";
+import { AdminCommandMenu } from "@/components/admin/admin-command-menu";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { MobileNav } from "@/components/admin/mobile-nav";
 import { activeNavItem } from "@/components/admin/nav-items";
@@ -55,8 +56,8 @@ function setCollapsedStored(next: boolean) {
 /**
  * Admin chrome (re-design.md §8.1): 260 px sidebar (collapsible to a 72 px icon rail, state in
  * `localStorage`, off-canvas drawer ≤ 1024 px), 56 px top bar with breadcrumb, language select and
- * user menu, and a 1440 px content column. Keyboard: `/` focuses the page search, the drawer closes
- * with `Esc` (Radix).
+ * user menu, and a 1440 px content column. Keyboard: `/` focuses the page search, Ctrl+K or ⌘K opens
+ * the command menu (`AdminCommandMenu`), the drawer closes with `Esc` (Radix).
  */
 export function AdminShell({
   name,
@@ -124,7 +125,14 @@ export function AdminShell({
                 collapsed && "justify-center px-0",
               )}
             >
-              <span aria-hidden className="size-2.5 shrink-0 rounded-full bg-primary" />
+              {/* The app symbol in small: a route in ink on yolk. */}
+              <span
+                aria-hidden
+                data-testid="brand-mark"
+                className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"
+              >
+                <RouteIcon className="size-4" />
+              </span>
               {collapsed ? null : (
                 <span className="truncate text-lg font-semibold">{t("common.appName")}</span>
               )}
@@ -170,6 +178,7 @@ export function AdminShell({
             <MobileNav />
             <Breadcrumb pathname={pathname} />
             <div className="ms-auto flex items-center gap-2">
+              <AdminCommandMenu />
               <ThemeToggle />
               <LanguageSwitcher variant="compact" />
               <UserMenu name={name} locale={locale} />
@@ -178,7 +187,13 @@ export function AdminShell({
           <main id="main" className="min-w-0 flex-1">
             {/* Bottom padding below the rail breakpoint keeps the last row clear of the bottom bar. */}
             <div className="mx-auto w-full max-w-[1440px] px-6 pt-6 pb-28 lg:px-8 min-[1025px]:pb-6">
-              {children}
+              {/* Page change (motion rule 16): the old page fades out while the new one fades in,
+                  only the content, the menu and the top bar stay put. Keyed by the path, so a new
+                  filter or date on the same page does not fade. `default="none"`: content that
+                  loads or updates inside a page never triggers it. */}
+              <ViewTransition key={pathname} enter="page-in" exit="page-out" default="none">
+                <div>{children}</div>
+              </ViewTransition>
             </div>
           </main>
           <AdminBottomNav />
