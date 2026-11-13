@@ -121,6 +121,25 @@ More rules that apply everywhere:
   card. Nothing animates when the screen is merely opened again.
 - One 12 px gap between the blocks of a screen, one radius (`rounded-xl`) for its cards.
 
+## Office
+
+- **The menu highlight travels.** The active entry of the sidebar and of the bottom bar is one pale
+  yolk pill that moves to the new section (rule 20). Entries scale to 0.98 while pressed.
+- **The overview is built for two or three drivers at once** (`DayBoard`):
+  - one strip of figures for the day: stops done, drivers on the road, problems, when the last
+    driver is back, the next delivery day. One card with hairlines, not five cards;
+  - every reported problem is a red row above everything else, with customer, reason, driver, time
+    and a way to the tour. No problem, no row;
+  - one lane per driver: who, vehicle, state, "7 von 20", expected end, a bead per stop (green
+    delivered, red square problem, yolk the next one), the next stop, "pünktlich" or "12 Min.
+    später" (orange from five minutes), the last ticked stop. The whole lane opens the tour;
+  - the map shows each driver at the stop he ticked off last. There is no live GPS and the card
+    says so. The same is listed in words below the map.
+- **One yolk button on the overview:** "Neue Bestellung".
+- **Motion:** lanes arrive 30 ms apart; a delivery that comes in while the page is open is
+  confirmed by one ring around that driver's count. The page re-reads itself every 30 s.
+- A finished tour reads "Abgeschlossen" everywhere, the same word as on the tour page.
+
 ## Do and don't
 
 - Do put the important action in yolk and leave the others white.
