@@ -1526,7 +1526,8 @@
           "late": "Zeitfenster {from}–{to} verfehlt: Ankunft zu spät",
           "early": "Zeitfenster {from}–{to}: Ankunft zu früh",
           "conflict": "Zeitfenster der Bestellungen passen nicht zusammen ({from}–{to})"
-        }
+        },
+        "missingCount": "{count} fehlen"
       },
       "dialog": {
         "title": "Tour freigeben?",
@@ -1684,7 +1685,7 @@
         "stops": "{count, plural, one {# Stopp} other {# Stopps}}",
         "tour": "Tour {number}",
         "withDriver": "Tour {number} · {driver}",
-        "add": "+ Tour",
+        "add": "Neue Tour",
         "added": "Leere Tour angelegt."
       },
       "edit": {

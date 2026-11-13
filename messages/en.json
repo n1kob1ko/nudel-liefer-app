@@ -1520,7 +1520,8 @@
           "late": "Window {from}–{to} missed: arrival too late",
           "early": "Window {from}–{to}: arrival too early",
           "conflict": "The windows of the orders do not fit together ({from}–{to})"
-        }
+        },
+        "missingCount": "{count} missing"
       },
       "dialog": {
         "title": "Release the tour?",
@@ -1678,7 +1679,7 @@
         "stops": "{count, plural, one {# stop} other {# stops}}",
         "tour": "Tour {number}",
         "withDriver": "Tour {number} · {driver}",
-        "add": "+ Tour",
+        "add": "New tour",
         "added": "Empty tour created."
       },
       "edit": {

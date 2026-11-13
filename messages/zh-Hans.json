@@ -1520,7 +1520,8 @@
           "late": "未赶上时间段 {from}–{to}：到达过晚",
           "early": "时间段 {from}–{to}：到达过早",
           "conflict": "订单的时间段互相冲突（{from}–{to}）"
-        }
+        },
+        "missingCount": "缺 {count} 项"
       },
       "dialog": {
         "title": "发布配送线路？",
@@ -1678,7 +1679,7 @@
         "stops": "{count, plural, other {# 个站点}}",
         "tour": "线路 {number}",
         "withDriver": "线路 {number} · {driver}",
-        "add": "+ 线路",
+        "add": "新线路",
         "added": "已创建空线路。"
       },
       "edit": {
