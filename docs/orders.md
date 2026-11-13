@@ -16,8 +16,9 @@ stale_since: null
 ## Purpose
 
 Office order entry and the product catalog. An order belongs to one customer, targets one
-delivery day and carries one or more product lines. Orders never die: they are `DRAFT`,
-`CONFIRMED` or `CANCELLED`, never deleted. Products are the catalog those lines reference
+delivery day and carries one or more product lines. Nobody deletes an order by hand: they are `DRAFT`,
+`CONFIRMED` or `CANCELLED`. Only the order retention job removes them, 30 days after they
+were paid (NUD-201, `docs/audit-and-retention.md`). Products are the catalog those lines reference
 and can only ever be soft-deleted (`active = false`), because old orders keep pointing at
 them. Everything here is admin-only and every server action re-checks the role against the
 database before reading the input.

@@ -2814,8 +2814,8 @@ export const HAND_OFF: HandOffContent = {
         },
         {
           text: {
-            de: "Bestellungen, Touren und Stopps werden nie gelöscht. Nur Fotos, Protokolleinträge und Fahrertexte werden nach langer Zeit automatisch aufgeräumt.",
-            zh: "订单、线路和站点永远不会被删除。只有照片、日志记录和司机文本会在很久之后被自动清理。",
+            de: "Bezahlte Bestellungen, ihre Touren und Monatsrechnungen werden 30 Tage nach der Bezahlung automatisch und endgültig gelöscht, sobald das Löschen auf dem Server eingeschaltet ist. Was nicht bezahlt ist, bleibt. Kunden, Produkte und Einstellungen bleiben immer. Fotos, Protokolleinträge und Fahrertexte werden nach längerer Zeit automatisch aufgeräumt.",
+            zh: "服务器上开启自动删除后，已付款的订单及其线路和月度账单会在付款 30 天后被自动永久删除。未付款的会保留。客户、产品和设置始终保留。照片、日志记录和司机文本会在较长时间之后被自动清理。",
           },
           label: "Löschen",
         },

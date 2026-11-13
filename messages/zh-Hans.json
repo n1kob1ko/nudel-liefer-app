@@ -2004,7 +2004,11 @@
         "emptyBody": "本月没有已确认的月度账单订单。",
         "currentMonth": "本月尚未结束；从下月 1 日起可标记为已付。",
         "noAmount": "无金额",
-        "breakdown": "订单 {orders}，调整 {adjustments}"
+        "breakdown": "订单 {orders}，调整 {adjustments}",
+        "deletion": {
+          "paid": "将于 {date} 起自动删除，当月的订单和配送线路也一并删除。如仍需要此账单，请提前保存为 PDF 或 CSV。",
+          "unpaid": "标记为已付 {days} 天后，此账单及其订单和配送线路将自动删除。未付的月份会保留。"
+        }
       },
       "note": "备注（可选）",
       "notePlaceholder": "例如：现金结清，或 3 日转账",
@@ -2116,7 +2120,8 @@
         "pagination": {
           "label": "分页",
           "status": "第 {page} 页，共 {pageCount} 页"
-        }
+        },
+        "deletion": "付款 {days} 天后，记录会与当月订单一并删除。"
       }
     }
   },

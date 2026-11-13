@@ -3,6 +3,7 @@ import { getFormatter, getTranslations, setRequestLocale } from "next-intl/serve
 import type { CSSProperties } from "react";
 import { Suspense } from "react";
 
+import { DeletionNotice } from "@/components/admin/deletion-notice";
 import { PageHeader } from "@/components/admin/page-header";
 import { PaymentHistoryFilters } from "@/components/admin/payment-history-filters";
 import { EmptyState, LoadingSkeleton } from "@/components/shared/states";
@@ -21,6 +22,7 @@ import { paidHistoryQueryString, parsePaidHistoryParams } from "@/lib/payment-hi
 import { cn } from "@/lib/utils";
 import { requirePageActor } from "@/server/auth/page-guards";
 import { getDb } from "@/server/db";
+import { orderRetentionPolicy } from "@/server/order-retention";
 import { paidHistoryQuery } from "@/server/payment-history";
 import { getFactoryTimezone } from "@/server/settings";
 
@@ -49,6 +51,7 @@ async function Guarded({
     page: params.page,
   });
   const filters = { q: params.q, year: params.year };
+  const retention = orderRetentionPolicy();
   const filtered = params.q.trim() !== "" || params.year !== null;
   const pageHref = (page: number) => ({
     pathname: "/admin/payments/history" as const,
@@ -78,6 +81,12 @@ async function Guarded({
       >
         <PaymentHistoryFilters values={filters} years={result.years} />
       </PageHeader>
+
+      {retention.active ? (
+        <DeletionNotice testId="history-deletion">
+          {t("history.deletion", { days: retention.days })}
+        </DeletionNotice>
+      ) : null}
 
       {result.total === 0 ? (
         filtered ? (
