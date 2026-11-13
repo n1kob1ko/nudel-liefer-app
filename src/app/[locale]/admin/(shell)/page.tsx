@@ -344,7 +344,7 @@ function AttentionPanel({
                 data-testid="attention-problem"
                 className="flex items-start gap-3 border-b border-border py-3 last:border-b-0"
               >
-                <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
+                <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden />
                 <div className="flex min-w-0 flex-col">
                   <Link
                     href={tourHref}
