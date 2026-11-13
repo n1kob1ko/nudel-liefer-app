@@ -1,6 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { Client } from "pg";
 
+import { expireSettingsCache } from "./helpers/settings";
 import { ensureVehicle } from "./helpers/vehicle";
 
 // NUD-146. Needs a seeded database (products NUDELN-BEUTEL / NUDELN-KARTON, demo drivers),
@@ -141,6 +142,7 @@ test("Tour load: red above the capacity, release only with the explicit override
     await client.query(`SELECT "id","displayName" FROM "User" WHERE "username"='fahrer-de'`)
   ).rows[0] as { id: string; displayName: string };
   await client.query(`UPDATE "Settings" SET "depotPinConfirmed"=true`);
+  await expireSettingsCache();
   const big = await ensureVehicle(client, "E2E Transporter", 5000);
   const small = await ensureVehicle(client, "E2E Kleinbus", 50);
   try {
@@ -244,6 +246,7 @@ test("Tour load: red above the capacity, release only with the explicit override
     await client.query(`DELETE FROM "Order" WHERE "customerId" LIKE $1`, [`id-${tag}-%`]);
     await client.query(`DELETE FROM "Customer" WHERE "id" LIKE $1`, [`id-${tag}-%`]);
     await client.query(`UPDATE "Settings" SET "depotPinConfirmed"=$1`, [depot.depotPinConfirmed]);
+    await expireSettingsCache();
     await client.end();
   }
 });

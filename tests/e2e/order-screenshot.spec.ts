@@ -273,12 +273,17 @@ test("screenshot order: file picker and drag-and-drop attach, remove brings the 
       const buf = new Uint8Array(await dt.files[0].arrayBuffer());
       return Array.from(buf);
     })()`);
-    await page.getByTestId("image-uploader-input").setInputFiles({
-      name: "chat.png",
-      mimeType: "image/png",
-      buffer: Buffer.from(png as number[]),
-    });
     const pane = page.getByTestId("screenshot-pane");
+    // The change listener is attached on hydration, like the paste listener above: a file chosen
+    // before that is lost, so the choice is repeated until the uploader took it.
+    await expect(async () => {
+      await page.getByTestId("image-uploader-input").setInputFiles({
+        name: "chat.png",
+        mimeType: "image/png",
+        buffer: Buffer.from(png as number[]),
+      });
+      await expect(pane).toBeVisible({ timeout: 10_000 });
+    }).toPass({ timeout: 60_000 });
     await expectDecoded(pane.getByTestId("zoom-image"));
 
     await pane.getByTestId("screenshot-remove").click();

@@ -41,14 +41,20 @@ test("settings: depot pin by keyboard, confirmation, weekdays, persistence", asy
   await page.getByTestId("pin-lat").fill("48.2102");
 
   // Saving without confirming the pin is refused with a clear message.
+  // The control is a Switch (NUD-192); the hidden `depot-confirm` checkbox mirrors its state.
   const confirm = page.getByTestId("depot-confirm");
+  const confirmSwitch = page.getByRole("switch", {
+    name: "Ich habe geprüft, dass der Standort am richtigen Ort liegt.",
+  });
   await expect(confirm).not.toBeChecked();
+  await expect(confirmSwitch).toHaveAttribute("aria-checked", "false");
   await page.getByTestId("settings-save").click();
   await expect(page.getByTestId("settings-error")).toHaveText(
     "Bitte bestätigen, dass der Standort am richtigen Ort liegt.",
   );
 
-  await confirm.check();
+  await confirmSwitch.click();
+  await expect(confirm).toBeChecked();
   await page.getByLabel("Standard-Abfahrtszeit").fill("06:30");
   await page.getByLabel("Minuten pro Stopp").fill("15");
   for (const day of [1, 2, 3, 4, 5, 6, 7]) {

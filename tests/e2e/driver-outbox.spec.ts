@@ -2,7 +2,12 @@ import { expect, type Page, test } from "@playwright/test";
 import bcrypt from "bcryptjs";
 import { Client } from "pg";
 
-import { gotoSettled, installNetworkEmulation, setOnline } from "./helpers/network";
+import {
+  followLinkOffline,
+  gotoSettled,
+  installNetworkEmulation,
+  setOnline,
+} from "./helpers/network";
 
 // NUD-082. Needs DATABASE_URL and a PRODUCTION build (`pnpm build && pnpm start`, the service
 // worker only exists there; the build needs the S3_* variables like every spec that loads the
@@ -256,9 +261,11 @@ test("offline: three stops marked delivered are sent after reconnecting, exactly
         await page.screenshot({ path: testInfo.outputPath("outbox-offline-stop.png") });
       }
       await visible(page, "btn-delivered").click();
-      // The next stop opens at once; the badge counts what waits on the phone.
-      await expect(page).toHaveURL(stopUrl(i + 1));
+      // The stop shows its result at once (no automatic jump, NUD-176); the badge counts what waits
+      // on the phone, and the result card leads on to the next stop, offline too.
+      await expect(visible(page, "stop-result")).toHaveAttribute("data-status", "DELIVERED");
       await expect(page.getByTestId("pending-badge")).toHaveAttribute("data-count", String(i + 1));
+      await followLinkOffline(page, visible(page, "next-stop-action"), stopUrl(i + 1));
     }
     expect(await noHorizontalScroll(page)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath("outbox-offline-badge.png") });
@@ -331,12 +338,10 @@ test("undo while offline removes the queued tap instead of sending two", async (
   await expect(page.getByTestId("pending-badge")).toHaveAttribute("data-count", "1");
   expect(await outboxRows(page)).toHaveLength(1);
 
-  // Back to the stop: the result card offers Undo for a tap that has not been sent.
-  // (the app's own fallback navigation to the next stop may still be in flight: retry)
-  await expect(async () => {
-    await gotoSettled(page, `/de/driver/stops/${stopIds[3]}`);
-    await expect(visible(page, "stop-result")).toBeVisible({ timeout: 3_000 });
-  }).toPass({ timeout: 20_000 });
+  // The screen stays on the stop (NUD-176): the result card offers Undo for a tap that has not
+  // been sent.
+  await expect(visible(page, "stop-result")).toBeVisible();
+  await expect(page).toHaveURL(stopUrl(3));
   await expect(visible(page, "stop-pending-sync")).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("outbox-undo-offer.png") });
   await visible(page, "undo").click();

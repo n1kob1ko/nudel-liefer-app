@@ -286,8 +286,9 @@ test("loads the tour into IndexedDB, prefetches the photos and says 'ready offli
     return out;
   });
   for (const u of stored) {
+    // NUD-175: the theme bootstrap of every page is part of the shell.
     expect(u, u).toMatch(
-      /^(\/_next\/static\/|\/icons\/|\/offline\.(html|js)$|\/(de|en|sr-Latn|cs|zh-Hans)\/driver\/offline-shell$)/,
+      /^(\/_next\/static\/|\/icons\/|\/theme\.js$|\/offline\.(html|js)$|\/(de|en|sr-Latn|cs|zh-Hans)\/driver\/offline-shell$)/,
     );
   }
   expect(stored.some((u) => u.includes("/api/"))).toBe(false);

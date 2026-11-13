@@ -6,6 +6,7 @@ import { Client } from "pg";
 
 import { createDriverFixture, type Locale, loginDriver } from "./helpers/driver-fixture";
 import { requireDatabaseUrl, requireUsableDatabase } from "./helpers/preconditions";
+import { expireSettingsCache } from "./helpers/settings";
 import {
   auditTabletPage,
   controlViolations,
@@ -154,6 +155,7 @@ async function createAuditFixture(): Promise<AuditFixture> {
   const karton = (await client.query(`SELECT "id" FROM "Product" WHERE "sku"='NUDELN-KARTON'`))
     .rows[0].id as string;
   await client.query(`UPDATE "Settings" SET "depotPinConfirmed"=true`);
+  await expireSettingsCache();
 
   const customerIds: string[] = [];
   let orderId = "";
@@ -204,6 +206,7 @@ async function createAuditFixture(): Promise<AuditFixture> {
     await client.query(`UPDATE "Settings" SET "depotPinConfirmed"=$1`, [
       settings.depotPinConfirmed,
     ]);
+    await expireSettingsCache();
     await client.end();
   };
 

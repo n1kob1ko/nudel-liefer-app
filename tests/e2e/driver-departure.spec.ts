@@ -7,6 +7,7 @@ import {
   stubImages,
 } from "./helpers/driver-fixture";
 import { gotoSettled, installNetworkEmulation, setOnline } from "./helpers/network";
+import { expireSettingsCache } from "./helpers/settings";
 
 // NUD-151. Needs DATABASE_URL, S3_* and a PRODUCTION build (service worker for the offline test).
 // Own driver, customers and a released tour for TODAY (shared driver fixture): the optional
@@ -64,11 +65,13 @@ test.beforeEach(async ({ fx }) => {
       },
     ]),
   ]);
+  await expireSettingsCache();
 });
 test.afterEach(async ({ fx }) => {
   await fx.db.query(`UPDATE "Settings" SET "departureChecklist"=$1::jsonb WHERE "id"=1`, [
     JSON.stringify(savedChecklist),
   ]);
+  await expireSettingsCache();
 });
 
 test.describe("driver", () => {
