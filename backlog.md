@@ -357,7 +357,7 @@ Read rule: `pick(text, locale)` returns the requested locale; if empty, the clos
 | NUD-196 | Zahlungen: Bar bei Lieferung oder Monatsrechnung, kassierter Betrag, Monatsrechnung mit Bezahlt-Vermerk | M2.7 | 033 | done |
 | NUD-197 | Monatsrechnung: Korrekturzeile (Rabatt, Gutschrift, Zuschlag) | M2.8 | 196 | done |
 | NUD-198 | Monatsrechnung: Export als PDF und CSV für die Buchhaltung | M2.8 | 197 | done |
-| NUD-199 | Zahlungen: Bezahlt-Historie als eigene Seite | M2.8 | 196 | todo |
+| NUD-199 | Zahlungen: Bezahlt-Historie als eigene Seite | M2.8 | 196 | done |
 | NUD-100 | AI screenshot extraction (review required) | M3 | 031 | superseded → NUD-150 |
 | NUD-101 | Recurring / standing orders | M3 | 032 | superseded → NUD-149 |
 | NUD-102 | Multiple drivers / tours per day | M3 | 043 | superseded → NUD-147 |
@@ -3908,16 +3908,23 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 - Der Download wird nicht ins Audit-Log geschrieben (wie das Ansehen der Monatsseite auch nicht).
 
 #### NUD-199 · Zahlungen: Bezahlt-Historie als eigene Seite
-**Status:** todo · **depends_on:** 196 · Quelle: Übergabe-Protokoll 7.2.
+**Status:** done · **depends_on:** 196 · Quelle: Übergabe-Protokoll 7.2.
 
 **Goal:** Alle als bezahlt vermerkten Monate stehen auf einer eigenen Seite, nicht nur die letzten 20 auf der Zahlungsseite: wann bezahlt, welcher Kunde und Monat, welcher Betrag, wer es vermerkt hat und mit welcher Notiz.
 
 **Acceptance criteria**
-- [ ] `/admin/payments/history`: gültige Bezahlt-Vermerke (nicht zurückgenommen), neueste zuerst, 50 je Seite mit Blättern. Spalten: Bezahlt am, Kunde (Name, Nummer), Monat, Bestellungen, Betrag (Snapshot), Vermerkt von, Notiz; die Zeile führt zur Monatsrechnung.
-- [ ] Filter: Jahr des abgerechneten Monats und Suche nach Kundenname oder Kundennummer; Anzahl und Summe der Treffer stehen darüber. Leerer Zustand mit und ohne Filter.
-- [ ] Zahlungsseite: „Bezahlt vermerkt" zeigt die letzten 5 und verlinkt auf die Historie.
-- [ ] Zurückgenommene Vermerke stehen nicht in der Liste (der Verlauf dazu bleibt im Audit-Log).
-- [ ] Texte in `de`, `en`, `zh-Hans`; geprüft bei 1280 px.
+- [x] `/admin/payments/history`: gültige Bezahlt-Vermerke (nicht zurückgenommen), neueste zuerst, 50 je Seite mit Blättern. Spalten: Bezahlt am, Kunde (Name, Nummer), Monat, Bestellungen, Betrag (Snapshot), Vermerkt von, Notiz; die Zeile führt zur Monatsrechnung.
+- [x] Filter: Jahr des abgerechneten Monats und Suche nach Kundenname oder Kundennummer; Anzahl und Summe der Treffer stehen darüber. Leerer Zustand mit und ohne Filter.
+- [x] Zahlungsseite: „Bezahlt vermerkt" zeigt die letzten 5 und verlinkt auf die Historie.
+- [x] Zurückgenommene Vermerke stehen nicht in der Liste (der Verlauf dazu bleibt im Audit-Log).
+- [x] Texte in `de`, `en`, `zh-Hans`; geprüft bei 1280 px.
+
+**Implementation notes**
+- `src/server/payment-history.ts` (`paidHistoryQuery`): eine Abfrage für die Zeilen, eine für Anzahl und Summe aller Treffer, eine für die Jahre des Filters. Suche wie in der Kundenliste über `Customer.searchText` (ohne Akzente: „muller" findet „Müller"). Eine Seite hinter dem Ende zeigt die letzte Seite.
+- Filter und Seite stehen in der URL (`src/lib/payment-history-params.ts`), die Filterleiste ist wie bei den Kunden gebaut (`payment-history-filters.tsx`).
+- Der Betrag in der Historie und in „Bezahlt vermerkt" auf der Zahlungsseite ist der Snapshot des Vermerks (`MonthlyPayment.amountCents`), nicht die heutige Summe der Bestellungen.
+- Zeilen blenden gestaffelt ein (`.row-enter` in `globals.css`, 30 ms je Zeile, höchstens zwölf Stufen, aus bei „weniger Bewegung").
+- Nebenbei: „Bezahlt am" auf der Monatsseite zeigt jetzt den Tag in der Zeitzone der Fabrik (`fmt.dayOfMoment`); vorher konnte ein Vermerk kurz nach Mitternacht den Vortag zeigen. Die Knöpfe der Monatsseite werden nicht mehr mitgedruckt.
 
 ## 9. Decision log (append-only, one line per decision taken during implementation)
 
@@ -4373,6 +4380,8 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 | 2026-11-13 | NUD-198 | PDF wird auf Deutsch oder Englisch geschrieben, für `zh-Hans` auf Deutsch | Die eingebettete Schrift (DejaVu Sans) hat keine chinesischen Zeichen; eine CJK-Schrift wären mehrere MB je Datei, und der Empfänger der Rechnung liest Deutsch |
 | 2026-11-13 | NUD-198 | PDF mit `pdf-lib` auf dem Server gezeichnet statt über einen Browser gedruckt | Kein Chromium auf dem Server nötig, gleiche Datei für alle, in Tests prüfbar |
 | 2026-11-13 | NUD-198 | Export ist eine Aufstellung ohne Rechnungsnummer und Umsatzsteuer | Die App kennt weder Steuersätze noch Nummernkreise; eine echte Rechnung braucht eine fachliche Entscheidung des Kunden |
+| 2026-11-13 | NUD-199 | Die Historie zeigt nur gültige Vermerke; zurückgenommene bleiben im Audit-Log | Die Seite beantwortet „was ist bezahlt", nicht „was wurde je geklickt"; der Verlauf dazu steht in der Historie des Kunden |
+| 2026-11-13 | NUD-197…199 | Ein PR mit drei Commits statt drei PRs | Export und Historie bauen auf den Korrekturzeilen auf (Summe, Snapshot); einzeln wären die PRs nicht unabhängig prüfbar |
 
 ## 10. Open questions for the client (do not block on these – use placeholders)
 

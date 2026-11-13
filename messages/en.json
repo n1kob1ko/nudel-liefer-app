@@ -1983,8 +1983,9 @@
       },
       "paid": {
         "title": "Marked paid",
-        "body": "The latest months the office marked as paid.",
-        "badge": "Paid"
+        "body": "The latest five months the office marked as paid.",
+        "badge": "Paid",
+        "all": "View full history ({count})"
       },
       "state": {
         "open": "Open",
@@ -2085,6 +2086,31 @@
           "noAmountNotice": "{count, plural, one {# order without an amount is} other {# orders without an amount are}} not included in the total.",
           "empty": "No orders on a monthly bill in this month.",
           "page": "Page {page} of {pages}"
+        }
+      },
+      "history": {
+        "title": "Paid history",
+        "description": "Every month the office marked as paid. The amount is the total on the day it was marked.",
+        "count": "{count, plural, one {# entry} other {# entries}}",
+        "sum": "Total {amount}",
+        "searchLabel": "Search customer",
+        "searchPlaceholder": "Customer name or customer number",
+        "year": "Year",
+        "allYears": "All years",
+        "reset": "Reset filters",
+        "columns": {
+          "paidAt": "Paid on",
+          "paidBy": "Marked by",
+          "note": "Note"
+        },
+        "openBill": "Open monthly bill {customer}, {month}",
+        "emptyTitle": "No month marked paid yet",
+        "emptyBody": "As soon as the office marks a monthly bill as paid, it is listed here.",
+        "emptyFilteredTitle": "No results",
+        "emptyFilteredBody": "No entry matches year and search.",
+        "pagination": {
+          "label": "Pages",
+          "status": "Page {page} of {pageCount}"
         }
       }
     }

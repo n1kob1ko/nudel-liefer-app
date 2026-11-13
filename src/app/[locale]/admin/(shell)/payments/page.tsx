@@ -22,6 +22,7 @@ import { createAppFormatters } from "@/lib/format";
 import { requirePageActor } from "@/server/auth/page-guards";
 import { getDb } from "@/server/db";
 import { todayIn } from "@/server/orders";
+import { paidHistoryQuery } from "@/server/payment-history";
 import { monthlyOverviewQuery, openCashQuery } from "@/server/payments";
 import { getFactoryTimezone } from "@/server/settings";
 
@@ -37,12 +38,13 @@ async function Guarded({ locale }: { locale: string }) {
   const fmt = createAppFormatters(formatter);
   const today = todayIn(await getFactoryTimezone());
   const db = getDb();
-  const [cash, monthly] = await Promise.all([
+  const [cash, monthly, paidHistory] = await Promise.all([
     openCashQuery(db, today),
     monthlyOverviewQuery(db, today),
+    // The newest paid notes; the full list is the history page (NUD-199).
+    paidHistoryQuery(db, { pageSize: 5 }),
   ]);
   const openMonthly = monthly.filter((row) => row.state === "open");
-  const paidMonthly = monthly.filter((row) => row.state === "paid").slice(0, 20);
   const cashTotal = cash.reduce((sum, row) => sum + (row.dueCents - (row.collectedCents ?? 0)), 0);
   const monthlyTotal = openMonthly.reduce((sum, row) => sum + row.amountCents, 0);
   // Months offered for the accounting export: the running month and the twelve before it.
@@ -246,17 +248,17 @@ async function Guarded({ locale }: { locale: string }) {
         </CardContent>
       </Card>
 
-      {paidMonthly.length > 0 ? (
+      {paidHistory.total > 0 ? (
         <Card data-testid="monthly-paid">
           <CardHeader>
             <h2 className="text-lg font-semibold tracking-tight">{t("paid.title")}</h2>
             <CardDescription>{t("paid.body")}</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col gap-4">
             <ul className="flex flex-col">
-              {paidMonthly.map((row) => (
+              {paidHistory.rows.map((row) => (
                 <li
-                  key={`${row.customerId}:${row.periodStart}`}
+                  key={row.id}
                   className="flex flex-wrap items-baseline gap-x-3 border-b border-border py-2.5 last:border-b-0"
                 >
                   <Badge variant="success">{t("paid.badge")}</Badge>
@@ -279,6 +281,14 @@ async function Guarded({ locale }: { locale: string }) {
                 </li>
               ))}
             </ul>
+            <Link
+              href="/admin/payments/history"
+              className="inline-flex items-center gap-1 self-start text-base font-medium underline underline-offset-4"
+              data-testid="payment-history-link"
+            >
+              {t("paid.all", { count: paidHistory.total })}
+              <ArrowRightIcon className="size-4 rtl:rotate-180" aria-hidden />
+            </Link>
           </CardContent>
         </Card>
       ) : null}

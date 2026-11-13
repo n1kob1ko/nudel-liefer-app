@@ -134,7 +134,7 @@ async function Guarded({
           {bill.payment ? (
             <p className="text-base" data-testid="monthly-bill-paid">
               {t("bill.paidOn", {
-                date: fmt.calendarDate(new Date(bill.payment.paidAt)),
+                date: fmt.dayOfMoment(new Date(bill.payment.paidAt)),
                 amount: fmt.amount(bill.payment.amountCents),
               })}
               {bill.payment.paidByName ? ` · ${bill.payment.paidByName}` : ""}

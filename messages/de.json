@@ -1983,8 +1983,9 @@
       },
       "paid": {
         "title": "Bezahlt vermerkt",
-        "body": "Die letzten Monate, die das Büro als bezahlt markiert hat.",
-        "badge": "Bezahlt"
+        "body": "Die letzten fünf Monate, die das Büro als bezahlt markiert hat.",
+        "badge": "Bezahlt",
+        "all": "Ganze Historie ansehen ({count})"
       },
       "state": {
         "open": "Offen",
@@ -2085,6 +2086,31 @@
           "noAmountNotice": "{count, plural, one {# Bestellung ohne Betrag ist} other {# Bestellungen ohne Betrag sind}} in der Summe nicht enthalten.",
           "empty": "Keine Bestellungen auf Monatsrechnung in diesem Monat.",
           "page": "Seite {page} von {pages}"
+        }
+      },
+      "history": {
+        "title": "Bezahlt-Historie",
+        "description": "Alle Monate, die das Büro als bezahlt vermerkt hat. Der Betrag ist der Stand vom Tag des Vermerks.",
+        "count": "{count, plural, one {# Vermerk} other {# Vermerke}}",
+        "sum": "Summe {amount}",
+        "searchLabel": "Kunde suchen",
+        "searchPlaceholder": "Kundenname oder Kundennummer",
+        "year": "Jahr",
+        "allYears": "Alle Jahre",
+        "reset": "Filter zurücksetzen",
+        "columns": {
+          "paidAt": "Bezahlt am",
+          "paidBy": "Vermerkt von",
+          "note": "Notiz"
+        },
+        "openBill": "Monatsrechnung {customer}, {month} öffnen",
+        "emptyTitle": "Noch kein Monat als bezahlt vermerkt",
+        "emptyBody": "Sobald das Büro eine Monatsrechnung als bezahlt markiert, steht sie hier.",
+        "emptyFilteredTitle": "Keine Treffer",
+        "emptyFilteredBody": "Kein Vermerk passt zu Jahr und Suche.",
+        "pagination": {
+          "label": "Seiten",
+          "status": "Seite {page} von {pageCount}"
         }
       }
     }

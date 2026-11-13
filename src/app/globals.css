@@ -242,6 +242,31 @@
   transform-origin: right center;
 }
 
+/*
+ * List rows arriving (NUD-199): each row fades up 30 ms after the one before it, so a new result
+ * reads top to bottom. Ease-out, opacity and transform only. The delay stops growing after twelve
+ * rows: a long page must not keep the last rows waiting.
+ */
+@keyframes row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.row-enter {
+  animation: row-enter 220ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation-delay: calc(min(var(--row-index, 0), 12) * 30ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .row-enter {
+    animation: none;
+  }
+}
+
 /* Reduced motion (NUD-095): no slide / fade animations; spinners keep turning (they show progress). */
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -1983,8 +1983,9 @@
       },
       "paid": {
         "title": "已标记已付",
-        "body": "办公室最近标记为已付的月份。",
-        "badge": "已付"
+        "body": "办公室最近标记为已付的五个月份。",
+        "badge": "已付",
+        "all": "查看全部记录（{count}）"
       },
       "state": {
         "open": "未结",
@@ -2085,6 +2086,31 @@
           "noAmountNotice": "{count, plural, other {# 个无金额的订单}}未计入合计。",
           "empty": "本月没有月度账单订单。",
           "page": "第 {page} 页，共 {pages} 页"
+        }
+      },
+      "history": {
+        "title": "已付记录",
+        "description": "办公室标记为已付的所有月份。金额为标记当天的合计。",
+        "count": "{count} 条记录",
+        "sum": "合计 {amount}",
+        "searchLabel": "搜索客户",
+        "searchPlaceholder": "客户名称或客户编号",
+        "year": "年份",
+        "allYears": "全部年份",
+        "reset": "重置筛选",
+        "columns": {
+          "paidAt": "付款日期",
+          "paidBy": "标记人",
+          "note": "备注"
+        },
+        "openBill": "打开月度账单：{customer}，{month}",
+        "emptyTitle": "还没有月份被标记为已付",
+        "emptyBody": "办公室将月度账单标记为已付后，会显示在这里。",
+        "emptyFilteredTitle": "没有结果",
+        "emptyFilteredBody": "没有符合年份和搜索条件的记录。",
+        "pagination": {
+          "label": "分页",
+          "status": "第 {page} 页，共 {pageCount} 页"
         }
       }
     }

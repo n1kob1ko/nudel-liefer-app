@@ -25,6 +25,12 @@ describe("createAppFormatters", () => {
     expect(f("de").dateShort(moment)).toContain("18");
   });
 
+  it("shows the day of a moment as the factory saw it, not as UTC did", () => {
+    const moment = new Date("2026-10-17T22:30:00.000Z"); // already the 18th in Vienna
+    expect(f("de").dayOfMoment(moment)).toBe("18.10.2026");
+    expect(f("de").calendarDate(moment)).toBe("17.10.2026");
+  });
+
   it("shows a correction with its sign, so a deduction and a surcharge cannot be confused", () => {
     // Intl puts a no-break space before the euro sign; normalised so the test reads plainly.
     const plain = (text: string) => text.replace(/\u00a0/g, " ");

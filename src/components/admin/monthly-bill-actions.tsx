@@ -79,7 +79,7 @@ export function MonthlyBillActions({
   );
 
   return (
-    <div className="flex flex-col gap-3" data-testid="monthly-actions">
+    <div className="flex flex-col gap-3 print:hidden" data-testid="monthly-actions">
       {paid ? (
         <div className="flex flex-wrap items-center gap-2">
           <Button
