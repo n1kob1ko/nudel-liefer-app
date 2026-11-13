@@ -2,7 +2,12 @@ import { expect, type Page, test } from "@playwright/test";
 import bcrypt from "bcryptjs";
 import { Client } from "pg";
 
-import { gotoSettled, installNetworkEmulation, setOnline } from "./helpers/network";
+import {
+  followLinkOffline,
+  gotoSettled,
+  installNetworkEmulation,
+  setOnline,
+} from "./helpers/network";
 
 // NUD-082. Needs DATABASE_URL and a PRODUCTION build (`pnpm build && pnpm start`, the service
 // worker only exists there; the build needs the S3_* variables like every spec that loads the
@@ -260,9 +265,8 @@ test("offline: three stops marked delivered are sent after reconnecting, exactly
       // on the phone, and the result card leads on to the next stop, offline too.
       await expect(visible(page, "stop-result")).toHaveAttribute("data-status", "DELIVERED");
       await expect(page.getByTestId("pending-badge")).toHaveAttribute("data-count", String(i + 1));
-      await visible(page, "next-stop-action").click();
+      await followLinkOffline(page, visible(page, "next-stop-action"), stopUrl(i + 1));
     }
-    await expect(page).toHaveURL(stopUrl(3));
     expect(await noHorizontalScroll(page)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath("outbox-offline-badge.png") });
 
