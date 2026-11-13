@@ -8,7 +8,6 @@
     "build:vercel": "tsx scripts/check-deploy-env.ts && prisma migrate deploy && tsx scripts/csp-script-hashes.ts reset && next build && tsx scripts/csp-script-hashes.ts write && next build && tsx scripts/build-pwa.ts && tsx scripts/build-hand-off.ts && tsx scripts/csp-script-hashes.ts check",
     "build:railway": "tsx scripts/check-deploy-env.ts && pnpm build",
     "start": "next start",
-    "start:railway": "next start --hostname ::",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "next typegen && tsc --noEmit && tsc -p src/sw/tsconfig.json --noEmit",
     "test": "vitest run",

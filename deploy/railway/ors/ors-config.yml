@@ -1,0 +1,14 @@
+# openrouteservice on Railway (NUD-202, docs/deploy-railway.md). Baked into the image, so a
+# change here deploys with the next build; the data lives on the volume mounted at /data.
+#
+# Only `driving-car` is built: there are no trucks (decision 2026-10-28, E3). The extract is
+# downloaded by start.sh on the first start (OSM_URL, default: Austria from Geofabrik).
+ors:
+  engine:
+    profile_default:
+      graph_path: /data/graphs
+      build:
+        source_file: /data/files/osm-extract.osm.pbf
+    profiles:
+      driving-car:
+        enabled: true
