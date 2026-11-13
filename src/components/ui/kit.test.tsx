@@ -62,6 +62,55 @@ describe("Button", () => {
     expect(screen.getByRole("button").className).toContain("bg-primary");
   });
 
+  it("fills the important action with yolk and ink, with a tactile edge", () => {
+    render(<Button>Tour freigeben</Button>);
+    const button = screen.getByRole("button");
+    expect(button).toHaveClass("bg-primary", "text-primary-foreground", "btn-edge");
+  });
+
+  it("gives every variant the 0.97 press", () => {
+    const variants = [
+      "default",
+      "primary",
+      "destructive",
+      "warning",
+      "outline",
+      "secondary",
+      "ghost",
+      "success",
+    ] as const;
+    for (const variant of variants) {
+      const { unmount } = render(<Button variant={variant}>Knopf</Button>);
+      expect(screen.getByRole("button").className, variant).toContain("active:scale-[.97]");
+      unmount();
+    }
+  });
+
+  it("keeps the edge to filled buttons: quiet variants stay flat", () => {
+    const { rerender } = render(<Button variant="outline">Bearbeiten</Button>);
+    expect(screen.getByRole("button")).not.toHaveClass("btn-edge");
+    rerender(<Button variant="ghost">Abbrechen</Button>);
+    expect(screen.getByRole("button")).not.toHaveClass("btn-edge");
+    rerender(<Button variant="destructive">Löschen</Button>);
+    expect(screen.getByRole("button")).toHaveClass("btn-edge", "bg-destructive");
+  });
+
+  it("has a soft red variant for reporting a problem", () => {
+    render(<Button variant="warning">Problem</Button>);
+    expect(screen.getByRole("button")).toHaveClass(
+      "bg-destructive-soft",
+      "text-destructive-soft-foreground",
+    );
+  });
+
+  it("lets a caller's colour win over the variant's", () => {
+    render(<Button className="bg-info text-info-foreground">Info</Button>);
+    const button = screen.getByRole("button");
+    expect(button).toHaveClass("bg-info", "text-info-foreground");
+    expect(button).not.toHaveClass("bg-primary");
+    expect(button).not.toHaveClass("text-primary-foreground");
+  });
+
   it("slots a single child when asChild is used (Radix Slot rejects an array)", () => {
     render(
       <Button asChild variant="outline" size="lg">
@@ -81,7 +130,7 @@ describe("Button", () => {
 describe("Card", () => {
   afterEach(cleanup);
 
-  it("is a soft white surface: shadow, no visible border (colour refresh 2026-10)", () => {
+  it("is a white surface with a hairline border and next to no shadow (redesign RD2)", () => {
     render(
       <Card data-testid="card">
         <CardHeader action={<Button size="sm">Neu</Button>}>
@@ -91,8 +140,8 @@ describe("Card", () => {
       </Card>,
     );
     const card = screen.getByTestId("card");
-    expect(card).toHaveClass("border-transparent");
-    expect(card).toHaveClass("shadow-sm");
+    expect(card).toHaveClass("border-border");
+    expect(card).toHaveClass("shadow-xs");
     expect(card).not.toHaveClass("cursor-pointer");
     expect(screen.getByText("Touren")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Neu" })).toBeInTheDocument();
@@ -101,7 +150,7 @@ describe("Card", () => {
   it("becomes a raised clickable surface with interactive", () => {
     render(<Card data-testid="card" interactive />);
     const card = screen.getByTestId("card");
-    expect(card).toHaveClass("shadow-sm", "cursor-pointer", "border-transparent");
+    expect(card).toHaveClass("cursor-pointer", "hover:shadow-md", "active:scale-[.99]");
   });
 });
 

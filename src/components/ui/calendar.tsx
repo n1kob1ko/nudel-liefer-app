@@ -39,7 +39,7 @@ function Calendar({
         ),
         selected:
           "[&>button]:bg-primary [&>button]:text-primary-foreground [&>button:hover]:bg-primary",
-        today: "[&>button]:border [&>button]:border-primary",
+        today: "[&>button]:border [&>button]:border-foreground [&>button]:font-semibold",
         outside: "text-muted-foreground opacity-70",
         disabled: "text-muted-foreground opacity-40",
         hidden: "invisible",
