@@ -548,6 +548,8 @@ async function toViews(db: DbForHistory, rows: Row[]): Promise<AuditEntryView[]>
       case "monthly.unpay":
       case "monthly.adjust":
       case "monthly.adjust_remove":
+      // A deleted account (NUD-206) has no page any more; the entry is the record that it existed.
+      case "user.delete":
         return [];
     }
   };

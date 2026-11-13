@@ -438,18 +438,23 @@
         "reactivate": "Reactivate",
         "changeLanguage": "Change language of {name}",
         "editLogin": "Edit language",
-        "editSchedule": "Edit working time"
+        "editSchedule": "Edit working time",
+        "delete": "Delete",
+        "deleteConfirm": "Delete for good"
       },
       "confirm": {
         "resetTitle": "Reset PIN of {name}?",
         "resetBody": "The old PIN stops working immediately. The new PIN is shown once.",
         "deactivateTitle": "Deactivate {name}?",
-        "deactivateBody": "The person is logged out on the next request and can no longer log in."
+        "deactivateBody": "The person is logged out on the next request and can no longer log in.",
+        "deleteTitle": "Delete {name} for good?",
+        "deleteBody": "The account is gone afterwards and does not come back. Finished tours, photos and orders are kept."
       },
       "toast": {
         "activated": "{name} was reactivated.",
         "deactivated": "{name} was deactivated.",
-        "localeChanged": "Language of {name} changed."
+        "localeChanged": "Language of {name} changed.",
+        "deleted": "{name} was deleted."
       },
       "errors": {
         "invalid": "Please check your entries.",
@@ -457,7 +462,9 @@
         "emailTaken": "This email address is already taken.",
         "notFound": "User not found.",
         "self": "You cannot deactivate your own account.",
-        "generic": "Action failed. Please try again."
+        "generic": "Action failed. Please try again.",
+        "openTours": "{name} still has a released tour ({dates}). Give it to another driver first: Tours, \"Edit\".",
+        "selfDelete": "You cannot delete your own account."
       },
       "admins": {
         "title": "Administrators",
@@ -2514,6 +2521,12 @@
         "storage": "Cannot save on the phone. Please try again.",
         "amount": "Please enter an amount like 42 or 42.50."
       }
+    },
+    "upcoming": {
+      "title": "Upcoming tours",
+      "tomorrow": "Tomorrow · {date}",
+      "stops": "{count, plural, one {# stop} other {# stops}}",
+      "from": "from {time}"
     }
   },
   "pwa": {

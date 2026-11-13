@@ -39,6 +39,7 @@ const AUDITED = [
   "server/stop-payment.ts",
   "server/payments.ts",
   "server/monthly-adjustments.ts",
+  "server/user-delete.ts",
 ];
 
 /** Writes that are deliberately not audited, with the reason. */

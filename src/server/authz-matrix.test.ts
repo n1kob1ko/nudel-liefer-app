@@ -282,6 +282,9 @@ const MATRIX: Record<string, Row> = {
   "src/server/user-actions.ts#setDriverLocaleAction": adminAction("user management", async () =>
     (await import("./user-actions")).setDriverLocaleAction("x", "de"),
   ),
+  "src/server/user-actions.ts#deleteUserAction": adminAction("user management", async () =>
+    (await import("./user-actions")).deleteUserAction("x"),
+  ),
   "src/server/customer-import-actions.ts#previewCustomerImportAction": adminAction(
     "import",
     async () => (await import("./customer-import-actions")).previewCustomerImportAction({}),

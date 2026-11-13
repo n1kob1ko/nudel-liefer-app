@@ -456,18 +456,23 @@
         "reactivate": "Reaktivieren",
         "changeLanguage": "Sprache von {name} ändern",
         "editLogin": "Sprache bearbeiten",
-        "editSchedule": "Arbeitszeit bearbeiten"
+        "editSchedule": "Arbeitszeit bearbeiten",
+        "delete": "Löschen",
+        "deleteConfirm": "Endgültig löschen"
       },
       "confirm": {
         "resetTitle": "PIN von {name} zurücksetzen?",
         "resetBody": "Die alte PIN funktioniert sofort nicht mehr. Die neue PIN wird einmalig angezeigt.",
         "deactivateTitle": "{name} deaktivieren?",
-        "deactivateBody": "Die Person wird bei der nächsten Anfrage abgemeldet und kann sich nicht mehr anmelden."
+        "deactivateBody": "Die Person wird bei der nächsten Anfrage abgemeldet und kann sich nicht mehr anmelden.",
+        "deleteTitle": "{name} endgültig löschen?",
+        "deleteBody": "Das Konto ist danach weg und kommt nicht zurück. Erledigte Touren, Fotos und Bestellungen bleiben erhalten."
       },
       "toast": {
         "activated": "{name} wurde reaktiviert.",
         "deactivated": "{name} wurde deaktiviert.",
-        "localeChanged": "Sprache von {name} geändert."
+        "localeChanged": "Sprache von {name} geändert.",
+        "deleted": "{name} wurde gelöscht."
       },
       "errors": {
         "invalid": "Bitte Eingaben prüfen.",
@@ -475,7 +480,9 @@
         "emailTaken": "Diese E-Mail-Adresse ist bereits vergeben.",
         "notFound": "Benutzer nicht gefunden.",
         "self": "Das eigene Konto kann nicht deaktiviert werden.",
-        "generic": "Aktion fehlgeschlagen. Bitte erneut versuchen."
+        "generic": "Aktion fehlgeschlagen. Bitte erneut versuchen.",
+        "openTours": "{name} hat noch eine freigegebene Tour ({dates}). Gib sie zuerst einem anderen Fahrer: Touren, „Bearbeiten“.",
+        "selfDelete": "Das eigene Konto kann nicht gelöscht werden."
       },
       "admins": {
         "title": "Administratoren",
@@ -2514,6 +2521,12 @@
         "storage": "Speichern auf dem Handy nicht möglich. Bitte erneut versuchen.",
         "amount": "Bitte einen Betrag wie 42 oder 42,50 eingeben."
       }
+    },
+    "upcoming": {
+      "title": "Kommende Touren",
+      "tomorrow": "Morgen · {date}",
+      "stops": "{count, plural, one {# Stopp} other {# Stopps}}",
+      "from": "ab {time}"
     }
   },
   "pwa": {

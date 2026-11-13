@@ -438,18 +438,23 @@
         "reactivate": "重新启用",
         "changeLanguage": "更改{name}的语言",
         "editLogin": "修改语言",
-        "editSchedule": "编辑工作时间"
+        "editSchedule": "编辑工作时间",
+        "delete": "删除",
+        "deleteConfirm": "永久删除"
       },
       "confirm": {
         "resetTitle": "重置{name}的PIN码？",
         "resetBody": "旧PIN码会立即失效。新PIN码只显示一次。",
         "deactivateTitle": "停用{name}？",
-        "deactivateBody": "该用户在下一次请求时会被退出登录，并且无法再登录。"
+        "deactivateBody": "该用户在下一次请求时会被退出登录，并且无法再登录。",
+        "deleteTitle": "永久删除{name}？",
+        "deleteBody": "账号删除后无法恢复。已完成的线路、照片和订单会保留。"
       },
       "toast": {
         "activated": "已重新启用{name}。",
         "deactivated": "已停用{name}。",
-        "localeChanged": "已更改{name}的语言。"
+        "localeChanged": "已更改{name}的语言。",
+        "deleted": "已删除{name}。"
       },
       "errors": {
         "invalid": "请检查输入内容。",
@@ -457,7 +462,9 @@
         "emailTaken": "该电子邮箱已被使用。",
         "notFound": "找不到该用户。",
         "self": "不能停用自己的账号。",
-        "generic": "操作失败，请重试。"
+        "generic": "操作失败，请重试。",
+        "openTours": "{name}还有已下发的线路（{dates}）。请先在“线路”中点“编辑”，把它交给另一位司机。",
+        "selfDelete": "不能删除自己的账号。"
       },
       "admins": {
         "title": "管理员",
@@ -2514,6 +2521,12 @@
         "storage": "无法保存到手机，请重试。",
         "amount": "请输入如 42 或 42.50 的金额。"
       }
+    },
+    "upcoming": {
+      "title": "接下来的线路",
+      "tomorrow": "明天 · {date}",
+      "stops": "{count, plural, other {# 个站点}}",
+      "from": "{time} 起"
     }
   },
   "pwa": {
