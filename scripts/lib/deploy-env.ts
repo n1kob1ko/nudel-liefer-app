@@ -1,7 +1,9 @@
 /**
- * Pure validation of the environment of a Vercel build (production or preview).
- * Returns human-readable problems; never includes the values themselves.
+ * Pure validation of the environment of a hosted build: Vercel (production or preview) or Railway
+ * (NUD-202, `pnpm build:railway`). Returns human-readable problems; never includes the values
+ * themselves.
  */
+import { isKnownUrlStyle } from "../../src/lib/s3-url-style";
 import { parseSentryDsn } from "../../src/lib/sentry-config";
 
 export type DeployEnvResult = { errors: string[]; warnings: string[] };
@@ -11,7 +13,10 @@ const PLACEHOLDER_SECRETS = ["replace-with-openssl-rand-base64-32-output", "chan
 export function checkDeployEnv(env: Record<string, string | undefined>): DeployEnvResult {
   const errors: string[] = [];
   const warnings: string[] = [];
-  const isProduction = env.VERCEL_ENV === "production";
+  const isVercelProduction = env.VERCEL_ENV === "production";
+  // Railway names the environment; a project has "production" unless somebody renamed it.
+  const isRailway = Boolean(env.RAILWAY_ENVIRONMENT_NAME?.trim());
+  const isProduction = isVercelProduction || env.RAILWAY_ENVIRONMENT_NAME?.trim() === "production";
 
   const databaseUrl = env.DATABASE_URL;
   if (!databaseUrl) {
@@ -44,7 +49,9 @@ export function checkDeployEnv(env: Record<string, string | undefined>): DeployE
   if (endpoint) {
     if (/localhost|127\.0\.0\.1/.test(endpoint)) errors.push("S3_ENDPOINT points to localhost");
     else if (
-      isProduction &&
+      // The EU-jurisdiction rule belongs to the Vercel + R2 setup; a Railway bucket has its region
+      // chosen when it is created.
+      isVercelProduction &&
       !/^https:\/\/[0-9a-f]+\.eu\.r2\.cloudflarestorage\.com\/?$/.test(endpoint)
     ) {
       warnings.push(
@@ -53,10 +60,17 @@ export function checkDeployEnv(env: Record<string, string | undefined>): DeployE
     }
   }
 
+  if (!isKnownUrlStyle(env.S3_URL_STYLE)) errors.push("S3_URL_STYLE must be path or virtual");
+
   if (isProduction && env.SEED_ADMIN_PASSWORD) {
-    warnings.push("SEED_ADMIN_PASSWORD is set in the Vercel production environment: remove it");
+    warnings.push("SEED_ADMIN_PASSWORD is set in the production environment: remove it");
   }
-  if (isProduction && !env.CRON_SECRET) {
+  if (isRailway && !env.CRON_SECRET) {
+    // Nothing calls the cron routes on Railway but the dispatcher service, which sends this secret.
+    errors.push(
+      "CRON_SECRET is not set: the cron service cannot call any job (recurring orders, retention, translation retries)",
+    );
+  } else if (isProduction && !env.CRON_SECRET) {
     warnings.push(
       "CRON_SECRET is not set: GET /api/cron/retry-translations rejects every request, failed translations are never retried",
     );

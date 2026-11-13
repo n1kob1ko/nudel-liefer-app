@@ -97,4 +97,40 @@ describe("checkDeployEnv", () => {
       checkDeployEnv({ ...good, VERCEL_ENV: "preview", ENABLE_ERROR_TEST_PAGES: "true" }).errors,
     ).toEqual([]);
   });
+  describe("on Railway (NUD-202)", () => {
+    const railway = {
+      RAILWAY_ENVIRONMENT_NAME: "production",
+      DATABASE_URL: "postgresql://postgres:pw@postgres.railway.internal:5432/railway",
+      AUTH_SECRET: "a".repeat(44),
+      S3_ENDPOINT: "https://t3.storageapi.dev",
+      S3_BUCKET: "photos-abc",
+      S3_ACCESS_KEY_ID: "id",
+      S3_SECRET_ACCESS_KEY: "secret",
+      S3_URL_STYLE: "virtual",
+      CRON_SECRET: "c".repeat(44),
+      DEEPL_API_KEY: "deepl-key:fx",
+    };
+
+    it("accepts a complete environment without asking for an R2 endpoint", () => {
+      expect(checkDeployEnv(railway)).toEqual({ errors: [], warnings: [] });
+    });
+
+    it("treats a missing CRON_SECRET as an error: the dispatcher cannot call any job", () => {
+      const { errors } = checkDeployEnv({ ...railway, CRON_SECRET: undefined });
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toMatch(/CRON_SECRET/);
+    });
+
+    it("still warns about production leftovers", () => {
+      const { errors, warnings } = checkDeployEnv({ ...railway, SEED_ADMIN_PASSWORD: "x" });
+      expect(errors).toEqual([]);
+      expect(warnings.join("\n")).toMatch(/SEED_ADMIN_PASSWORD/);
+    });
+  });
+
+  it("refuses an unknown S3_URL_STYLE instead of signing path-style URLs silently", () => {
+    const { errors } = checkDeployEnv({ ...good, S3_URL_STYLE: "vhost" });
+    expect(errors).toEqual(["S3_URL_STYLE must be path or virtual"]);
+    expect(checkDeployEnv({ ...good, S3_URL_STYLE: " Virtual " }).errors).toEqual([]);
+  });
 });
