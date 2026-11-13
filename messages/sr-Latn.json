@@ -523,6 +523,12 @@
         "storage": "Čuvanje na telefonu nije moguće. Pokušajte ponovo.",
         "amount": "Unesite iznos kao 42 ili 42,50."
       }
+    },
+    "upcoming": {
+      "title": "Naredne ture",
+      "tomorrow": "Sutra · {date}",
+      "stops": "{count, plural, one {# stanica} few {# stanice} other {# stanica}}",
+      "from": "od {time}"
     }
   },
   "pwa": {

@@ -39,6 +39,7 @@ const AUDITED = [
   "server/stop-payment.ts",
   "server/payments.ts",
   "server/monthly-adjustments.ts",
+  "server/user-delete.ts",
 ];
 
 /** Writes that are deliberately not audited, with the reason. */
@@ -103,6 +104,18 @@ describe("audit coverage", () => {
       .join("\n");
     for (const action of AUDIT_ACTIONS) {
       expect(writerText, action).toContain(`"${action}"`);
+    }
+  });
+
+  it("every action has a label in the office languages (the timeline looks it up by name)", () => {
+    for (const locale of ["de", "en", "zh-Hans"]) {
+      const messages = JSON.parse(
+        readFileSync(join(process.cwd(), "messages", `${locale}.json`), "utf8"),
+      ) as { admin: { history: { actions: Record<string, string> } } };
+      const missing = AUDIT_ACTIONS.filter(
+        (action) => !messages.admin.history.actions[action.replace(".", "_")],
+      );
+      expect(missing, locale).toEqual([]);
     }
   });
 

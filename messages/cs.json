@@ -523,6 +523,12 @@
         "storage": "Uložení v telefonu není možné. Zkuste to znovu.",
         "amount": "Zadejte částku jako 42 nebo 42,50."
       }
+    },
+    "upcoming": {
+      "title": "Nadcházející trasy",
+      "tomorrow": "Zítra · {date}",
+      "stops": "{count, plural, one {# zastávka} few {# zastávky} many {# zastávky} other {# zastávek}}",
+      "from": "od {time}"
     }
   },
   "pwa": {

@@ -87,8 +87,14 @@ test("order with a delivery window: planned day is chosen, times and a moved day
     await expect(page.getByTestId("detail-window")).toContainText("08:00–11:00");
     await page.goto(`/de/admin/orders/${id}/edit`);
     await expect(page.getByTestId("order-window-from-time")).toHaveValue("08:00");
-    await page.getByTestId("order-date").fill(iso(saturday));
-    await expect(page.getByTestId("warning-outside-window")).toBeVisible();
+    // The change handler is attached on hydration: a day filled before that never reaches the
+    // form (CI run of 2026-11-13). So the day is set again until the warning shows; it is emptied
+    // first, because React ignores a change event that carries the value the field already has.
+    await expect(async () => {
+      await page.getByTestId("order-date").fill("");
+      await page.getByTestId("order-date").fill(iso(saturday));
+      await expect(page.getByTestId("warning-outside-window")).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 30_000 });
     await page.getByTestId("order-save").click();
     await expect(page).toHaveURL(new RegExp(`/admin/orders/${id}$`));
     await expect(page.getByTestId("detail-date")).toBeVisible();

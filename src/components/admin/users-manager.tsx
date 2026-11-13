@@ -10,6 +10,7 @@ import {
   PencilIcon,
   PlusIcon,
   PrinterIcon,
+  Trash2Icon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
@@ -58,6 +59,7 @@ import { LOCALES } from "@/lib/localized-text";
 import {
   createAdminAction,
   createDriverAction,
+  deleteUserAction,
   resetDriverPinAction,
   setDriverLocaleAction,
   setUserActiveAction,
@@ -91,7 +93,7 @@ const ERROR_KEYS: Record<UserError, string> = {
 };
 
 type PinSheet = { name: string; username: string; pin: string };
-type Confirm = { kind: "reset" | "deactivate"; user: UserListRow };
+type Confirm = { kind: "reset" | "deactivate" | "delete"; user: UserListRow };
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);
@@ -169,7 +171,7 @@ function UtilizationCell({ utilization }: { utilization?: UserUtilization }) {
  *
  * The Playwright ids stay: `drivers-table`, `driver-row-<username>`, `admins-table`,
  * `admin-row-<email>`, `create-driver`, `create-admin`, `create-driver-form`, `create-submit`,
- * `reset-pin`, `deactivate`, `reactivate`, `confirm-submit`, `pin-dialog`, `pin-username`,
+ * `reset-pin`, `deactivate`, `reactivate`, `delete-user`, `confirm-submit`, `pin-dialog`, `pin-username`,
  * `pin-value`, `pin-copy`, `pin-print`, `pin-done`.
  */
 export function UsersManager({
@@ -206,6 +208,7 @@ export function UsersManager({
   const [editLogin, setEditLogin] = useState<UserListRow | null>(null);
   const [scheduleFor, setScheduleFor] = useState<UserListRow | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const format = useFormatter();
 
   const errorText = (error: UserError) => t(`errors.${ERROR_KEYS[error]}`);
 
@@ -263,6 +266,29 @@ export function UsersManager({
         if (!result.ok) return setConfirmError(errorText(result.error));
         setConfirm(null);
         setPinSheet({ name: user.displayName, username: user.username ?? "", pin: result.pin });
+      } else if (kind === "delete") {
+        const result = await run(() => deleteUserAction(user.id));
+        if (!result) return setConfirmError(t("errors.generic"));
+        if (!result.ok) {
+          if (result.error === "open_tours") {
+            // The days of the tours that stop the delete: `Tour.date` is a calendar day (UTC).
+            const dates = (result.dates ?? [])
+              .map((day) =>
+                format.dateTime(new Date(`${day}T00:00:00Z`), {
+                  day: "2-digit",
+                  month: "2-digit",
+                  timeZone: "UTC",
+                }),
+              )
+              .join(", ");
+            return setConfirmError(t("errors.openTours", { name: user.displayName, dates }));
+          }
+          return setConfirmError(
+            result.error === "self" ? t("errors.selfDelete") : errorText(result.error),
+          );
+        }
+        setConfirm(null);
+        toast.success(t("toast.deleted", { name: user.displayName }));
       } else {
         const result = await run(() => setUserActiveAction(user.id, false));
         if (!result) return setConfirmError(t("errors.generic"));
@@ -413,6 +439,20 @@ export function UsersManager({
               <DropdownMenuItem data-testid="reactivate" onSelect={() => reactivate(user)}>
                 <CheckCircle2Icon aria-hidden />
                 {t("actions.reactivate")}
+              </DropdownMenuItem>
+            )}
+            {user.id === currentUserId ? null : (
+              // NUD-206: for good, behind its own confirmation. Never offered for the own account.
+              <DropdownMenuItem
+                data-testid="delete-user"
+                variant="destructive"
+                onSelect={() => {
+                  setConfirmError(null);
+                  setConfirm({ kind: "delete", user });
+                }}
+              >
+                <Trash2Icon aria-hidden />
+                {t("actions.delete")}
               </DropdownMenuItem>
             )}
           </RowActions>
@@ -677,20 +717,18 @@ export function UsersManager({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {confirm
-                ? t(confirm.kind === "reset" ? "confirm.resetTitle" : "confirm.deactivateTitle", {
-                    name: confirm.user.displayName,
-                  })
-                : null}
+              {confirm ? t(`confirm.${confirm.kind}Title`, { name: confirm.user.displayName }) : null}
             </DialogTitle>
             <DialogDescription>
-              {confirm
-                ? t(confirm.kind === "reset" ? "confirm.resetBody" : "confirm.deactivateBody")
-                : null}
+              {confirm ? t(`confirm.${confirm.kind}Body`) : null}
             </DialogDescription>
           </DialogHeader>
           {confirmError ? (
-            <p role="alert" className="text-base font-medium text-destructive">
+            <p
+              role="alert"
+              className="text-base font-medium text-destructive"
+              data-testid="confirm-error"
+            >
               {confirmError}
             </p>
           ) : null}
@@ -699,12 +737,16 @@ export function UsersManager({
               <CancelLabel />
             </Button>
             <Button
-              variant={confirm?.kind === "deactivate" ? "destructive" : "default"}
+              variant={confirm?.kind === "reset" ? "default" : "destructive"}
               disabled={pending}
               data-testid="confirm-submit"
               onClick={onConfirm}
             >
-              {confirm?.kind === "reset" ? t("actions.resetPin") : t("actions.deactivate")}
+              {confirm?.kind === "reset"
+                ? t("actions.resetPin")
+                : confirm?.kind === "delete"
+                  ? t("actions.deleteConfirm")
+                  : t("actions.deactivate")}
             </Button>
           </DialogFooter>
         </DialogContent>

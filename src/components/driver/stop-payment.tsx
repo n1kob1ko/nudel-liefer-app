@@ -1,7 +1,7 @@
 "use client";
 
 import { BanknoteIcon, CheckIcon, PencilLineIcon } from "lucide-react";
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 
@@ -32,12 +32,13 @@ export function StopPayment({
   };
 }) {
   const t = useTranslations("driver.payment");
+  const locale = useLocale();
   const money = useFormatter();
   const inputId = useId();
   const due = stop.cashDueCents ?? 0;
   const collected = stop.collectedCents ?? null;
   const [editing, setEditing] = useState(collected === null);
-  const [value, setValue] = useState(amountInputValue(collected ?? due));
+  const [value, setValue] = useState(amountInputValue(collected ?? due, locale));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -117,7 +118,7 @@ export function StopPayment({
             size="lg"
             className="min-h-12"
             onClick={() => {
-              setValue(amountInputValue(collected));
+              setValue(amountInputValue(collected, locale));
               setEditing(true);
             }}
             data-testid="payment-edit"
@@ -185,7 +186,7 @@ export function StopPayment({
               type="button"
               className={cn("min-h-12 text-base font-medium underline underline-offset-4")}
               onClick={() => {
-                setValue(amountInputValue(collected));
+                setValue(amountInputValue(collected, locale));
                 setEditing(false);
               }}
             >

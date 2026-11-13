@@ -39,12 +39,15 @@ export function parseAmountToCents(input: string | number): number | null {
 }
 
 /**
- * The plain value of an amount for an input field: `"42.50"`, `""` for "no amount". A dot is used
- * because the field accepts both; the visible money text elsewhere is formatted by next-intl.
+ * The plain value of an amount for an input field, `""` for "no amount". Without a locale it is
+ * `"42.50"` (what the server compares and stores as text); with one it carries that locale's
+ * decimal sign, `"42,50"` in German. The field accepts both, see `parseAmountToCents`.
  */
-export function amountInputValue(cents: number | null | undefined): string {
+export function amountInputValue(cents: number | null | undefined, locale?: string): string {
   if (!isValidCents(cents)) return "";
-  return (cents / 100).toFixed(2);
+  const text = (cents / 100).toFixed(2);
+  if (!locale) return text;
+  return new Intl.NumberFormat(locale).format(1.5).includes(",") ? text.replace(".", ",") : text;
 }
 
 /** Sum of amounts; a missing amount counts as 0. */

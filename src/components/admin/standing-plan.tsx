@@ -447,7 +447,9 @@ export function StandingPlan({
       </Card>
 
       {plan.editable ? (
-        <div className="sticky bottom-0 z-20 -mx-6 flex flex-wrap items-center gap-x-6 gap-y-2 border-t bg-card px-6 py-3 lg:-mx-8 lg:px-8">
+        // A solid bar inside the page column. Below 1025 px it stops above the menu bar at the
+        // bottom of the screen: at `bottom-0` the menu covered the totals and the save button.
+        <div className="sticky bottom-[5.25rem] z-20 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border bg-card px-4 py-3 shadow-md min-[1025px]:bottom-4">
           {/* What the kitchen has to make for this day, across every tour, while typing. */}
           <p
             className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-muted-foreground"

@@ -3,17 +3,23 @@ import { Suspense } from "react";
 
 import { LogoutButton } from "@/components/auth/logout-button";
 import { TodayTour } from "@/components/driver/today-tour";
+import { UpcomingTours } from "@/components/driver/upcoming-tours";
 import { EmptyState, LoadingSkeleton } from "@/components/shared/states";
 import type { AppLocale } from "@/lib/localized-text";
 import { getMapTileConfig } from "@/lib/map-config";
 import { requirePageActor } from "@/server/auth/page-guards";
 import { driverDayQuery } from "@/server/driver-today";
+import { driverUpcomingQuery } from "@/server/driver-upcoming";
 
 async function Today({ locale }: { locale: string }) {
   await requirePageActor("driver", locale);
   const t = await getTranslations({ locale, namespace: "driver" });
   // NUD-163: the active tour plus every other open tour of the day (usually none).
-  const { primary: today, others } = await driverDayQuery(locale as AppLocale);
+  // NUD-205: the tours of the coming days, as a preview below today's tour.
+  const [{ primary: today, others }, upcoming] = await Promise.all([
+    driverDayQuery(locale as AppLocale),
+    driverUpcomingQuery(locale as AppLocale),
+  ]);
   const stopCount =
     (today?.stops.length ?? 0) + others.reduce((sum, tour) => sum + tour.stops.length, 0);
   const hasTour = today !== null && stopCount > 0;
@@ -34,6 +40,7 @@ async function Today({ locale }: { locale: string }) {
           action={<LogoutButton locale={locale} />}
         />
       )}
+      <UpcomingTours tours={upcoming.tours} timezone={upcoming.timezone} />
     </>
   );
 }

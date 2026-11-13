@@ -2,6 +2,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { type AbstractIntlMessages, NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { amountInputValue } from "@/domain/money";
+
 import cs from "../../../messages/cs.json";
 import de from "../../../messages/de.json";
 import en from "../../../messages/en.json";
@@ -64,7 +66,8 @@ describe.each(Object.keys(LOCALES))("StopPayment in %s", (locale) => {
     renderIn(locale);
 
     expect(screen.getByTestId("stop-payment")).toBeInTheDocument();
-    expect(screen.getByTestId("payment-amount")).toHaveValue("42.50");
+    // The decimal sign follows the language: "42,50" in German, "42.50" in English.
+    expect(screen.getByTestId("payment-amount")).toHaveValue(amountInputValue(4250, locale));
 
     fireEvent.change(screen.getByTestId("payment-amount"), { target: { value: "40,00" } });
     fireEvent.click(screen.getByTestId("payment-save"));

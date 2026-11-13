@@ -16,6 +16,7 @@ export const AUDIT_ENTITIES = [
   "RecurringOrder",
   "Driver",
   "StandingTour",
+  "User",
 ] as const;
 export type AuditEntity = (typeof AUDIT_ENTITIES)[number];
 
@@ -71,6 +72,7 @@ export const AUDIT_ACTIONS = [
   "standing_tour.driver",
   "standing_tour.activate",
   "standing_tour.deactivate",
+  "user.delete",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
