@@ -174,12 +174,24 @@ Uploads that never became a database row (cancelled or failed action) remain in 
 
 ### Driver text retention (NUD-112)
 
-`/api/cron/data-retention` (daily 03:47 UTC, bearer `CRON_SECRET`) removes the free text of driver problem reports (`Stop.problemNote`: original, German translation, pending marker) of stops completed more than `DRIVER_TEXT_RETENTION_DAYS` ago (default 365, minimum 30). Reason, status, quantities, tours and orders are never touched; orders, tours and stops are never deleted.
+`/api/cron/data-retention` (daily 03:47 UTC, bearer `CRON_SECRET`) removes the free text of driver problem reports (`Stop.problemNote`: original, German translation, pending marker) of stops completed more than `DRIVER_TEXT_RETENTION_DAYS` ago (default 365, minimum 30). Reason, status, quantities, tours and orders are never touched by this job; deleting whole orders is the next job.
 
 - Default is **dry-run**: the log line `[data-retention] {...}` shows `expired` (texts that would go) and `scrubbed: 0`. Read two or three reports (Vercel Logs, search `data-retention`); if the numbers are plausible, set `DATA_RETENTION_MODE=delete` and redeploy. Set it back to `dry-run` (or `off`) to stop.
 - Run by hand: `curl -s -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron/data-retention`. `more: true` = backlog continues tomorrow (10 000 texts per run). `503` / `status: error`: database unreachable, nothing partial is harmful.
 - Removed texts come back only from a backup (sections 4 and 5); after a restore the next run removes them again.
 - The audit entry of the report keeps the note cut to 200 characters until the audit retention deletes it (`docs/privacy.md` section 6).
+
+### Deleting settled orders (NUD-201)
+
+`/api/cron/order-retention` (daily 03:57 UTC, bearer `CRON_SECRET`) deletes orders, their stops and tours and the monthly "paid" notes `ORDER_RETENTION_DAYS` (default 30, minimum 7) after they were paid. The client decided on 2026-11-13 that nothing of this is kept. What is not paid is never deleted; customers, products, settings, standing tours and standing orders are never touched. The exact rules are in `docs/audit-and-retention.md`.
+
+- Default is **dry-run**: the log line `[order-retention] {...}` shows `orders` and `stops` that would go and deletes nothing. Tours, paid notes and corrections are not counted in dry-run (always 0 there); they follow from the orders. **Switching it on cannot be undone**: deleted orders and bills come back only from a backup that still contains them. Before switching on: read two or three dry-run reports, make sure every month that really is paid is marked paid and every month that is not is not, and tell the office that a paid month disappears 30 days later (the bill page and the paid history say so once the job is on). If a bill is still needed, download it as PDF or CSV first.
+- Switch on: set `ORDER_RETENTION_MODE=delete` in the environment file, restart the app, and make sure the cron line of `docs/deploy.md` section 13.1 exists. Set it back to `dry-run` (or `off`) to stop; nothing that is already deleted comes back.
+- Run by hand: `curl -s -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/cron/order-retention`. `more: true` = backlog continues tomorrow (5 000 orders per run). `status: partial` = some screenshot files could not be removed; the screenshot job retries them. `503` / `status: error`: database unreachable, a lock that was not granted in time, or an unusable `ORDER_RETENTION_DAYS` (the log line says which); a batch is one transaction, so nothing half-deleted is left. Two runs at once are safe: they take their batches in turn.
+- The first run after switching on deletes everything that is paid for more than 30 days at once, however old.
+- An order that does not go although it is paid shares a stop with something unpaid (for example open cash at the same stop); it goes when that is settled. A cash order also stays while its stop was never ticked off on a released tour (nobody knows whether it was delivered and paid): have the stop completed or cancel the order. A month that was marked paid and taken back again counts as open and stays.
+- Before switching on, check the standing orders with a limit ("nach N Lieferungen"): the migration of NUD-201 must be applied first (it stores how many deliveries each rule has made; `pnpm db:migrate` does it with every deploy).
+- The change log (`AuditLog`) keeps its own period (`AUDIT_RETENTION_DAYS`, default 730, minimum 90): its entries about deleted orders (ids, changed quantities, amounts, cut notes) stay until then. Lower the variable if the client wants them gone sooner.
 
 ### Access and erasure requests (NUD-112)
 
@@ -209,7 +221,7 @@ A person asks what the app holds about them, or asks for their name to be remove
 ## 12. Logs
 
 - Vercel > project > **Logs** (retention depends on plan, short on free: copy what you need). Filter by _Error_ / by text.
-- Useful search words: `[csp-violation]` (blocked resources, no query strings), `[orphan-cleanup]`, `[retention]` (deleted old screenshots, counts), `[data-retention]` (driver texts, counts), `[audit-retention]`, `translate` (DeepL retries), `migrate` (build log).
+- Useful search words: `[csp-violation]` (blocked resources, no query strings), `[orphan-cleanup]`, `[retention]` (deleted old screenshots, counts), `[data-retention]` (driver texts, counts), `[order-retention]` (deleted settled orders, counts), `[audit-retention]`, `translate` (DeepL retries), `migrate` (build log).
 - Build and migration output: Vercel > **Deployments** > the deployment > **Build Logs**.
 - Cron runs: Vercel > **Settings > Cron Jobs** (and the Logs, source _Cron_).
 - Application errors with stack traces and release: Sentry (section 7), if configured.

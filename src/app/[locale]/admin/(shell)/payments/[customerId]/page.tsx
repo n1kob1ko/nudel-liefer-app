@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense } from "react";
 
+import { DeletionNotice } from "@/components/admin/deletion-notice";
 import { MonthlyBillActions } from "@/components/admin/monthly-bill-actions";
 import { MonthlyBillAdjustments } from "@/components/admin/monthly-bill-adjustments";
 import { PageHeader } from "@/components/admin/page-header";
@@ -18,12 +19,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { deletionDue } from "@/domain/order-retention";
 import { addMonths, monthKey, monthStart } from "@/domain/payment";
 import { Link } from "@/i18n/navigation";
 import { createAppFormatters } from "@/lib/format";
 import { type AppLocale, localizedTextSchema, pick } from "@/lib/localized-text";
 import { requirePageActor } from "@/server/auth/page-guards";
 import { getDb } from "@/server/db";
+import { orderRetentionPolicy } from "@/server/order-retention";
 import { todayIn } from "@/server/orders";
 import { monthlyBillQuery } from "@/server/payments";
 import { getFactoryTimezone } from "@/server/settings";
@@ -54,6 +57,7 @@ async function Guarded({
   const fallback = monthKey(addMonths(monthStart(today), -1));
   const bill = await monthlyBillQuery(getDb(), customerId, requested ?? fallback, today);
   if (!bill) notFound();
+  const retention = orderRetentionPolicy();
 
   const monthLabel = formatter.dateTime(new Date(`${bill.periodStart}T00:00:00Z`), {
     month: "long",
@@ -148,6 +152,17 @@ async function Guarded({
             month={bill.monthKey}
             paid={bill.payment !== null}
           />
+          {retention.active ? (
+            <DeletionNotice testId="monthly-bill-deletion">
+              {bill.payment
+                ? t("bill.deletion.paid", {
+                    date: fmt.dayOfMoment(
+                      deletionDue(new Date(bill.payment.paidAt), retention.days),
+                    ),
+                  })
+                : t("bill.deletion.unpaid", { days: retention.days })}
+            </DeletionNotice>
+          ) : null}
         </CardContent>
       </Card>
 

@@ -2004,7 +2004,11 @@
         "emptyBody": "Für diesen Monat gibt es keine bestätigten Bestellungen auf Monatsrechnung.",
         "currentMonth": "Der Monat läuft noch; als bezahlt markieren geht ab dem 1. des Folgemonats.",
         "noAmount": "ohne Betrag",
-        "breakdown": "Bestellungen {orders}, Korrekturen {adjustments}"
+        "breakdown": "Bestellungen {orders}, Korrekturen {adjustments}",
+        "deletion": {
+          "paid": "Wird ab dem {date} automatisch gelöscht, zusammen mit den Bestellungen und Touren des Monats. Wer die Monatsrechnung noch braucht, speichert sie vorher als PDF oder CSV.",
+          "unpaid": "{days} Tage nach dem Vermerk „bezahlt“ werden diese Monatsrechnung, ihre Bestellungen und Touren automatisch gelöscht. Offene Monate bleiben stehen."
+        }
       },
       "note": "Notiz (freiwillig)",
       "notePlaceholder": "z. B. bar beglichen oder Überweisung am 3.",
@@ -2116,7 +2120,8 @@
         "pagination": {
           "label": "Seiten",
           "status": "Seite {page} von {pageCount}"
-        }
+        },
+        "deletion": "Ein Vermerk verschwindet {days} Tage nach der Bezahlung, zusammen mit den Bestellungen des Monats."
       }
     }
   },

@@ -36,8 +36,8 @@ the tile provider are processors of the operator.
 | Photos of shop entrance and parking   | `Photo` + bucket `customers/<uuid>.jpg`             | Images taken on the street; may show passers-by, vehicle registration plates or staff. Uploader (user id)                                                                                                                                                                                                                                 | Kept while the customer is served; replaced photos stay as history                                                                               |
 | Parking spots of a customer           | `ParkingSpot` (NUD-125)                             | Map position of a parking place, a short name and a **free-text note** typed by the office (drivers add a Parkplatz with coordinates only, no text, NUD-144); shown to the driver on the stop screen and kept in the driver's offline copy of today's tour (NUD-126); the note may name a contact person or a gate code. Author (user id) | Kept while the customer exists; "removed" spots stay with `active=false` (soft delete). Not copied into the audit log (only ids and coordinates) |
 | Order screenshots (WhatsApp / WeChat) | `Screenshot` + bucket `screenshots/<uuid>.jpg`      | Chat content: names, phone numbers, messages. Uploader (user id). `extraction` stays empty: the AI answer is stored with the order (`Order.aiExtraction`, NUD-150)                                                                                                                                                                        | **180 days** (configurable), then deleted automatically (section 3)                                                                              |
-| Orders and order lines                | `Order`, `OrderItem`                                | Customer reference (a business), quantities, delivery date, creator (user id), internal note (free text, may name a contact person), and - when the AI draft was used - the pasted customer message plus the model's answer (NUD-150)                                                                                                     | Kept (transactional history, section 6); the internal note is editable in the admin area; the AI fields are not in the retention jobs            |
-| Tours, stops, delivery status         | `Tour`, `Stop`, `StopOrder`, `StopMutation`         | Assigned driver (user id), completion times, problem reason (enum). Not personal data on their own: quantities, statuses, ids                                                                                                                                                                                                             | Kept (transactional history, section 6)                                                                                                          |
+| Orders and order lines                | `Order`, `OrderItem`                                | Customer reference (a business), quantities, delivery date, creator (user id), internal note (free text, may name a contact person), and - when the AI draft was used - the pasted customer message plus the model's answer (NUD-150)                                                                                                     | Kept (transactional history, section 6); the internal note is editable in the admin area; the AI fields go with the order. Deleted 30 days after payment once the job is on (section 6) |
+| Tours, stops, delivery status         | `Tour`, `Stop`, `StopOrder`, `StopMutation`         | Assigned driver (user id), completion times, problem reason (enum). Not personal data on their own: quantities, statuses, ids                                                                                                                                                                                                             | Deleted with their orders 30 days after payment once the job is on (section 6) |
 | Driver problem text                   | `Stop.problemNote` (JSON, driver language + German) | **Free text typed by the driver**, plus its machine translation; may contain names or phone numbers                                                                                                                                                                                                                                       | **365 days** after the stop was completed (configurable), then removed by the daily job (section 6)                                              |
 | Audit log                             | `AuditLog`                                          | Actor id, entity ids, quantities, dates, order / problem notes **cut to 200 characters** (this includes a copy of the driver's problem text, see section 6); no names                                                                                                                                                                     | **730 days** (configurable), then deleted by the daily job (section 7)                                                                           |
 | Failed-login counters                 | `LoginAttempt`                                      | User name or e-mail that was typed and the **IP address** of the failed attempt                                                                                                                                                                                                                                                           | 15 minute rolling window; rows older than 24 h are deleted daily (section 3)                                                                     |
@@ -109,7 +109,8 @@ what it would delete. Details and safeguards: `docs/runbook.md`, "Orphaned stora
 
 `CRON_SECRET` (required, otherwise the retention jobs, the orphan job and the translation job never
 run), optionally `SCREENSHOT_RETENTION_DAYS`, `AUDIT_RETENTION_DAYS`, `DRIVER_TEXT_RETENTION_DAYS`,
-`DATA_RETENTION_MODE` (**set to `delete` to activate the driver text job**), `ORPHAN_CLEANUP_MODE`. See `docs/env.md`.
+`DATA_RETENTION_MODE` (**set to `delete` to activate the driver text job**), `ORDER_RETENTION_DAYS`,
+`ORDER_RETENTION_MODE` (**set to `delete` to activate deleting settled orders**), `ORPHAN_CLEANUP_MODE`. See `docs/env.md`.
 
 ## 4. Who else receives data
 
@@ -171,9 +172,9 @@ Vercel's request logs and in `LoginAttempt` (above). Where to read them: `docs/r
 | `Order.internalNote`                                                                  | **Possibly**: free text written by the office; may name a contact person.                                                                                                                                                                                     | Keep; editable in the order form. Open question for the client below                                                                       |
 | `Order.sourceText`, `Order.aiExtraction` (NUD-150)                                    | **Yes, possibly**: the pasted customer message (WhatsApp/WeChat text, may contain a name, a phone number or an address) and the raw JSON the model read from it. Stored only when the office uses the AI draft.                                               | Keep with the order like `internalNote`; not in the retention jobs (open question below). The screenshot itself keeps its own 180-day rule |
 | `ParkingSpot.label`, `ParkingSpot.note`                                               | **Possibly**: free text written by the office (later by drivers); may name a contact person.                                                                                                                                                                  | Keep with the customer; editable in the customer detail. Not copied into the audit log                                                     |
-| `Order.amountCents`, `Order.paymentTerm`, `Stop.collectedCents`, `Stop.collectedAt`, `Stop.collectedById`, `MonthlyPayment` (NUD-196) | No personal data beyond user ids (the driver who collected, the office user who marked a month paid). Amounts, terms, timestamps and the snapshot of a monthly bill (total, order count). `MonthlyPayment.note` is **possibly** free text typed by the office (max 200 characters, e.g. "bar beglichen") and can name a person. | Keep with the order / stop / customer; the note is not copied into the audit log (the entry holds ids, amount and order count). Not in the retention jobs |
-| `MonthlyAdjustment` (NUD-197)                                                          | **Possibly**: `label` is free text typed by the office (max 120 characters, e.g. "Rabatt Stammkunde", "Gutschrift Bruchware") and can name a person. The rest is an amount, a month and user ids (who added it, who removed it).                                  | Keep with the customer like `MonthlyPayment` (a removed line stays with `voidedAt`); the label is not copied into the audit log (the entry holds the id and the amount). Not in the retention jobs |
-| `Tour.loadingStartedAt`, `Tour.departedAt`                                            | Indirectly: moments at which the assigned driver opened the departure checklist and left the depot (NUD-151); app events only, no location. Used for the working-time evaluation (NUD-152).                                                                   | Kept with the tour (transactional history, never deleted by a job)                                                                         |
+| `Order.amountCents`, `Order.paymentTerm`, `Stop.collectedCents`, `Stop.collectedAt`, `Stop.collectedById`, `MonthlyPayment` (NUD-196) | No personal data beyond user ids (the driver who collected, the office user who marked a month paid). Amounts, terms, timestamps and the snapshot of a monthly bill (total, order count). `MonthlyPayment.note` is **possibly** free text typed by the office (max 200 characters, e.g. "bar beglichen") and can name a person. | Keep with the order / stop / customer; the note is not copied into the audit log (the entry holds ids, amount and order count). Deleted with the month 30 days after it was paid (NUD-201) |
+| `MonthlyAdjustment` (NUD-197)                                                          | **Possibly**: `label` is free text typed by the office (max 120 characters, e.g. "Rabatt Stammkunde", "Gutschrift Bruchware") and can name a person. The rest is an amount, a month and user ids (who added it, who removed it).                                  | Keep with the customer like `MonthlyPayment` (a removed line stays with `voidedAt`); the label is not copied into the audit log (the entry holds the id and the amount). Deleted with the month 30 days after it was paid (NUD-201) |
+| `Tour.loadingStartedAt`, `Tour.departedAt`                                            | Indirectly: moments at which the assigned driver opened the departure checklist and left the depot (NUD-151); app events only, no location. Used for the working-time evaluation (NUD-152).                                                                   | Kept with the tour; deleted with it (NUD-201) |
 | `Customer.keyNumber`, `Customer.hasKey`                                               | No. A number on a key tag (max 20 characters) typed by the office or a driver; master data of the customer, kept with it (NUD-142). The audit entry `customer.key` holds the old and the new number.                                                          | Keep; not in the retention jobs                                                                                                            |
 | `Customer.abbreviation`                                                               | No. Legacy internal code (max 20 characters, free text) typed by the office or a driver (NUD-164); master data of the customer, temporary and removed once the old system is retired. The audit entry `customer.abbreviation` holds the old and the new text. | Keep until removal; not in the retention jobs                                                                                              |
 | `StandingTour.name`, `StandingTourCustomer` (NUD-194)                                 | **Possibly**: a group name typed by the office ("Route 1", "Stammtour Nord") and the link to its customers; the name can be a place or a neighbourhood, never a person. The membership is a plain id link.                                                    | Keep with the group (soft delete, `active=false`); memberships are replaced on edit and the changes are audited by ids only                |
@@ -182,13 +183,40 @@ Vercel's request logs and in `LoginAttempt` (above). Where to read them: `docs/r
 | `AuditLog.diff` of `stop.problem` / order entries                                     | **Possibly**: order notes cut to 200 characters. `stop.problem` entries hold no driver text (only `hasNote` and `noteLength`, NUD-121); entries written before that change may still hold the cut text.                                                       | Deleted with the entry after 730 days (section 7); see the note below                                                                      |
 
 **Conclusion.** Orders, tours and stops carry no personal data of their own beyond user ids and
-the two free-text fields. Deleting them is **neither needed for data protection nor safe without a
-client decision**: the office may need them for disputes about quantities and for accounting
-questions, `backlog.md` section 4.3 forbids hard-deleting business data, and a stop that is missing
-from a completed tour would falsify its history (counts, "13 of 13 delivered"). The app therefore
-**never deletes orders, tours, stops or their statuses**, and there is no setting that does. The
-deletion or anonymisation of whole old orders and tours (proposal in the earlier version of this
-section: 3 years) stays an open question for the client (`backlog.md` section 10).
+the two free-text fields, so data protection does not require deleting them. The **client decided
+on 2026-11-13 that they are not kept anyway**: everything that is paid is deleted 30 days after the
+payment (next subsection). Until that job is switched on, nothing is deleted.
+
+### Orders, tours, stops and monthly bills: deleted 30 days after payment (NUD-201)
+
+`GET /api/cron/order-retention` runs daily at 03:57 UTC (`vercel.json`), bearer `CRON_SECRET`.
+
+- **What goes:** orders with their lines (including `internalNote`, `sourceText`, `aiExtraction`),
+  the stops they were delivered with (including cash amounts and a remaining `problemNote`), tours
+  without a stop left, the monthly "paid" notes (`MonthlyPayment`, including its note) and the
+  correction lines of those months (`MonthlyAdjustment`, including the label), and screenshots no
+  order uses any more.
+- **When:** `ORDER_RETENTION_DAYS` days (default **30**, 7 to 3650) after the payment. Monthly bill:
+  after the office marked the month paid. Cash: after the driver collected the full amount.
+  Cancelled orders, drafts and cash orders that were never delivered: after their delivery day.
+- **What stays:** everything that is not paid (an open month, a month whose paid note was taken
+  back, open or partly paid cash, a cash order whose stop was never ticked off on a released
+  tour), whatever its age, and an order that shares a stop with something unpaid. Paid notes that
+  were taken back and the correction lines of unpaid months stay with them. Customers, products, users,
+  settings, standing tours, standing orders, customer photos and parking spots are never touched.
+- **Default is `ORDER_RETENTION_MODE=dry-run`**: the job only counts and logs
+  `[order-retention] {...}`. Set `ORDER_RETENTION_MODE=delete` to delete (`off` does nothing).
+  Deleted data cannot be recovered except from a backup that contains it.
+- **The audit log is not part of it.** Entries about deleted orders (ids, changed quantities,
+  amounts, notes cut to 200 characters) stay until the audit retention deletes them (section 7,
+  730 days by default, at least 90).
+- **Retention duties are the client's call.** Tax and commercial law can require keeping invoices
+  and their records for years. The client was told and decided to delete; whoever operates the app
+  should have this confirmed by the client's tax adviser before switching the job on. The monthly
+  bill can be downloaded as PDF or CSV before it goes.
+
+Details of the rule and its safeguards: `docs/audit-and-retention.md`; switching it on:
+`docs/runbook.md` section 10.
 
 ### Driver problem texts: 365 days (implemented)
 
@@ -199,7 +227,7 @@ section: 3 years) stays an open question for the client (`backlog.md` section 10
   `DRIVER_TEXT_RETENTION_DAYS` days ago** (default **365**, whole days 30 to 3650; empty, invalid
   or out-of-range values fall back to 365, a value below 30 is refused by the code). Nothing else
   on the stop changes: `problemReason`, `status`, `completedAt`, quantities, the tour and the
-  orders stay. The office sees such a stop with its reason and without a note, exactly like a
+  orders stay (until the stop itself is deleted with its paid orders, see above). The office sees such a stop with its reason and without a note, exactly like a
   stop where the driver wrote none.
 - The whole text is removed at once: the driver's original, the German translation and the marker
   "translation pending". A text whose translation is still pending is removed too; the translation

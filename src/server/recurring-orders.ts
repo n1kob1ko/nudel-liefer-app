@@ -193,14 +193,6 @@ function isUniqueViolation(error: unknown): boolean {
 }
 
 /**
- * How many deliveries the rule has produced so far, cancelled ones included: they happened and the
- * unique key prevents a second one for the same day. One query per rule, not one per day.
- */
-function deliveredCount(db: RecurringDb, ruleId: string): Promise<number> {
-  return db.order.count({ where: { recurringOrderId: ruleId } });
-}
-
-/**
  * Generates the missing orders of all running rules (or only `ruleIds`) for the days from `today`
  * to today + lead days. Safe to run any number of times, also concurrently: a second order for the
  * same rule and day hits the unique key and is counted as existing.
@@ -248,12 +240,13 @@ export async function generateRecurringOrders(
         })
       ).map((o) => o.recurringDate?.getTime()),
     );
-    // maxDeliveries is a lifetime budget of the rule; the orders counted here are the ones already
-    // created, so only the free slots are left for this run.
+    // maxDeliveries is a lifetime budget of the rule. It is checked against the rule's own count
+    // of created orders (cancelled ones included: they happened), not against the orders that
+    // exist: paid orders are deleted later (NUD-201) and must not give the budget back.
     let free =
       rule.maxDeliveries === null
         ? Number.POSITIVE_INFINITY
-        : Math.max(0, rule.maxDeliveries - (await deliveredCount(db, rule.id)));
+        : Math.max(0, rule.maxDeliveries - rule.generatedCount);
     for (const day of days) {
       if (have.has(day.getTime())) {
         report.existing += 1;
@@ -285,6 +278,10 @@ export async function generateRecurringOrders(
               },
             },
             select: { id: true },
+          });
+          await tx.recurringOrder.update({
+            where: { id: rule.id },
+            data: { generatedCount: { increment: 1 } },
           });
           await recordAudit(tx, {
             actorId: rule.confirmedById,

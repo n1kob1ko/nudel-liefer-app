@@ -2,6 +2,8 @@
 covers:
   - src/server/audit*.ts
   - src/server/data-retention*.ts
+  - src/server/order-retention*.ts
+  - src/domain/order-retention.ts
   - src/server/retention-cron.ts
   - src/server/orphan-cleanup*.ts
   - src/domain/audit.ts
@@ -14,8 +16,8 @@ stale_since: null
 
 This module covers the append-only audit log (NUD-092) and the background jobs
 that delete or scrub old data: audit-log retention (NUD-111), driver-text
-retention (NUD-112), the screenshot/failed-login retention cron (NUD-093) and
-orphaned storage-object cleanup (NUD-094).
+retention (NUD-112), deleting settled orders (NUD-201), the screenshot/failed-login
+retention cron (NUD-093) and orphaned storage-object cleanup (NUD-094).
 
 ## Files
 
@@ -29,6 +31,9 @@ orphaned storage-object cleanup (NUD-094).
 | `src/server/audit-retention-cron.ts` | Cron handler `GET /api/cron/audit-retention`.                                              |
 | `src/server/data-retention.ts`       | `scrubExpiredDriverTexts`: scrubs `Stop.problemNote`.                                      |
 | `src/server/data-retention-cron.ts`  | Cron handler `GET /api/cron/data-retention`.                                               |
+| `src/domain/order-retention.ts`      | `purgeSelection`: which orders and stops may go together; period constants.                |
+| `src/server/order-retention.ts`      | `purgeSettledOrders`: deletes orders, stops, tours and paid notes 30 days after payment.   |
+| `src/server/order-retention-cron.ts` | Cron handler `GET /api/cron/order-retention`.                                              |
 | `src/server/retention-cron.ts`       | Cron handler `GET /api/cron/retention`: screenshots and failed-login rows.                 |
 | `src/server/orphan-cleanup.ts`       | `cleanupOrphanedObjects`: deletes uploaded-but-unattached storage objects.                 |
 | `src/server/orphan-cleanup-cron.ts`  | Cron handler `GET /api/cron/orphan-cleanup`.                                               |
@@ -122,6 +127,72 @@ is `dry-run`, which only counts. Batches of 500, max 20 per run; a period below
 `MIN_DRIVER_TEXT_RETENTION_DAYS` (30) is refused. `driverTextRetentionDays`
 parses `DRIVER_TEXT_RETENTION_DAYS` (default 365, range 30..3650, fallback 365).
 
+### Deleting settled orders (`order-retention.ts`, `order-retention-cron.ts`)
+
+The client does not want orders, tours and bills kept (decision of 2026-11-13,
+NUD-201). `purgeSettledOrders` deletes them for good once they are paid and the
+period after the payment is over (`ORDER_RETENTION_DAYS`, default 30, range
+7..3650). A value that is set but unusable gives `null` from `orderRetentionDays`
+and the run throws instead of falling back to 30: the default is the shortest
+sensible period, so a typo must not select it. **What is not paid is never
+deleted.** `ORDER_RETENTION_MODE` is `off` | `dry-run` | `delete`; unset or
+anything else is `dry-run`, which only counts orders and stops. A deployment
+therefore never starts deleting by itself.
+
+An order is _settled_ (`settledSql`) when its delivery day is older than the
+period and
+
+- it is a `DRAFT` or `CANCELLED` order (nothing was ever to be paid), or
+- it is `CONFIRMED` on the monthly bill and its customer-month has a paid note
+  (`MonthlyPayment`, not voided) with `paidAt` older than the period, or
+- it is a `CONFIRMED` cash order and none of its `DELIVERED` stops has cash open
+  or paid in part, and the collection (`collectedAt`, else `completedAt`) is
+  older than the period (a delivery without any recorded time never counts as
+  old enough). A `PENDING` stop on a released, running or completed tour with
+  cash due keeps the order as well: nobody knows whether it was delivered and
+  paid. Only a cash order on no such stop (no tour, a tour that was never
+  released, a reported problem) counts from its delivery day.
+
+What goes together (`purgeSelection`, pure): a stop goes only when its tour is
+older than the period and every one of its orders goes; an order goes only when
+every stop it is on goes. So one unpaid order keeps its stop, and with it the
+other orders of that stop. A batch also follows these links to orders outside
+itself, so two settled orders on one stop never wait for each other.
+
+Two runs at once take their batches in turn (`pg_advisory_xact_lock`).
+Per batch (200 orders, at most 25 batches per run, keyset cursor over
+`deliveryDate, id` so waiting orders do not hold up later ones) one transaction
+selects, locks the stops, the orders and their paid notes, selects again and
+deletes only when both selections agree (a month marked unpaid in between makes
+the batch step back). Stops go first (`StopOrder` restricts deleting an order),
+order lines and stop mutations cascade. After the batches the run deletes old
+stops without an order, old tours without a stop, and the paid notes whose
+month is over and has no `CONFIRMED` monthly order left, together with the
+correction lines (`MonthlyAdjustment`) of those months. A paid note stays while
+an order of its month has to wait. Screenshots that no order uses any more are
+removed like in the screenshot job (file first, then row); a storage failure is
+counted (`screenshotsFailed`, response status `partial`) and left to that job.
+
+Never touched: customers, products, users, settings, standing tours, standing
+orders, customer photos, parking spots, and `AuditLog` (its entries about
+deleted orders expire with the audit retention). The run writes no audit entry.
+The bill page and the paid history show when a paid month will be deleted, only
+while the mode is `delete` (`orderRetentionPolicy`).
+
+Consequences to know: the utilization statistics, the paid history and the
+exports only cover what is not deleted yet, and a tour loses its paid stops one
+by one before it disappears (its counts shrink with them). While one order of
+a paid month has to wait, the bill page shows the month with the orders that
+are left next to the amount that was paid. Paid notes that were taken back and
+correction lines of unpaid months are never deleted.
+
+Nothing may conclude a lasting fact from "an order row exists". Two places did
+and were changed with this job: the delivery limit of a standing order counts
+`RecurringOrder.generatedCount` (incremented when an order is generated,
+backfilled by the migration `20261113100000_recurring_generated_count`) instead
+of the orders that exist, and the unit of a product stays locked while a
+standing order uses it (`products.ts`).
+
 ### Screenshots and failed-login rows (`retention-cron.ts`)
 
 `handleRetentionCron` (`GET /api/cron/retention`, daily) deletes order
@@ -191,6 +262,12 @@ irreversible, so the job is deliberately cautious:
 - `data-retention.test.ts` / `.integration.test.ts` cover the modes, batching,
   idempotence, that only `problemNote` is scrubbed, and that the tour plan view
   still shows the stop with its reason.
+- `order-retention.test.ts` (domain and server) / `.integration.test.ts` cover
+  the selection rule, env parsing, the cron handler and, on a real database:
+  paid / unpaid / voided months, cash collected / open / short, cancelled and
+  draft orders, shared tours and stops, paid notes and corrections, screenshots,
+  the modes, batching, the step back when a month is marked unpaid during a
+  run, and that customers, products, users and the audit log stay.
 - `orphan-cleanup.test.ts` / `.integration.test.ts` cover the modes, grace
   period, key shapes, the plausibility valve, the re-check before delete, the
   per-run caps and that replaced photos stay referenced.
