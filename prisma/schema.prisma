@@ -203,7 +203,7 @@ model Customer {
 
   photos                Photo[]
   orders                Order[]
-  suggestedScreenshots  Screenshot[]     @relation("ScreenshotSuggestedCustomer")
+  suggestedScreenshots  Screenshot[]           @relation("ScreenshotSuggestedCustomer")
   stops                 Stop[]
   parkingSpots          ParkingSpot[]
   recurringOrders       RecurringOrder[]
@@ -278,13 +278,18 @@ model StandingTour {
   name      String
   /// Default driver of the group; `null` = not assigned. A day's tour driver is set in the tour.
   driverId  String?
+  /// Vehicle of the day routes of this group (NUD-212); `null` = not chosen yet.
+  vehicleId String?
   active    Boolean  @default(true)
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  driver    User?                  @relation(fields: [driverId], references: [id], onDelete: Restrict)
-  customers StandingTourCustomer[]
+  driver      User?                  @relation(fields: [driverId], references: [id], onDelete: Restrict)
+  vehicle     Vehicle?               @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  customers   StandingTourCustomer[]
+  tours       Tour[]
+  extraOrders Order[]
 
   @@index([driverId])
 }
@@ -408,42 +413,48 @@ model Screenshot {
 }
 
 model Order {
-  id               String      @id @default(cuid())
-  customerId       String
+  id                  String      @id @default(cuid())
+  customerId          String
   /// PLANNED delivery day (NUD-148, D25): set by planning (earliest day in the window with capacity), movable by the office.
-  deliveryDate     DateTime    @db.Date
+  deliveryDate        DateTime    @db.Date
   /// Requested delivery window (first and last day, factory time zone), `windowFrom <= windowTo`.
-  windowFrom       DateTime    @db.Date
-  windowTo         DateTime    @db.Date
+  windowFrom          DateTime    @db.Date
+  windowTo            DateTime    @db.Date
   /// Optional time of day "HH:MM" (24 h) the window starts / ends at; applies to the planned day.
-  windowFromTime   String?
-  windowToTime     String?
-  status           OrderStatus @default(DRAFT)
-  source           OrderSource @default(MANUAL)
-  screenshotId     String?
-  internalNote     String?
+  windowFromTime      String?
+  windowToTime        String?
+  status              OrderStatus @default(DRAFT)
+  source              OrderSource @default(MANUAL)
+  screenshotId        String?
+  internalNote        String?
   /// Pasted customer message the order was typed from (NUD-150, D26); store-only, never parsed again.
-  sourceText       String?
+  sourceText          String?
   /// Raw answer of the AI extraction (NUD-150): what the model read, kept for review next to the order.
-  aiExtraction     Json?
+  aiExtraction        Json?
   /// Rule that generated this order (NUD-149) and the date it was generated for: one order per rule and date, also after it was cancelled.
-  recurringOrderId String?
-  recurringDate    DateTime?   @db.Date
+  recurringOrderId    String?
+  recurringDate       DateTime?   @db.Date
   /// Cash at the stop or on the monthly bill (D33, NUD-196). Monthly is the default.
-  paymentTerm      PaymentTerm @default(MONTHLY)
+  paymentTerm         PaymentTerm @default(MONTHLY)
   /// Amount of this order in euro cents, typed by the office (there are no catalog prices, D33);
   /// `null` = no amount set yet. Whole cents, never a float.
-  amountCents      Int?
-  createdById      String
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  amountCents         Int?
+  /// NUD-212: the day route an order of a customer outside the standing tours rides on, when the
+  /// office moved it; `null` = where the detour is smallest.
+  routeStandingTourId String?
+  /// NUD-212: standing customers delivered before it on that route (0 = first); `null` = best slot.
+  routeSlot           Int?
+  createdById         String
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
 
-  customer       Customer        @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  screenshot     Screenshot?     @relation(fields: [screenshotId], references: [id], onDelete: SetNull)
-  createdBy      User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
-  items          OrderItem[]
-  stopOrders     StopOrder[]
-  recurringOrder RecurringOrder? @relation(fields: [recurringOrderId], references: [id], onDelete: Restrict)
+  customer          Customer        @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  routeStandingTour StandingTour?   @relation(fields: [routeStandingTourId], references: [id], onDelete: SetNull)
+  screenshot        Screenshot?     @relation(fields: [screenshotId], references: [id], onDelete: SetNull)
+  createdBy         User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  items             OrderItem[]
+  stopOrders        StopOrder[]
+  recurringOrder    RecurringOrder? @relation(fields: [recurringOrderId], references: [id], onDelete: Restrict)
 
   @@unique([recurringOrderId, recurringDate])
   @@index([deliveryDate, status])
@@ -578,15 +589,19 @@ model Tour {
   loadingStartedAt DateTime?
   /// The driver tapped "Losfahren" or skipped the checklist (NUD-151); first write wins.
   departedAt       DateTime?
+  /// The standing tour this day route was built from (NUD-212); `null` for tours of the old flow.
+  standingTourId   String?
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
-  driver  User?    @relation(fields: [driverId], references: [id], onDelete: Restrict)
-  vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
-  stops   Stop[]
+  driver       User?         @relation(fields: [driverId], references: [id], onDelete: Restrict)
+  vehicle      Vehicle?      @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  standingTour StandingTour? @relation(fields: [standingTourId], references: [id], onDelete: SetNull)
+  stops        Stop[]
 
   @@index([date])
   @@index([vehicleId])
+  @@index([date, standingTourId])
 }
 
 /// A delivery vehicle with a load capacity in kg (NUD-146, D24). Soft delete only (`active`); a tour
@@ -601,8 +616,9 @@ model Vehicle {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  tours Tour[]
-  stops Stop[]
+  tours         Tour[]
+  stops         Stop[]
+  standingTours StandingTour[]
 }
 
 model Stop {
