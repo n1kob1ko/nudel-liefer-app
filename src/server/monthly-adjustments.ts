@@ -11,7 +11,7 @@ import {
 } from "@/domain/payment";
 
 import { recordAudit } from "./audit";
-import { idSchema, lockCustomerBilling, type PaymentsDb } from "./payments";
+import { BILLED_MONTHLY_ORDER, idSchema, lockCustomerBilling, type PaymentsDb } from "./payments";
 
 /**
  * Correction lines on a customer's monthly bill (NUD-197): a discount or credit note the office
@@ -92,8 +92,7 @@ export async function addMonthlyAdjustment(
     const orders = await tx.order.count({
       where: {
         customerId: customer.id,
-        status: "CONFIRMED",
-        paymentTerm: "MONTHLY",
+        ...BILLED_MONTHLY_ORDER,
         deliveryDate: { gte: period, lt: nextMonthStart(period) },
       },
     });

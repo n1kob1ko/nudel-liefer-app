@@ -381,3 +381,65 @@ export function vehiclesForLoad<V extends FleetVehicle>(
   }
   return vehicles.filter((_, index) => chosen.has(index));
 }
+
+/**
+ * Standing tours in "Touren planen" (NUD-209). Every customer of a standing tour whose default
+ * driver is available goes to that driver; a driver with several standing tours drives them as one
+ * tour. A customer in more than one standing tour belongs to the first one (in `standing` order)
+ * whose driver is available. The rest (`loose`) is planned freely. Groups come in the order of
+ * `driverIds`, stop ids keep the order of `stops`.
+ */
+export function splitByStandingTours<S extends { id: string }>(
+  stops: readonly S[],
+  standing: ReadonlyArray<{ driverId: string | null; customerIds: readonly string[] }>,
+  driverIds: readonly string[],
+): { groups: Array<{ driverId: string; stops: S[] }>; loose: S[] } {
+  const available = new Set(driverIds);
+  const driverOf = new Map<string, string>();
+  for (const tour of standing) {
+    if (!tour.driverId || !available.has(tour.driverId)) continue;
+    for (const customerId of tour.customerIds) {
+      if (!driverOf.has(customerId)) driverOf.set(customerId, tour.driverId);
+    }
+  }
+  const byDriver = new Map<string, S[]>();
+  const loose: S[] = [];
+  for (const stop of stops) {
+    const driverId = driverOf.get(stop.id);
+    if (!driverId) {
+      loose.push(stop);
+      continue;
+    }
+    const list = byDriver.get(driverId) ?? [];
+    list.push(stop);
+    byDriver.set(driverId, list);
+  }
+  const groups = driverIds
+    .filter((id) => byDriver.has(id))
+    .map((driverId) => ({ driverId, stops: byDriver.get(driverId)! }));
+  return { groups, loose };
+}
+
+/**
+ * Hands each stop of `loose` to the group with the nearest stop (NUD-209): used when no driver or
+ * vehicle is left for the customers outside the standing tours. Groups must not be empty.
+ */
+export function attachToNearestGroup<S extends { location: LatLng }, G extends { stops: S[] }>(
+  groups: readonly G[],
+  loose: readonly S[],
+): void {
+  for (const stop of loose) {
+    let best = groups[0]!;
+    let bestM = Number.POSITIVE_INFINITY;
+    for (const group of groups) {
+      for (const member of group.stops) {
+        const m = haversineM(member.location, stop.location);
+        if (m < bestM) {
+          bestM = m;
+          best = group;
+        }
+      }
+    }
+    best.stops.push(stop);
+  }
+}

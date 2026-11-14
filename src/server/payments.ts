@@ -62,6 +62,24 @@ export async function lockCustomerBilling(
   await tx.$queryRaw`SELECT 1 FROM "Customer" WHERE "id" = ${customerId} FOR NO KEY UPDATE`;
 }
 
+/**
+ * The orders a monthly bill is made of (D33): CONFIRMED, on monthly bill — and delivered or still to
+ * be delivered. An order whose stop ended as a problem ("Geschlossen", "Kein Parkplatz", ...) and
+ * that no other stop delivered never reached the customer, so it is not billed (owner 2026-11-13,
+ * NUD-209; before, such an order stood on the bill with its amount). One filter for the open months,
+ * the month page, the "paid" snapshot, corrections and the export, so they always agree.
+ */
+export const BILLED_MONTHLY_ORDER = {
+  status: "CONFIRMED",
+  paymentTerm: "MONTHLY",
+  NOT: {
+    AND: [
+      { stopOrders: { some: { stop: { status: "PROBLEM" } } } },
+      { stopOrders: { none: { stop: { status: "DELIVERED" } } } },
+    ],
+  },
+} as const satisfies Prisma.OrderWhereInput;
+
 // ---------------------------------------------------------------------------------------------
 // Cash at the stops
 
@@ -205,6 +223,13 @@ export async function monthlyOverviewQuery(
     WHERE o."status" = 'CONFIRMED'
       AND o."paymentTerm" = 'MONTHLY'
       AND o."deliveryDate" < ${currentMonth}
+      -- BILLED_MONTHLY_ORDER: not an order that only a problem stop carried (not delivered).
+      AND NOT (
+        EXISTS (SELECT 1 FROM "StopOrder" so JOIN "Stop" s ON s."id" = so."stopId"
+                WHERE so."orderId" = o."id" AND s."status" = 'PROBLEM')
+        AND NOT EXISTS (SELECT 1 FROM "StopOrder" so JOIN "Stop" s ON s."id" = so."stopId"
+                        WHERE so."orderId" = o."id" AND s."status" = 'DELIVERED')
+      )
     GROUP BY 1, 2
     ORDER BY 2 DESC, 1
   `;
@@ -358,8 +383,7 @@ export async function monthlyBillQuery(
     db.order.findMany({
       where: {
         customerId: customer.id,
-        status: "CONFIRMED",
-        paymentTerm: "MONTHLY",
+        ...BILLED_MONTHLY_ORDER,
         deliveryDate: { gte: period, lt: nextMonthStart(period) },
       },
       orderBy: [{ deliveryDate: "asc" }, { createdAt: "asc" }, { id: "asc" }],
@@ -498,8 +522,7 @@ export async function markMonthlyPaid(
     const orders = await tx.order.findMany({
       where: {
         customerId: customer.id,
-        status: "CONFIRMED",
-        paymentTerm: "MONTHLY",
+        ...BILLED_MONTHLY_ORDER,
         deliveryDate: { gte: period, lt: nextMonthStart(period) },
       },
       select: { amountCents: true },

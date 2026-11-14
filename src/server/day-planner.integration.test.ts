@@ -160,6 +160,7 @@ describe.skipIf(!process.env.DATABASE_URL)(
       await t.prisma.orderItem.deleteMany();
       await t.prisma.order.deleteMany();
       await t.prisma.parkingSpot.deleteMany();
+      await t.prisma.standingTour.deleteMany();
       await t.prisma.customer.deleteMany();
       await t.prisma.vehicle.deleteMany();
     });
@@ -266,6 +267,73 @@ describe.skipIf(!process.env.DATABASE_URL)(
       const day = await tours();
       expect(day.map((x) => x.vehicleId).sort()).toEqual([v1, v2].sort());
       expect(day.map((x) => x.driverId)).toEqual([drivers[2], drivers[0]]);
+    });
+
+    it("standing tours: each default driver gets his customers, the rest the free driver (NUD-209)", async () => {
+      // Without standing tours one 2000 kg van would take the whole small day.
+      await vehicle("Big", 2000);
+      await vehicle("Van 2", 500);
+      await vehicle("Van 3", 500);
+      const ids = await customers(8, 5); // 50 kg each
+      const standing = (name: string, driverId: string, customerIds: string[]) =>
+        t.prisma.standingTour.create({
+          data: {
+            name,
+            driverId,
+            customers: {
+              create: customerIds.map((customerId, i) => ({ customerId, sortOrder: i })),
+            },
+          },
+        });
+      await standing("Nord", drivers[0]!, ids.slice(0, 3));
+      await standing("Süd", drivers[1]!, ids.slice(4, 7));
+
+      const result = await planDayWith(deps(), { date: DAY_TEXT, driverIds: drivers });
+      expect(result).toMatchObject({ ok: true });
+      const day = await tours();
+      const customersOf = (driverId: string) =>
+        day
+          .find((tour) => tour.driverId === driverId)!
+          .stops.map((s) => s.customerId)
+          .sort();
+      expect(day).toHaveLength(3);
+      expect(customersOf(drivers[0]!)).toEqual(ids.slice(0, 3).sort());
+      expect(customersOf(drivers[1]!)).toEqual(ids.slice(4, 7).sort());
+      expect(customersOf(drivers[2]!)).toEqual([ids[3]!, ids[7]!].sort());
+      expect(new Set(day.map((tour) => tour.vehicleId)).size).toBe(3);
+    });
+
+    it("standing tours without a free driver: the others join the nearest standing tour (NUD-209)", async () => {
+      await vehicle("Van 1", 500);
+      await vehicle("Van 2", 500);
+      const ids = await customers(8, 5);
+      await t.prisma.standingTour.create({
+        data: {
+          name: "Nord",
+          driverId: drivers[0]!,
+          customers: { create: [{ customerId: ids[0]!, sortOrder: 0 }] },
+        },
+      });
+      await t.prisma.standingTour.create({
+        data: {
+          name: "Süd",
+          driverId: drivers[1]!,
+          customers: { create: [{ customerId: ids[4]!, sortOrder: 0 }] },
+        },
+      });
+      const result = await planDayWith(deps(), {
+        date: DAY_TEXT,
+        driverIds: [drivers[0]!, drivers[1]!],
+      });
+      expect(result).toMatchObject({ ok: true });
+      const day = await tours();
+      expect(day.map((tour) => tour.driverId)).toEqual([drivers[0], drivers[1]]);
+      // Every customer is planned once, and each standing customer stays with his driver.
+      expect(day.flatMap((tour) => tour.stops).length).toBe(8);
+      expect(day[0]!.stops.map((s) => s.customerId)).toContain(ids[0]);
+      expect(day[1]!.stops.map((s) => s.customerId)).toContain(ids[4]);
+      // RING[2] (north-east of the ring) is nearer to customer 1 than to customer 5.
+      expect(day[0]!.stops.map((s) => s.customerId)).toContain(ids[1]);
     });
 
     it("rejects an unknown or inactive vehicle / driver and an empty fleet", async () => {

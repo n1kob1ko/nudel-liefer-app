@@ -16,6 +16,7 @@ import {
   unmarkMonthlyPaid,
 } from "./payments";
 import { getFactoryTimezone } from "./settings";
+import { applyOfficeCashReceipt, type OfficeCashResult } from "./stop-payment";
 
 /**
  * Admin-only server actions for the payments page (D33, NUD-196). The role is checked against the
@@ -46,4 +47,10 @@ export async function removeMonthlyAdjustmentAction(
 ): Promise<RemoveAdjustmentResult> {
   const actor = await requireRole("ADMIN");
   return removeMonthlyAdjustment(getDb(), actor.id, input);
+}
+
+/** The office records cash it received for a delivered stop (NUD-209), audited like the driver's. */
+export async function recordOfficeCashAction(input: unknown): Promise<OfficeCashResult> {
+  const actor = await requireRole("ADMIN");
+  return applyOfficeCashReceipt(getDb(), actor, input);
 }

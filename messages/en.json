@@ -1783,12 +1783,12 @@
         "open": "Plan tours",
         "hint": "Distributes all stops of the day across the chosen vehicles by capacity",
         "title": "Plan tours",
-        "description": "The stops of this day are distributed across the selected vehicles by capacity. There are at most as many tours as selected drivers: when a driver is back at the depot, they switch into the next vehicle that is already loaded. Reloading only happens when no loaded vehicle is free.",
+        "description": "Every driver gets the customers of his standing tour. The other stops are spread over the selected vehicles by capacity; what does not fit is reloaded at the depot.",
         "vehicles": "Available vehicles",
         "capacity": "{capacity} kg",
         "noVehicles": "There is no active vehicle yet. Please add one under Vehicles first.",
         "drivers": "Available drivers",
-        "driversHint": "Drivers are assigned to the tours in order. Missing drivers can be assigned afterwards.",
+        "driversHint": "A driver with a standing tour drives its customers. The other drivers get the remaining tours in order. Missing drivers can be assigned afterwards.",
         "noDrivers": "There is no active driver.",
         "replaceNote": "Tours of this day that are not released yet are rebuilt.",
         "confirm": "Plan now",
@@ -2061,7 +2061,24 @@
         "openTotal": "Open in cash ({count})",
         "emptyTitle": "No open cash payments",
         "emptyBody": "Every cash order is collected or not delivered yet.",
-        "toTour": "Go to tour"
+        "toTour": "Go to tour",
+        "receive": {
+          "button": "Received",
+          "hint": "Cash received",
+          "title": "Cash received",
+          "amount": "Received in total (€)",
+          "cancel": "Cancel",
+          "confirm": "Received",
+          "toast": "Cash from {customer} recorded",
+          "errors": {
+            "invalid": "Please enter an amount, e.g. 42.50.",
+            "generic": "That did not work. Please try again.",
+            "forbidden": "Only the office can record this.",
+            "not_found": "This stop no longer exists.",
+            "not_completed": "The stop is not delivered yet.",
+            "tour_not_active": "The tour is not released yet."
+          }
+        }
       },
       "monthly": {
         "title": "Open monthly bills",

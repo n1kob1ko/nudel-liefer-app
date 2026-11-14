@@ -367,6 +367,7 @@ Read rule: `pick(text, locale)` returns the requested locale; if empty, the clos
 | NUD-206 | Delete a user account for good (not only deactivate) | M2.8 | 008 | done |
 | NUD-207 | Order photos and translations are read by the Claude API instead of OpenRouter | M2.8 | 150 | in-progress |
 | NUD-208 | Findings of a simulated three-day run (toasts, cash on the quick "Geliefert", offline chip, release text) | M2.8 | 196 | done |
+| NUD-209 | The owner's three decisions after the simulation: bill without undelivered orders, office settles cash, plan by standing tours | M2.8 | 196, 186, 147 | done |
 | NUD-100 | AI screenshot extraction (review required) | M3 | 031 | superseded → NUD-150 |
 | NUD-101 | Recurring / standing orders | M3 | 032 | superseded → NUD-149 |
 | NUD-102 | Multiple drivers / tours per day | M3 | 043 | superseded → NUD-147 |
@@ -4118,7 +4119,15 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 **Implementation notes (NUD-208)**
 - Checked and working: Tagesplanung for two days ahead, a second order of a customer merged into one stop, three tours released ahead and shown as "Kommende Touren", a driver swap on a released tour (the new driver sees both tours at once, the old one none), "Erneut freigeben" after a quantity change, photo upload offline, four offline messages resent once each with the tap time, monthly bills, paid marks, the retention job in delete mode (nine paid orders and three paid marks gone after 31 days, everything else and every screen intact). No page overflowed at 390 px or 1280 px.
 - The local copy ran with the system clock set forward (presigned photo URLs and Postgres need the same clock as the app). Google Maps was not used (heuristic routing, fake geocoder).
-- Open for the owner, not changed here: "Touren planen" fills the largest vehicle first and ignores the standing tours (19 stops for one driver, one for the next, none for the third; split by hand with "Bearbeiten"); a monthly bill counts an order whose stop ended as a problem (not delivered); the office has no way to settle open cash a driver did not record; a driver with two tours sees both timed from 07:00.
+- Open for the owner, not changed here (the first three decided and done in NUD-209): "Touren planen" fills the largest vehicle first and ignores the standing tours (19 stops for one driver, one for the next, none for the third; split by hand with "Bearbeiten"); a monthly bill counts an order whose stop ended as a problem (not delivered); the office has no way to settle open cash a driver did not record; a driver with two tours sees both timed from 07:00.
+
+#### NUD-209 · The owner's three decisions after the simulation
+**Status:** done · **depends_on:** 196, 186, 147 · Source: owner 2026-11-13 ("Alle drei jetzt" on the three open points of NUD-208).
+
+**Acceptance criteria**
+- [x] A monthly bill leaves out an order that only a problem stop carried (nothing delivered). An order with a delivered stop, or with no stop at all (delivered without a tour), stays on the bill. Same rule in the overview, the month page, "mark paid", corrections and the accounting export (`BILLED_MONTHLY_ORDER` in `payments.ts`).
+- [x] The office settles open cash itself: "Erhalten" on a row of "Offene Barzahlungen" opens a small dialog prefilled with what was due; the amount is the stop's total taken. Same columns and audit action as the driver's entry (`stop.payment`, `via: "office"`), only on a delivered stop of a released, running or completed tour. On a phone the open cash rows are blocks with the two actions as buttons.
+- [x] "Touren planen" honours the standing tours: every customer of an active standing tour whose default driver is selected goes to that driver, one vehicle per standing driver (the heaviest group gets the largest vehicle, reload trips if it does not fit). The other customers go to the remaining drivers and vehicles; when none are left, to the standing tour with the nearest customer. More standing drivers than vehicles, or no standing tour for the selected drivers: planned freely as before.
 
 ## 9. Decision log (append-only, one line per decision taken during implementation)
 
@@ -4616,6 +4625,9 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 | 2026-11-13 | NUD-207 | The answer is structured output in a hand-written JSON schema; the `window`-as-a-string tolerance of NUD-150 stays in `extractionAnswerSchema` but is no longer needed on the wire | With a schema the API guarantees the shape, so the "first `{` to last `}`" parsing is gone. The domain schema still checks what a JSON schema cannot (quantity >= 1, 0..1, lengths). |
 | 2026-11-13 | NUD-207 | Requests opt into Anthropic's server-side fallback (`fallbacks: "default"`) | A request the model declines for policy reasons is answered by another Claude model instead of failing; an order message should never be declined, the opt-in only covers a false alarm. A declined answer is never read. |
 | 2026-11-13 | NUD-207 | No thinking switch and no sampling parameters are sent | The current models reject `temperature` and a disabled thinking mode; `effort` is the one control. |
+| 2026-11-13 | NUD-209 | An order is off the monthly bill when it was on a problem stop and on no delivered stop | Owner: only what was delivered is billed; an order without a tour stays, the office delivered it otherwise |
+| 2026-11-13 | NUD-209 | The office records received cash on the stop itself (`via: "office"`), no separate ledger | One amount per stop keeps the open cash list, the driver app and the audit trail consistent |
+| 2026-11-13 | NUD-209 | "Touren planen" gives each standing tour to its default driver in a vehicle of its own; the rest is planned freely or joins the nearest standing tour | Owner: the plan put 19 of 20 stops on one driver; the standing tours are how the office splits the day (amends D24/D31) |
 
 ## 10. Open questions for the client (do not block on these – use placeholders)
 

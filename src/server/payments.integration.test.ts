@@ -16,7 +16,7 @@ const {
   openCashQuery,
   unmarkMonthlyPaid,
 } = await import("./payments");
-const { applyDriverPayment } = await import("./stop-payment");
+const { applyDriverPayment, applyOfficeCashReceipt } = await import("./stop-payment");
 const { applySyncBatch } = await import("./driver-sync");
 
 const TODAY = new Date("2099-06-10T00:00:00Z");
@@ -122,7 +122,7 @@ describe.skipIf(!process.env.DATABASE_URL)("payments", { timeout: 60_000 }, () =
     date: string;
     driverId?: string;
     status?: "RELEASED" | "IN_PROGRESS" | "COMPLETED";
-    stopStatus?: "PENDING" | "DELIVERED";
+    stopStatus?: "PENDING" | "DELIVERED" | "PROBLEM";
     customerId: string;
     orders: string[];
     collectedCents?: number | null;
@@ -309,6 +309,58 @@ describe.skipIf(!process.env.DATABASE_URL)("payments", { timeout: 60_000 }, () =
       expect(foreign).toEqual({ ok: false, error: "not_found" });
     });
 
+    it("lets the office settle open cash, audited, and the row leaves the open list (NUD-209)", async () => {
+      const cash = await order({
+        customerId: c2,
+        date: "2099-05-26",
+        term: "ON_DELIVERY",
+        amountCents: 4200,
+      });
+      const { stop } = await tourWithStop({
+        date: "2099-05-26",
+        customerId: c2,
+        orders: [cash.id],
+        status: "COMPLETED",
+      });
+      expect((await openCashQuery(db(), TODAY)).map((row) => row.stopId)).toContain(stop.id);
+
+      const byDriver = await applyOfficeCashReceipt(
+        db(),
+        { id: driverId, role: "DRIVER" },
+        { stopId: stop.id, collectedCents: 4200 },
+      );
+      expect(byDriver).toEqual({ ok: false, error: "forbidden" });
+      expect(
+        await applyOfficeCashReceipt(db(), { id: adminId, role: "ADMIN" }, { stopId: stop.id }),
+      ).toEqual({ ok: false, error: "invalid" });
+
+      const result = await applyOfficeCashReceipt(
+        db(),
+        { id: adminId, role: "ADMIN" },
+        { stopId: stop.id, collectedCents: 4200 },
+        day("2099-05-27"),
+      );
+      expect(result).toEqual({ ok: true, stopId: stop.id, collectedCents: 4200 });
+      const stored = await db().stop.findUniqueOrThrow({ where: { id: stop.id } });
+      expect(stored).toMatchObject({ collectedCents: 4200, collectedById: adminId });
+      const audit = await db().auditLog.findFirstOrThrow({
+        where: { action: "stop.payment", entityId: stop.id },
+        orderBy: { createdAt: "desc" },
+      });
+      expect(audit.diff).toMatchObject({ from: null, to: 4200, dueCents: 4200, via: "office" });
+      expect((await openCashQuery(db(), TODAY)).map((row) => row.stopId)).not.toContain(stop.id);
+
+      // A stop the driver has not delivered takes no money, from the office either.
+      await db().stop.update({ where: { id: stop.id }, data: { status: "PENDING" } });
+      expect(
+        await applyOfficeCashReceipt(
+          db(),
+          { id: adminId, role: "ADMIN" },
+          { stopId: stop.id, collectedCents: 4200 },
+        ),
+      ).toEqual({ ok: false, error: "not_completed" });
+    });
+
     it("accepts the cash of the last stop, which completes the tour", async () => {
       const cash = await order({
         customerId: c1,
@@ -400,6 +452,64 @@ describe.skipIf(!process.env.DATABASE_URL)("payments", { timeout: 60_000 }, () =
         noAmountCount: 1,
         state: "open",
       });
+    });
+
+    it("leaves an order out that a problem stop carried and nothing delivered (NUD-209)", async () => {
+      const delivered = await order({
+        customerId: c1,
+        date: "2099-05-04",
+        term: "MONTHLY",
+        amountCents: 1000,
+      });
+      await tourWithStop({
+        date: "2099-05-04",
+        status: "COMPLETED",
+        customerId: c1,
+        orders: [delivered.id],
+      });
+      const closed = await order({
+        customerId: c1,
+        date: "2099-05-05",
+        term: "MONTHLY",
+        amountCents: 3960,
+      });
+      await tourWithStop({
+        date: "2099-05-05",
+        status: "COMPLETED",
+        stopStatus: "PROBLEM",
+        customerId: c1,
+        orders: [closed.id],
+      });
+      // Problem first, delivered later on a second stop of the same order: billed once.
+      const retried = await order({
+        customerId: c1,
+        date: "2099-05-06",
+        term: "MONTHLY",
+        amountCents: 500,
+      });
+      await tourWithStop({
+        date: "2099-05-06",
+        status: "COMPLETED",
+        stopStatus: "PROBLEM",
+        customerId: c1,
+        orders: [retried.id],
+      });
+      await tourWithStop({
+        date: "2099-05-06",
+        status: "COMPLETED",
+        customerId: c1,
+        orders: [retried.id],
+      });
+      // Never on a tour (no stop): still billed, as before.
+      await order({ customerId: c1, date: "2099-05-07", term: "MONTHLY", amountCents: 200 });
+
+      const [row] = await monthlyOverviewQuery(db(), TODAY);
+      expect(row).toMatchObject({ amountCents: 1700, orderCount: 3 });
+      const bill = await monthlyBillQuery(db(), c1, "2099-05", TODAY);
+      expect(bill?.totalCents).toBe(1700);
+      expect(bill?.orders.map((entry) => entry.id)).not.toContain(closed.id);
+      // The "paid" snapshot uses the same filter (BILLED_MONTHLY_ORDER); it is not marked here
+      // because the audit log is append-only and the next test reads the first "monthly.pay".
     });
 
     it("marks a month as paid (with a snapshot and an audit entry) and takes it back", async () => {

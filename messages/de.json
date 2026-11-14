@@ -1789,12 +1789,12 @@
         "open": "Touren planen",
         "hint": "Verteilt alle Stopps des Tages nach Kapazität auf die gewählten Fahrzeuge",
         "title": "Touren planen",
-        "description": "Die Stopps dieses Tages werden nach Kapazität auf die gewählten Fahrzeuge verteilt. Es gibt höchstens so viele Touren wie gewählte Fahrer: Ist ein Fahrer zurück im Depot, steigt er in das nächste schon beladene Fahrzeug um. Erst wenn kein beladenes Fahrzeug mehr frei ist, wird nachgeladen.",
+        "description": "Jeder Fahrer bekommt die Kunden seiner Stammtour. Die übrigen Stopps werden nach Kapazität auf die gewählten Fahrzeuge verteilt; was nicht passt, wird im Depot nachgeladen.",
         "vehicles": "Verfügbare Fahrzeuge",
         "capacity": "{capacity} kg",
         "noVehicles": "Es gibt noch kein aktives Fahrzeug. Bitte zuerst unter Fahrzeuge eines anlegen.",
         "drivers": "Verfügbare Fahrer",
-        "driversHint": "Die Fahrer werden der Reihe nach den Touren zugeordnet. Fehlende Fahrer können danach zugewiesen werden.",
+        "driversHint": "Ein Fahrer mit Stammtour fährt deren Kunden. Die anderen Fahrer bekommen der Reihe nach die übrigen Touren. Fehlende Fahrer können danach zugewiesen werden.",
         "noDrivers": "Es gibt keinen aktiven Fahrer.",
         "replaceNote": "Touren dieses Tages, die noch nicht freigegeben sind, werden neu aufgebaut.",
         "confirm": "Jetzt planen",
@@ -2057,11 +2057,28 @@
       },
       "cash": {
         "title": "Offene Barzahlungen",
-        "body": "Stopps mit „Bar bei Lieferung“, bei denen der Fahrer noch nichts oder weniger als den Betrag eingenommen hat.",
+        "body": "Stopps mit „Bar bei Lieferung“, bei denen noch nichts oder weniger als der Betrag vermerkt ist. Hat der Fahrer das Geld abgegeben, hier „Erhalten“ tippen.",
         "openTotal": "Offen in bar ({count})",
         "emptyTitle": "Keine offenen Barzahlungen",
         "emptyBody": "Alle Bar-Bestellungen sind kassiert oder noch nicht geliefert.",
-        "toTour": "Zur Tour"
+        "toTour": "Zur Tour",
+        "receive": {
+          "button": "Erhalten",
+          "hint": "Bargeld erhalten",
+          "title": "Bargeld erhalten",
+          "amount": "Insgesamt erhalten (€)",
+          "cancel": "Abbrechen",
+          "confirm": "Erhalten",
+          "toast": "Bargeld von {customer} vermerkt",
+          "errors": {
+            "invalid": "Bitte einen Betrag eingeben, z. B. 42,50.",
+            "generic": "Das hat nicht geklappt. Bitte noch einmal versuchen.",
+            "forbidden": "Nur das Büro kann das vermerken.",
+            "not_found": "Diesen Stopp gibt es nicht mehr.",
+            "not_completed": "Der Stopp ist noch nicht geliefert.",
+            "tour_not_active": "Die Tour ist noch nicht freigegeben."
+          }
+        }
       },
       "monthly": {
         "title": "Offene Monatsrechnungen",
