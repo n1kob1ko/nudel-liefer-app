@@ -416,11 +416,17 @@ describe("TodayTour, look and motion (redesign RD2)", () => {
     expect(yolk.map((el) => el.getAttribute("data-testid"))).toEqual(["navigate"]);
   });
 
-  it("marks the next-stop card with a yolk edge all round, not with a side stripe", () => {
-    render(view([stop(1)]));
+  it("keeps yolk to the navigation button and the stop number: the card and the row are not yellow", () => {
+    render(view([stop(1), stop(2)]));
     const card = screen.getByTestId("next-stop");
-    expect(card).toHaveClass("border-primary", "bg-primary-soft");
+    expect(card).toHaveClass("bg-card", "border-border");
+    expect(card).not.toHaveClass("bg-primary-soft");
     expect(card.className).not.toMatch(/border-s-/);
+    for (const row of screen.getAllByTestId("stop-row")) {
+      expect(row).not.toHaveClass("bg-primary-soft");
+    }
+    // The next stop is still marked, by the ring around its number.
+    expect(within(card).getByTestId("stop-number")).toHaveAttribute("data-next", "true");
   });
 
   it("lets the stop rows arrive 30 ms apart, capped so a long tour does not keep the driver waiting", () => {
