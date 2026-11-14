@@ -167,10 +167,7 @@ export function DayBoard({
                 {problem.driverName ? ` · ${problem.driverName}` : ""}
                 {problem.at ? ` · ${t("board.reported", { time: fmt.time(problem.at) })}` : ""}
               </p>
-              <Link
-                href={tourHref}
-                className={buttonVariants({ variant: "outline", size: "sm" })}
-              >
+              <Link href={tourHref} className={buttonVariants({ variant: "outline", size: "sm" })}>
                 {t("board.view")}
               </Link>
             </li>

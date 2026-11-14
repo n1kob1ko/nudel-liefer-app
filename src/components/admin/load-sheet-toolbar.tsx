@@ -43,7 +43,10 @@ export function LoadSheetToolbar({
     >
       <div className="flex flex-wrap items-center gap-3 rounded-lg bg-card p-3 text-card-foreground shadow">
         <Button asChild variant="outline">
-          <Link href={{ pathname: "/admin/planning", query: { date } }} data-testid="load-sheet-back">
+          <Link
+            href={{ pathname: "/admin/planning", query: { date } }}
+            data-testid="load-sheet-back"
+          >
             <ArrowLeftIcon aria-hidden />
             {backLabel}
           </Link>
