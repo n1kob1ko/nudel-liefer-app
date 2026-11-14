@@ -198,7 +198,8 @@
         "parkingMissingHint": "Set a parking spot.",
         "unconfirmedOrders": "{count, plural, one {# draft for the next delivery day} other {# drafts for the next delivery day}}",
         "unconfirmedOrdersHint": "{date} · not yet confirmed",
-        "emptyDescriptionAll": "No problems reported, no order without a tour and all customer master data complete."
+        "emptyDescriptionAll": "No problems reported, no order without a tour and all customer master data complete.",
+        "unsentRoutes": "{count, plural, one {One route has changes the driver does not have yet} other {# routes have changes the drivers do not have yet}}"
       },
       "activity": {
         "title": "Recent activity",
@@ -301,6 +302,7 @@
       "title": "Daily planning",
       "day": "Delivery day {date}",
       "save": "Save quantities",
+      "saveShort": "Save",
       "saving": "Saving …",
       "saved": "{count, plural, one {# order saved.} other {# orders saved.}}",
       "savedMerged": "{count, plural, one {# duplicate order merged.} other {# duplicate orders merged.}}",
@@ -309,15 +311,10 @@
       "dayWeight": "{weight} kg",
       "dirty": "{count, plural, one {# customer changed} other {# customers changed}}",
       "readOnly": {
-        "released": {
-          "title": "Tours of this day are released",
-          "body": "Once a tour is released the driver works with the released quantities. Change quantities via “Edit” on the tours page."
-        },
         "past": {
           "title": "Past delivery day",
-          "body": "The orders of this day are history and can no longer be changed here."
-        },
-        "toTours": "Go to tour planning"
+          "body": "The orders of this day are history and can no longer be changed."
+        }
       },
       "noRoutes": {
         "title": "No standing tour yet",
@@ -327,13 +324,17 @@
         "customer": "Customer",
         "weight": "Weight",
         "state": "Status",
-        "total": "Total"
+        "total": "Total",
+        "stop": "Stop"
       },
       "state": {
         "nothing": "nothing ordered",
         "fromRule": "from recurring order",
         "cancelled": "cancelled",
-        "merged": "several orders"
+        "merged": "several orders",
+        "delivered": "delivered",
+        "problem": "Problem",
+        "noLocation": "No location"
       },
       "route": {
         "summary": "{count, plural, one {# customer} other {# customers}} · {weight} kg",
@@ -341,11 +342,21 @@
         "noDriver": "No driver",
         "driverSaved": "Driver of the standing tour changed.",
         "empty": "This standing tour has no customers yet.",
-        "ruleHint": "Rows filled “from recurring order” become orders only when you save the quantities."
+        "ruleHint": "Rows filled “from recurring order” become orders only when you save the quantities.",
+        "stops": "{count, plural, one {# stop} other {# stops}}",
+        "load": "{weight} / {capacity} kg",
+        "progress": "{done} of {count} delivered",
+        "problems": "{count, plural, one {# problem} other {# problems}}",
+        "vehicle": "Vehicle",
+        "noVehicle": "No vehicle",
+        "vehicleSaved": "Vehicle of the standing tour changed.",
+        "map": "Map",
+        "hideMap": "Close map",
+        "loadSheet": "Load sheet"
       },
       "offRoute": {
         "title": "Not in a standing tour",
-        "body": "Customers without a standing tour who have an order for this day. “Add” creates an order for this delivery day only – the standing tours stay unchanged.",
+        "body": "Customers of no standing tour. “Add” takes a customer along on this day only: they ride on the matching route, the standing tours stay the same.",
         "search": "Search customer (name, number, city)",
         "onlyWithOrder": "Only with order",
         "empty": "No customer found.",
@@ -355,11 +366,11 @@
         "generic": "Something went wrong. Please try again.",
         "invalid": "Invalid input.",
         "date_in_past": "Quantities cannot be changed for past days.",
-        "tour_released": "A tour of this day is already released. Change quantities on the tours page via “Edit”.",
         "customer_not_found": "A customer was not found. Please reload the page.",
         "customer_inactive": "A customer is inactive. Please reload the page.",
         "product_not_found": "A product was not found. Please reload the page.",
-        "product_inactive": "A product is no longer active. Please reload the page."
+        "product_inactive": "A product is no longer active. Please reload the page.",
+        "stop_completed": "The driver has already served this customer. The quantity stays as delivered."
       },
       "manage": {
         "open": "Edit standing tours",
@@ -390,6 +401,62 @@
           "customer_not_found": "A customer was not found.",
           "customer_inactive": "A customer is inactive.",
           "customer_in_other": "A customer already belongs to another standing tour."
+        }
+      },
+      "routeState": {
+        "empty": "No orders",
+        "ready": "Not sent",
+        "sent": "With the driver",
+        "changed": "Changes not sent",
+        "running": "On the road",
+        "done": "Done"
+      },
+      "extra": {
+        "label": "Extra",
+        "move": "Move"
+      },
+      "move": {
+        "title": "Move {name}",
+        "body": "Only for this delivery day.",
+        "route": "Route",
+        "position": "Order",
+        "first": "First",
+        "after": "After {name}",
+        "auto": "Automatic",
+        "save": "Move",
+        "saving": "Saving …",
+        "saved": "Moved. The driver gets it with “Send changes”.",
+        "errors": {
+          "invalid": "Invalid input.",
+          "date_in_past": "Past days can no longer be changed.",
+          "not_found": "Route or order not found. Please reload the page.",
+          "standing_customer": "This customer belongs to a standing tour."
+        }
+      },
+      "send": {
+        "first": "Send to drivers",
+        "changes": "Send changes",
+        "allSent": "Everything is with the drivers",
+        "nothing": "Nothing new to send.",
+        "done": "{count, plural, one {# route sent to the driver.} other {# routes sent to the drivers.}}",
+        "noLocation": "{name} has no location on the map and is not on the route.",
+        "overloadTitle": "Route too heavy",
+        "overloadBody": "{route} is {kg} kg heavier than its vehicle carries. Send anyway?",
+        "overloadCancel": "Cancel",
+        "overloadConfirm": "Send anyway",
+        "errors": {
+          "invalid": "Invalid input.",
+          "invalid_date": "Invalid date.",
+          "date_in_past": "Past days can no longer be sent.",
+          "depot_not_set": "The company location is missing. Please set it in the settings.",
+          "no_routes": "There is no active standing tour. Please create one first.",
+          "no_stops": "Nobody ordered anything for this day.",
+          "driver_required": "{route} has no driver.",
+          "driver_invalid": "The driver of {route} is not active.",
+          "vehicle_required": "{route} has no vehicle.",
+          "vehicle_invalid": "The vehicle of {route} is not active.",
+          "overloaded": "{route} is too heavy.",
+          "conflict": "Someone changed something at the same time. Please send again."
         }
       }
     },
@@ -1690,7 +1757,7 @@
       },
       "print": {
         "open": "Print load sheet",
-        "back": "Back to the tour",
+        "back": "Back to the day plan",
         "printButton": "Print",
         "languageLabel": "Language of the printout",
         "outdatedScreen": "The orders have changed since this tour was created or released. The load sheet shows the quantities of the tour, not the current orders. Please check the tour and release it again before loading.",
@@ -1877,6 +1944,7 @@
         "standing_tour_create": "Standing tour created",
         "standing_tour_update": "Standing tour changed",
         "standing_tour_driver": "Driver of the standing tour changed",
+        "standing_tour_vehicle": "Vehicle of the standing tour changed",
         "standing_tour_activate": "Standing tour activated",
         "standing_tour_deactivate": "Standing tour deactivated",
         "user_delete": "Account deleted"

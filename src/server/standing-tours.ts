@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { diffOrderLines, type LineChange, toAuditQuantity } from "@/domain/audit";
+import { dayRouteOrder } from "@/domain/day-route";
 import {
   formatCalendarDate,
   isPastDeliveryDate,
@@ -17,6 +18,7 @@ import {
 import { isoWeekday } from "@/domain/settings";
 import {
   type DayPlan,
+  type DayPlanRoute,
   type DayPlanRow,
   emptyQuantities,
   MAX_PLAN_ROWS,
@@ -29,10 +31,10 @@ import {
   rowChanged,
   rowWeightKg,
 } from "@/domain/standing-day";
-import { isTourEditable } from "@/domain/tour-plan";
 import type { PrismaClient } from "@/generated/prisma/client";
 
 import { recordAudit } from "./audit";
+import { loadDayRoutes } from "./day-routes";
 import type { TourHook } from "./orders";
 
 /**
@@ -72,6 +74,9 @@ export type StandingDb = Pick<
   | "user"
   | "recurringOrder"
   | "auditLog"
+  | "settings"
+  | "vehicle"
+  | "stop"
   | "$transaction"
 >;
 
@@ -100,7 +105,7 @@ export async function standingDayQuery(
   const parsed = typeof rawDate === "string" ? parseCalendarDate(rawDate.trim()) : null;
   const day = parsed ?? today;
 
-  const [productRows, customerRows, tourRows, standingRows] = await Promise.all([
+  const [productRows, customerRows, standingRows] = await Promise.all([
     db.product.findMany({
       where: { active: true },
       orderBy: [{ sortOrder: "asc" }, { sku: "asc" }],
@@ -118,7 +123,6 @@ export async function standingDayQuery(
       orderBy: [{ name: "asc" }, { customerNumber: "asc" }],
       select: { id: true, customerNumber: true, name: true, city: true },
     }),
-    db.tour.findMany({ where: { date: day }, select: { id: true, status: true } }),
     db.standingTour.findMany({
       where: { active: true },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }, { id: "asc" }],
@@ -127,6 +131,8 @@ export async function standingDayQuery(
         name: true,
         driverId: true,
         driver: { select: { displayName: true } },
+        vehicleId: true,
+        vehicle: { select: { capacityKg: true } },
         customers: {
           orderBy: [{ sortOrder: "asc" }, { customerId: "asc" }],
           select: { customerId: true },
@@ -235,7 +241,11 @@ export async function standingDayQuery(
     state.suggestedItems.push(...itemsForWeekday(schedule, weekday, rule.items, rule.dayItems));
   }
 
-  const rowOf = (customerId: string): DayPlanRow | null => {
+  const rowOf = (
+    customerId: string,
+    extra: DayPlanRow["extra"] = null,
+    stop: DayPlanRow["stop"] = null,
+  ): DayPlanRow | null => {
     const customer = customerById.get(customerId);
     if (!customer) return null;
     const state = stateOf(customerId);
@@ -255,28 +265,101 @@ export async function standingDayQuery(
       quantities,
       nothing: hasOrder && Object.values(quantities).every((q) => q <= 0),
       weightKg: rowWeightKg(quantities, products),
+      extra,
+      stop,
+      location: null,
     };
   };
 
-  const routes = standingRows.map((tour) => ({
-    id: tour.id,
-    name: tour.name,
-    driverId: tour.driverId,
-    driverName: tour.driver?.displayName ?? null,
-    rows: tour.customers
-      .map((member) => rowOf(member.customerId))
-      .filter((row): row is DayPlanRow => row !== null),
-  }));
+  // ---- NUD-212: the day routes (standing order plus the extras) and what the drivers have
+  const settings = await db.settings.findUnique({
+    where: { id: 1 },
+    select: { depotLat: true, depotLng: true, depotName: true, depotPinConfirmed: true },
+  });
+  const dayRoutes = await loadDayRoutes(
+    db,
+    day,
+    settings ? { lat: settings.depotLat, lng: settings.depotLng } : null,
+  );
+  const routeTours = await db.tour.findMany({
+    where: { date: day, standingTourId: { in: standingRows.map((s) => s.id) } },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      status: true,
+      isOutdated: true,
+      driverId: true,
+      vehicleId: true,
+      standingTourId: true,
+      geometry: true,
+      stops: { select: { customerId: true, sequence: true, status: true } },
+    },
+  });
+
+  const placed = new Set(dayRoutes.places.keys());
+  const routes: DayPlanRoute[] = standingRows.map((tour) => {
+    const definition = dayRoutes.routes.find((r) => r.id === tour.id);
+    const extras = new Map((definition?.extras ?? []).map((e) => [e.customerId, e]));
+    const tours = routeTours.filter((r) => r.standingTourId === tour.id);
+    const current = [...tours].reverse().find((r) => r.status !== "COMPLETED") ?? tours.at(-1);
+    const stopOf = new Map<string, NonNullable<DayPlanRow["stop"]>>();
+    for (const sent of tours) {
+      for (const s of sent.stops) {
+        stopOf.set(s.customerId, { number: s.sequence, status: s.status });
+      }
+    }
+    const order = dayRouteOrder(
+      tour.customers.map((m) => m.customerId),
+      [...extras.values()],
+    );
+    const rows = order
+      .map((customerId) => {
+        const extra = extras.get(customerId);
+        const row = rowOf(
+          customerId,
+          extra ? { moved: extra.moved, slot: extra.slot } : null,
+          stopOf.get(customerId) ?? null,
+        );
+        return row ? { ...row, location: dayRoutes.points.get(customerId) ?? null } : null;
+      })
+      .filter((row): row is DayPlanRow => row !== null);
+    const ordered = rows.filter(
+      (row) => row.source === "order" && !row.nothing && !dayRoutes.unrouted.has(row.customerId),
+    );
+    const stops = current?.stops ?? [];
+    const missing = ordered.some((row) => !stopOf.has(row.customerId));
+    let state: DayPlanRoute["state"];
+    if (!current) state = ordered.length > 0 ? "ready" : "empty";
+    else if (current.status === "COMPLETED") state = missing ? "changed" : "done";
+    else {
+      const reassigned =
+        (tour.driverId !== null && current.driverId !== tour.driverId) ||
+        (tour.vehicleId !== null && current.vehicleId !== tour.vehicleId);
+      if (current.isOutdated || missing || reassigned) state = "changed";
+      else state = current.status === "IN_PROGRESS" ? "running" : "sent";
+    }
+    return {
+      id: tour.id,
+      name: tour.name,
+      driverId: tour.driverId,
+      driverName: tour.driver?.displayName ?? null,
+      vehicleId: tour.vehicleId,
+      capacityKg: tour.vehicle?.capacityKg ?? null,
+      state,
+      tourId: current?.id ?? null,
+      stopCount: stops.length,
+      delivered: stops.filter((s) => s.status === "DELIVERED").length,
+      problems: stops.filter((s) => s.status === "PROBLEM").length,
+      geometry: current ? readGeometry(current.geometry) : null,
+      rows,
+    };
+  });
   const offRoute = customerRows
-    .filter((customer) => !standingOf.has(customer.id))
+    .filter((customer) => !standingOf.has(customer.id) && !placed.has(customer.id))
     .map((customer) => rowOf(customer.id))
     .filter((row): row is DayPlanRow => row !== null);
 
-  const readOnly: DayPlan["readOnly"] = isPastDeliveryDate(day, today)
-    ? "past"
-    : tourRows.some((tour) => !isTourEditable(tour.status))
-      ? "released"
-      : null;
+  const readOnly: DayPlan["readOnly"] = isPastDeliveryDate(day, today) ? "past" : null;
 
   return {
     date: formatCalendarDate(day),
@@ -285,8 +368,21 @@ export async function standingDayQuery(
     offRoute,
     editable: readOnly === null,
     readOnly,
+    depot: settings?.depotPinConfirmed
+      ? { lat: settings.depotLat, lng: settings.depotLng, name: settings.depotName }
+      : null,
   };
 }
+
+/** The stored road of a tour (GeoJSON line) as [lng, lat] pairs, `null` when there is none. */
+// unbounded-ok-start: stored Tour.geometry JSON, written by the server
+function readGeometry(value: unknown): Array<[number, number]> | null {
+  const parsed = z
+    .object({ coordinates: z.array(z.tuple([z.number(), z.number()])) })
+    .safeParse(value);
+  return parsed.success && parsed.data.coordinates.length > 1 ? parsed.data.coordinates : null;
+}
+// unbounded-ok-end
 
 // ---------------------------------------------------------------------------------------------
 // Saving the day
@@ -321,12 +417,15 @@ export type StandingDaySaveInput = z.input<typeof standingDaySaveSchema>;
 export type StandingDaySaveError =
   | "invalid"
   | "date_in_past"
-  /** A tour of that day is released or running: edit it with "Bearbeiten" (D32). */
-  | "tour_released"
   | "customer_not_found"
   | "customer_inactive"
   | "product_not_found"
-  | "product_inactive";
+  | "product_inactive"
+  /** NUD-212: the driver already delivered (or reported) this customer's stop of the day. */
+  | "stop_completed";
+
+/** Thrown inside the save transaction so nothing of it is kept. */
+class StopCompletedError extends Error {}
 
 export type StandingDaySaveResult =
   | {
@@ -361,7 +460,7 @@ export async function saveStandingDay(
   const customerIds = [...new Set(input.rows.map((row) => row.customerId))];
   const productIds = [...new Set(input.rows.flatMap((row) => row.lines.map((l) => l.productId)))];
 
-  const [customers, products, dayTours] = await Promise.all([
+  const [customers, products] = await Promise.all([
     db.customer.findMany({
       where: { id: { in: customerIds } },
       select: { id: true, active: true },
@@ -370,141 +469,154 @@ export async function saveStandingDay(
       where: { id: { in: productIds } },
       select: { id: true, active: true },
     }),
-    db.tour.findMany({ where: { date: day }, select: { id: true, status: true } }),
   ]);
   if (customers.length !== customerIds.length) return { ok: false, error: "customer_not_found" };
   if (customers.some((customer) => !customer.active))
     return { ok: false, error: "customer_inactive" };
   if (products.length !== productIds.length) return { ok: false, error: "product_not_found" };
   if (products.some((product) => !product.active)) return { ok: false, error: "product_inactive" };
-  if (dayTours.some((tour) => !isTourEditable(tour.status))) {
-    return { ok: false, error: "tour_released" };
-  }
 
   const dayText = formatCalendarDate(day);
-  return db.$transaction(
-    async (tx): Promise<StandingDaySaveResult> => {
-      // Same key as "Touren planen": a plan run and a day-plan save of one date never interleave.
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`tour:${dayText}`}))`;
-      const currentTours = await tx.tour.findMany({
-        where: { date: day },
-        select: { status: true },
-      });
-      if (currentTours.some((tour) => !isTourEditable(tour.status))) {
-        return { ok: false, error: "tour_released" };
-      }
+  try {
+    return await saveRows(day);
+  } catch (error) {
+    if (error instanceof StopCompletedError) return { ok: false, error: "stop_completed" };
+    throw error;
+  }
 
-      let created = 0;
-      let updated = 0;
-      let merged = 0;
-      const changedCustomers = new Set<string>();
+  function saveRows(day: Date) {
+    return db.$transaction(
+      async (tx): Promise<StandingDaySaveResult> => {
+        // Same key as "Touren planen": a plan run and a day-plan save of one date never interleave.
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`tour:${dayText}`}))`;
+        // NUD-212: a sent route stays editable; the change waits for "Änderungen senden". A stop the
+        // driver completed is history: its quantities are what the customer got.
+        const completed = new Set(
+          (
+            await tx.stop.findMany({
+              where: {
+                customerId: { in: customerIds },
+                status: { in: ["DELIVERED", "PROBLEM"] },
+                tour: { date: day },
+              },
+              select: { customerId: true },
+            })
+          ).map((stop) => stop.customerId),
+        );
 
-      for (const row of input.rows) {
-        const after: Quantities = emptyQuantities(productIds);
-        for (const line of row.lines) after[line.productId] = line.quantity;
-        const existing = await tx.order.findMany({
-          where: { customerId: row.customerId, deliveryDate: day, status: "CONFIRMED" },
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-          select: { id: true, items: { select: { productId: true, quantity: true } } },
-        });
-        const beforeItems = existing.flatMap((order) => order.items);
-        const before = quantitiesOf(beforeItems, productIds);
-        if (!rowChanged(before, after, productIds)) continue;
+        let created = 0;
+        let updated = 0;
+        let merged = 0;
+        const changedCustomers = new Set<string>();
 
-        const lines = positiveLines(after, productIds);
-        const [first, ...extra] = existing;
-
-        if (!first) {
-          // Nothing ordered and no order yet: nothing to store (an empty row is not an "order").
-          if (lines.length === 0) continue;
-          const order = await tx.order.create({
-            data: {
-              customerId: row.customerId,
-              deliveryDate: day,
-              // The office wanted exactly this day, the whole day (NUD-148).
-              windowFrom: day,
-              windowTo: day,
-              status: "CONFIRMED",
-              source: "MANUAL",
-              createdById: actorId,
-              items: { create: lines },
-            },
-            select: { id: true },
+        for (const row of input.rows) {
+          const after: Quantities = emptyQuantities(productIds);
+          for (const line of row.lines) after[line.productId] = line.quantity;
+          const existing = await tx.order.findMany({
+            where: { customerId: row.customerId, deliveryDate: day, status: "CONFIRMED" },
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            select: { id: true, items: { select: { productId: true, quantity: true } } },
           });
-          await recordAudit(tx, {
-            actorId,
-            entity: "Order",
-            entityId: order.id,
-            action: "order.create",
-            diff: {
-              via: "standing_day",
-              customerId: row.customerId,
-              status: "CONFIRMED",
-              deliveryDate: dayText,
-              lines: lines.map((line): LineChange => ({
-                productId: line.productId,
-                before: null,
-                after: toAuditQuantity(line.quantity),
-              })),
-            },
-          });
-          created += 1;
-          changedCustomers.add(row.customerId);
-          continue;
-        }
+          const beforeItems = existing.flatMap((order) => order.items);
+          const before = quantitiesOf(beforeItems, productIds);
+          if (!rowChanged(before, after, productIds)) continue;
+          if (completed.has(row.customerId)) throw new StopCompletedError();
 
-        // One row per customer: the first order takes the new quantities, the rest are merged into it.
-        await tx.order.update({
-          where: { id: first.id },
-          data: { items: { deleteMany: {}, create: lines } },
-          select: { id: true },
-        });
-        const changes = diffOrderLines(beforeItems, lines);
-        if (changes.length > 0) {
-          await recordAudit(tx, {
-            actorId,
-            entity: "Order",
-            entityId: first.id,
-            action: "order.update",
-            diff: { via: "standing_day", deliveryDate: dayText, lines: changes },
-          });
-        }
-        for (const order of extra) {
+          const lines = positiveLines(after, productIds);
+          const [first, ...extra] = existing;
+
+          if (!first) {
+            // Nothing ordered and no order yet: nothing to store (an empty row is not an "order").
+            if (lines.length === 0) continue;
+            const order = await tx.order.create({
+              data: {
+                customerId: row.customerId,
+                deliveryDate: day,
+                // The office wanted exactly this day, the whole day (NUD-148).
+                windowFrom: day,
+                windowTo: day,
+                status: "CONFIRMED",
+                source: "MANUAL",
+                createdById: actorId,
+                items: { create: lines },
+              },
+              select: { id: true },
+            });
+            await recordAudit(tx, {
+              actorId,
+              entity: "Order",
+              entityId: order.id,
+              action: "order.create",
+              diff: {
+                via: "standing_day",
+                customerId: row.customerId,
+                status: "CONFIRMED",
+                deliveryDate: dayText,
+                lines: lines.map((line): LineChange => ({
+                  productId: line.productId,
+                  before: null,
+                  after: toAuditQuantity(line.quantity),
+                })),
+              },
+            });
+            created += 1;
+            changedCustomers.add(row.customerId);
+            continue;
+          }
+
+          // One row per customer: the first order takes the new quantities, the rest are merged into it.
           await tx.order.update({
-            where: { id: order.id },
-            data: { status: "CANCELLED" },
+            where: { id: first.id },
+            data: { items: { deleteMany: {}, create: lines } },
             select: { id: true },
           });
-          await recordAudit(tx, {
-            actorId,
-            entity: "Order",
-            entityId: order.id,
-            action: "order.cancel",
-            diff: {
-              via: "standing_day",
-              status: { from: "CONFIRMED", to: "CANCELLED" },
-              mergedInto: first.id,
-            },
-          });
-          merged += 1;
+          const changes = diffOrderLines(beforeItems, lines);
+          if (changes.length > 0) {
+            await recordAudit(tx, {
+              actorId,
+              entity: "Order",
+              entityId: first.id,
+              action: "order.update",
+              diff: { via: "standing_day", deliveryDate: dayText, lines: changes },
+            });
+          }
+          for (const order of extra) {
+            await tx.order.update({
+              where: { id: order.id },
+              data: { status: "CANCELLED" },
+              select: { id: true },
+            });
+            await recordAudit(tx, {
+              actorId,
+              entity: "Order",
+              entityId: order.id,
+              action: "order.cancel",
+              diff: {
+                via: "standing_day",
+                status: { from: "CONFIRMED", to: "CANCELLED" },
+                mergedInto: first.id,
+              },
+            });
+            merged += 1;
+          }
+          updated += 1;
+          changedCustomers.add(row.customerId);
         }
-        updated += 1;
-        changedCustomers.add(row.customerId);
-      }
 
-      if (changedCustomers.size > 0) {
-        await tours.markOutdatedForDate(day, tx, { customerIds: [...changedCustomers] });
-      }
-      return {
-        ok: true,
-        written: changedCustomers.size,
-        created,
-        updated,
-        merged,
-      };
-    },
-    { timeout: 30_000, maxWait: 10_000 },
-  );
+        if (changedCustomers.size > 0) {
+          await tours.markOutdatedForDate(day, tx, { customerIds: [...changedCustomers] });
+        }
+        return {
+          ok: true,
+          written: changedCustomers.size,
+          created,
+          updated,
+          merged,
+        };
+      },
+      { timeout: 30_000, maxWait: 10_000 },
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -715,6 +827,124 @@ export async function setStandingTourDriver(
   return { ok: true, id: id.data, active: existing.active };
 }
 
+/** NUD-212: the vehicle of a standing tour's day routes (`null` clears it), audited. */
+export async function setStandingTourVehicle(
+  db: StandingDb,
+  actorId: string,
+  rawId: unknown,
+  rawVehicleId: unknown,
+): Promise<StandingTourEditResult> {
+  const id = idSchema.safeParse(rawId);
+  const vehicleId = idSchema.nullable().safeParse(rawVehicleId === "" ? null : rawVehicleId);
+  if (!id.success || !vehicleId.success) return { ok: false, error: "invalid" };
+  if (vehicleId.data) {
+    const vehicle = await db.vehicle.findUnique({
+      where: { id: vehicleId.data },
+      select: { active: true },
+    });
+    if (!vehicle?.active) return { ok: false, error: "invalid" };
+  }
+  const existing = await db.standingTour.findUnique({
+    where: { id: id.data },
+    select: { id: true, vehicleId: true, active: true },
+  });
+  if (!existing) return { ok: false, error: "not_found" };
+  if (existing.vehicleId === vehicleId.data) {
+    return { ok: true, id: id.data, active: existing.active };
+  }
+  await db.$transaction(async (tx) => {
+    await tx.standingTour.update({
+      where: { id: id.data },
+      data: { vehicleId: vehicleId.data },
+      select: { id: true },
+    });
+    await recordAudit(tx, {
+      actorId,
+      entity: "StandingTour",
+      entityId: id.data,
+      action: "standing_tour.vehicle",
+      diff: { from: existing.vehicleId, to: vehicleId.data },
+    });
+  });
+  return { ok: true, id: id.data, active: existing.active };
+}
+
+export const moveExtraSchema = z
+  .object({
+    date: dateTextSchema,
+    customerId: idSchema,
+    /** The route the extra rides on; `null` = back to where the detour is smallest. */
+    standingTourId: idSchema.nullable(),
+    /** Standing customers delivered before it (0 = first). */
+    slot: z.number().int().min(0).max(MAX_STANDING_CUSTOMERS).nullable(),
+  })
+  .strict();
+
+export type MoveExtraResult =
+  | { ok: true }
+  | { ok: false; error: "invalid" | "date_in_past" | "not_found" | "standing_customer" };
+
+/**
+ * NUD-212: puts a customer of no standing tour on a route at a position for one delivery day. The
+ * place is stored on his CONFIRMED orders of that day; the routes are sent again by the office.
+ */
+export async function moveExtra(
+  db: StandingDb,
+  actorId: string,
+  rawInput: unknown,
+  today: Date,
+  tours: TourHook,
+): Promise<MoveExtraResult> {
+  const parsed = moveExtraSchema.safeParse(rawInput);
+  if (!parsed.success) return { ok: false, error: "invalid" };
+  const input = parsed.data;
+  const day = parseCalendarDate(input.date);
+  if (!day) return { ok: false, error: "invalid" };
+  if (isPastDeliveryDate(day, today)) return { ok: false, error: "date_in_past" };
+  if (input.standingTourId) {
+    const route = await db.standingTour.findUnique({
+      where: { id: input.standingTourId },
+      select: { active: true },
+    });
+    if (!route?.active) return { ok: false, error: "not_found" };
+  }
+  const member = await db.standingTourCustomer.findFirst({
+    where: { customerId: input.customerId, standingTour: { active: true } },
+    select: { customerId: true },
+  });
+  if (member) return { ok: false, error: "standing_customer" };
+  return db.$transaction(async (tx): Promise<MoveExtraResult> => {
+    const orders = await tx.order.findMany({
+      where: { customerId: input.customerId, deliveryDate: day, status: "CONFIRMED" },
+      select: { id: true, routeStandingTourId: true, routeSlot: true },
+    });
+    if (orders.length === 0) return { ok: false, error: "not_found" };
+    const slot = input.standingTourId ? input.slot : null;
+    for (const order of orders) {
+      if (order.routeStandingTourId === input.standingTourId && order.routeSlot === slot) continue;
+      await tx.order.update({
+        where: { id: order.id },
+        data: { routeStandingTourId: input.standingTourId, routeSlot: slot },
+        select: { id: true },
+      });
+      await recordAudit(tx, {
+        actorId,
+        entity: "Order",
+        entityId: order.id,
+        action: "order.update",
+        diff: {
+          via: "day_route_place",
+          deliveryDate: input.date,
+          routeStandingTourId: { from: order.routeStandingTourId, to: input.standingTourId },
+          routeSlot: { from: order.routeSlot, to: slot },
+        },
+      });
+    }
+    await tours.markOutdatedForDate(day, tx);
+    return { ok: true };
+  });
+}
+
 /** Archives (`active=false`) or restores a standing tour; the membership rows stay. */
 export async function setStandingTourActive(
   db: StandingDb,
@@ -755,5 +985,16 @@ export async function listActiveDrivers(
     where: { role: "DRIVER", active: true },
     orderBy: [{ displayName: "asc" }, { id: "asc" }],
     select: { id: true, displayName: true },
+  });
+}
+
+/** NUD-212: active vehicles for the vehicle selects of the routes (sorted by name). */
+export async function listActiveVehicles(
+  db: Pick<PrismaClient, "vehicle">,
+): Promise<Array<{ id: string; name: string; capacityKg: number }>> {
+  return db.vehicle.findMany({
+    where: { active: true },
+    orderBy: [{ name: "asc" }, { id: "asc" }],
+    select: { id: true, name: true, capacityKg: true },
   });
 }

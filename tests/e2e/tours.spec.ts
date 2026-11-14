@@ -278,12 +278,14 @@ test("tour planning: generate, reorder (drag and buttons), lock, driver, release
     expect(tour.driverId).toBe(f.driver.id);
     expect(await noHorizontalScroll(page)).toBe(true);
 
-    // The "in tour" badge of the order overview links to the planning page of that day.
+    // The "in tour" badge of the order overview links to the day plan of that day (NUD-212).
     await page.goto(`/de/admin/orders?from=${f.day}&to=${f.day}`);
     const link = page.locator('[data-testid="order-in-tour-link"]:visible').first();
-    await expect(link).toHaveAttribute("href", `/de/admin/tours?date=${f.day}`);
+    await expect(link).toHaveAttribute("href", `/de/admin/planning?date=${f.day}`);
     await link.click();
-    await expect(page).toHaveURL(new RegExp(`/de/admin/tours\\?date=${f.day}`));
+    await expect(page).toHaveURL(new RegExp(`/de/admin/planning\\?date=${f.day}`));
+    // The old tour page stays reachable by its address.
+    await page.goto(`/de/admin/tours?date=${f.day}`);
     await expect(tid(page, "tour-status")).toHaveText("Freigegeben");
 
     // NUD-092: the history lists generate, lock, driver assignment and release (newest first).

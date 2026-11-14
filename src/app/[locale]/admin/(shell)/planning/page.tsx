@@ -7,17 +7,19 @@ import { StandingToursDialog } from "@/components/admin/standing-tours-dialog";
 import { TourDateField } from "@/components/admin/tour-date-field";
 import { LoadingSkeleton } from "@/components/shared/states";
 import { formatCalendarDate, parseCalendarDate } from "@/domain/order";
+import { getMapTileConfig } from "@/lib/map-config";
 import { requirePageActor } from "@/server/auth/page-guards";
 import { getDb } from "@/server/db";
 import { todayIn } from "@/server/orders";
 import { getDefaultDeliveryDate, getFactoryTimezone } from "@/server/settings";
-import { listActiveDrivers, standingDayQuery } from "@/server/standing-tours";
+import { listActiveDrivers, listActiveVehicles, standingDayQuery } from "@/server/standing-tours";
 
 /**
  * Day plan ("Tagesplanung", NUD-186): `/admin/planning?date=YYYY-MM-DD` (default = next delivery
  * day). One table per standing tour ("Stammtour") with the same customers every delivery day, the
  * quantities of that day editable in place, and the active customers of no standing tour at the
- * bottom with "add for this delivery day".
+ * bottom with "add for this delivery day". Since NUD-212 every standing tour is the route of the
+ * day and is sent to its driver from here ("An Fahrer senden").
  */
 async function Guarded({
   locale,
@@ -34,7 +36,10 @@ async function Guarded({
   // Without a valid `?date=` the page opens on the next delivery day (like order entry).
   const fallback = formatCalendarDate(await getDefaultDeliveryDate());
   const plan = await standingDayQuery(getDb(), requested ?? fallback, today);
-  const drivers = await listActiveDrivers(getDb());
+  const [drivers, vehicles] = await Promise.all([
+    listActiveDrivers(getDb()),
+    listActiveVehicles(getDb()),
+  ]);
   // The weekday in words: "Montag, 16. November" says more to the office than a date field.
   const day = parseCalendarDate(plan.date);
   const dayText = day
@@ -59,7 +64,7 @@ async function Guarded({
           </>
         }
       />
-      <StandingPlan plan={plan} drivers={drivers} />
+      <StandingPlan plan={plan} drivers={drivers} vehicles={vehicles} tiles={getMapTileConfig()} />
     </div>
   );
 }

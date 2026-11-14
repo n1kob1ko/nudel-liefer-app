@@ -198,7 +198,8 @@
         "parkingMissingHint": "Parkplatz festlegen.",
         "unconfirmedOrders": "{count, plural, one {# Entwurf für den nächsten Liefertag} other {# Entwürfe für den nächsten Liefertag}}",
         "unconfirmedOrdersHint": "{date} · noch nicht bestätigt",
-        "emptyDescriptionAll": "Keine Probleme gemeldet, keine Bestellung ohne Tour und alle Kundenstammdaten vollständig."
+        "emptyDescriptionAll": "Keine Probleme gemeldet, keine Bestellung ohne Tour und alle Kundenstammdaten vollständig.",
+        "unsentRoutes": "{count, plural, one {Eine Route hat Änderungen, die der Fahrer noch nicht hat} other {# Routen haben Änderungen, die die Fahrer noch nicht haben}}"
       },
       "activity": {
         "title": "Letzte Aktivität",
@@ -301,6 +302,7 @@
       "title": "Tagesplanung",
       "day": "Liefertag {date}",
       "save": "Mengen speichern",
+      "saveShort": "Speichern",
       "saving": "Speichern …",
       "saved": "{count, plural, one {# Bestellung gespeichert.} other {# Bestellungen gespeichert.}}",
       "savedMerged": "{count, plural, one {# doppelte Bestellung zusammengeführt.} other {# doppelte Bestellungen zusammengeführt.}}",
@@ -309,15 +311,10 @@
       "dayWeight": "{weight} kg",
       "dirty": "{count, plural, one {# Kunde geändert} other {# Kunden geändert}}",
       "readOnly": {
-        "released": {
-          "title": "Touren dieses Tages sind freigegeben",
-          "body": "Sobald eine Tour freigegeben ist, arbeitet der Fahrer mit den freigegebenen Mengen. Mengen ändern Sie über „Bearbeiten“ auf der Tourenseite."
-        },
         "past": {
           "title": "Vergangener Liefertag",
-          "body": "Die Bestellungen dieses Tages sind Geschichte und können hier nicht mehr geändert werden."
-        },
-        "toTours": "Zur Tourenplanung"
+          "body": "Die Bestellungen dieses Tages sind Geschichte und können nicht mehr geändert werden."
+        }
       },
       "noRoutes": {
         "title": "Noch keine Stammtour",
@@ -327,13 +324,17 @@
         "customer": "Kunde",
         "weight": "Gewicht",
         "state": "Status",
-        "total": "Gesamt"
+        "total": "Gesamt",
+        "stop": "Stopp"
       },
       "state": {
         "nothing": "nichts bestellt",
         "fromRule": "aus Dauerbestellung",
         "cancelled": "storniert",
-        "merged": "mehrere Bestellungen"
+        "merged": "mehrere Bestellungen",
+        "delivered": "geliefert",
+        "problem": "Problem",
+        "noLocation": "Kein Ort"
       },
       "route": {
         "summary": "{count, plural, one {# Kunde} other {# Kunden}} · {weight} kg",
@@ -341,11 +342,21 @@
         "noDriver": "Kein Fahrer",
         "driverSaved": "Fahrer der Stammtour geändert.",
         "empty": "Diese Stammtour hat noch keine Kunden.",
-        "ruleHint": "Mit „aus Dauerbestellung“ gefüllte Zeilen werden erst mit „Mengen speichern“ zu Bestellungen."
+        "ruleHint": "Mit „aus Dauerbestellung“ gefüllte Zeilen werden erst mit „Mengen speichern“ zu Bestellungen.",
+        "stops": "{count, plural, one {# Stopp} other {# Stopps}}",
+        "load": "{weight} / {capacity} kg",
+        "progress": "{done} von {count} geliefert",
+        "problems": "{count, plural, one {# Problem} other {# Probleme}}",
+        "vehicle": "Fahrzeug",
+        "noVehicle": "Kein Fahrzeug",
+        "vehicleSaved": "Fahrzeug der Stammtour geändert.",
+        "map": "Karte",
+        "hideMap": "Karte schließen",
+        "loadSheet": "Ladeliste"
       },
       "offRoute": {
         "title": "Nicht in einer Stammtour",
-        "body": "Kunden ohne Stammtour mit Bestellung für diesen Tag. „Hinzufügen“ legt eine Bestellung nur für diesen Liefertag an – die Stammtouren bleiben unverändert.",
+        "body": "Kunden ohne Stammtour. „Hinzufügen“ nimmt einen Kunden nur an diesem Tag mit: Er fährt in der passenden Route mit, die Stammtouren bleiben gleich.",
         "search": "Kunde suchen (Name, Nummer, Ort)",
         "onlyWithOrder": "Nur mit Bestellung",
         "empty": "Kein Kunde gefunden.",
@@ -355,11 +366,11 @@
         "generic": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
         "invalid": "Ungültige Eingabe.",
         "date_in_past": "Für vergangene Tage können keine Mengen geändert werden.",
-        "tour_released": "Eine Tour dieses Tages ist schon freigegeben. Bitte die Mengen auf der Tourenseite über „Bearbeiten“ ändern.",
         "customer_not_found": "Ein Kunde wurde nicht gefunden. Bitte die Seite neu laden.",
         "customer_inactive": "Ein Kunde ist inaktiv. Bitte die Seite neu laden.",
         "product_not_found": "Ein Produkt wurde nicht gefunden. Bitte die Seite neu laden.",
-        "product_inactive": "Ein Produkt ist nicht mehr aktiv. Bitte die Seite neu laden."
+        "product_inactive": "Ein Produkt ist nicht mehr aktiv. Bitte die Seite neu laden.",
+        "stop_completed": "Der Fahrer hat diesen Kunden schon beliefert. Die Menge bleibt, wie sie geliefert wurde."
       },
       "manage": {
         "open": "Stammtouren bearbeiten",
@@ -390,6 +401,62 @@
           "customer_not_found": "Ein Kunde wurde nicht gefunden.",
           "customer_inactive": "Ein Kunde ist inaktiv.",
           "customer_in_other": "Ein Kunde gehört schon zu einer anderen Stammtour."
+        }
+      },
+      "routeState": {
+        "empty": "Keine Bestellung",
+        "ready": "Nicht gesendet",
+        "sent": "Beim Fahrer",
+        "changed": "Änderungen nicht gesendet",
+        "running": "Unterwegs",
+        "done": "Fertig"
+      },
+      "extra": {
+        "label": "Zusatz",
+        "move": "Verschieben"
+      },
+      "move": {
+        "title": "{name} verschieben",
+        "body": "Gilt nur für diesen Liefertag.",
+        "route": "Route",
+        "position": "Reihenfolge",
+        "first": "Als Erstes",
+        "after": "Nach {name}",
+        "auto": "Automatisch",
+        "save": "Verschieben",
+        "saving": "Speichern …",
+        "saved": "Verschoben. Mit „Änderungen senden“ bekommt es der Fahrer.",
+        "errors": {
+          "invalid": "Ungültige Eingabe.",
+          "date_in_past": "Vergangene Tage können nicht mehr geändert werden.",
+          "not_found": "Route oder Bestellung nicht gefunden. Bitte die Seite neu laden.",
+          "standing_customer": "Dieser Kunde gehört zu einer Stammtour."
+        }
+      },
+      "send": {
+        "first": "An Fahrer senden",
+        "changes": "Änderungen senden",
+        "allSent": "Alles beim Fahrer",
+        "nothing": "Nichts Neues zu senden.",
+        "done": "{count, plural, one {# Route an den Fahrer gesendet.} other {# Routen an die Fahrer gesendet.}}",
+        "noLocation": "{name} hat keinen Ort auf der Karte und fährt nicht mit.",
+        "overloadTitle": "Route zu schwer",
+        "overloadBody": "{route} ist {kg} kg schwerer als das Fahrzeug trägt. Trotzdem senden?",
+        "overloadCancel": "Abbrechen",
+        "overloadConfirm": "Trotzdem senden",
+        "errors": {
+          "invalid": "Ungültige Eingabe.",
+          "invalid_date": "Ungültiges Datum.",
+          "date_in_past": "Vergangene Tage können nicht mehr gesendet werden.",
+          "depot_not_set": "Der Standort der Firma fehlt. Bitte in den Einstellungen setzen.",
+          "no_routes": "Es gibt keine aktive Stammtour. Bitte zuerst eine anlegen.",
+          "no_stops": "An diesem Tag hat niemand etwas bestellt.",
+          "driver_required": "{route} hat keinen Fahrer.",
+          "driver_invalid": "Der Fahrer von {route} ist nicht aktiv.",
+          "vehicle_required": "{route} hat kein Fahrzeug.",
+          "vehicle_invalid": "Das Fahrzeug von {route} ist nicht aktiv.",
+          "overloaded": "{route} ist zu schwer.",
+          "conflict": "Gerade hat jemand gleichzeitig geändert. Bitte noch einmal senden."
         }
       }
     },
@@ -1696,7 +1763,7 @@
       },
       "print": {
         "open": "Ladeliste drucken",
-        "back": "Zurück zur Tour",
+        "back": "Zurück zur Tagesplanung",
         "printButton": "Drucken",
         "languageLabel": "Sprache des Ausdrucks",
         "outdatedScreen": "Die Bestellungen haben sich seit dem Erstellen bzw. der Freigabe dieser Tour geändert. Die Ladeliste zeigt die Mengen der Tour, nicht die aktuellen Bestellungen. Bitte die Tour prüfen und erneut freigeben, bevor beladen wird.",
@@ -1877,6 +1944,7 @@
         "standing_tour_create": "Stammtour angelegt",
         "standing_tour_update": "Stammtour geändert",
         "standing_tour_driver": "Fahrer der Stammtour geändert",
+        "standing_tour_vehicle": "Fahrzeug der Stammtour geändert",
         "standing_tour_activate": "Stammtour aktiviert",
         "standing_tour_deactivate": "Stammtour deaktiviert",
         "user_delete": "Konto gelöscht"

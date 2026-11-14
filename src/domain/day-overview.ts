@@ -29,6 +29,8 @@ export type OverviewTour = {
   createdAt: Date;
   driverName: string | null;
   vehicleName: string | null;
+  /** NUD-212: the standing tour a day route comes from ("Route Nord"), if any. */
+  routeName?: string | null;
   departedAt: Date | null;
   stops: OverviewStop[];
 };
@@ -47,6 +49,8 @@ export type DriverRow = {
   phase: TourPhase;
   driverName: string | null;
   vehicleName: string | null;
+  /** NUD-212: name of the standing tour, shown instead of "Tour N". */
+  routeName: string | null;
   departedAt: Date | null;
   progress: TourProgress;
   /** First open stop in tour order. */
@@ -138,6 +142,7 @@ function rowOf(tour: OverviewTour, number: number, serviceSecondsPerStop: number
     phase: tourPhase({ status: tour.status, departedAt: tour.departedAt, done: progress.done }),
     driverName: tour.driverName,
     vehicleName: tour.vehicleName,
+    routeName: tour.routeName ?? null,
     departedAt: tour.departedAt,
     progress,
     nextStop: next ? { id: next.id, name: next.name, etaAt: next.etaAt } : null,

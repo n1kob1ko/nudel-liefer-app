@@ -59,8 +59,8 @@ export function DayBoard({
   const tc = useTranslations("common");
   const fmt = createAppFormatters(useFormatter(), overview.timezone);
   const { rows, totals, problems } = overview;
-  const tourHref = (tourId?: string) =>
-    `/admin/tours?date=${overview.date}${tourId ? `&tour=${tourId}` : ""}`;
+  // NUD-212: a route of the day lives on the day plan (the old tour page has no menu entry).
+  const tourHref = `/admin/planning?date=${overview.date}`;
   const live = rows.length === 0 || rows.some((row) => row.phase !== "done");
 
   return (
@@ -167,10 +167,7 @@ export function DayBoard({
                 {problem.driverName ? ` · ${problem.driverName}` : ""}
                 {problem.at ? ` · ${t("board.reported", { time: fmt.time(problem.at) })}` : ""}
               </p>
-              <Link
-                href={tourHref(problem.tourId)}
-                className={buttonVariants({ variant: "outline", size: "sm" })}
-              >
+              <Link href={tourHref} className={buttonVariants({ variant: "outline", size: "sm" })}>
                 {t("board.view")}
               </Link>
             </li>
@@ -204,7 +201,7 @@ export function DayBoard({
             >
               <p className="text-base">{t("today.noTour")}</p>
               <Link
-                href={tourHref()}
+                href={tourHref}
                 data-testid="today-link"
                 className={buttonVariants({ variant: "outline", size: "sm" })}
               >
@@ -214,7 +211,7 @@ export function DayBoard({
           ) : (
             <Stagger as="ul" className="flex flex-col gap-3">
               {rows.map((row) => (
-                <Lane key={row.tourId} row={row} href={tourHref(row.tourId)} fmt={fmt} />
+                <Lane key={row.tourId} row={row} href={tourHref} fmt={fmt} />
               ))}
             </Stagger>
           )}
@@ -310,7 +307,7 @@ function Lane({
             </Link>
           </h3>
           <p className="truncate text-sm text-muted-foreground">
-            {[t("board.tourNumber", { number: row.number }), row.vehicleName]
+            {[row.routeName ?? t("board.tourNumber", { number: row.number }), row.vehicleName]
               .filter(Boolean)
               .join(" · ")}
           </p>

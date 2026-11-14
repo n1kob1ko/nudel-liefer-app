@@ -198,7 +198,8 @@
         "parkingMissingHint": "请设置停车位。",
         "unconfirmedOrders": "{count, plural, other {下个配送日有 # 个草稿订单}}",
         "unconfirmedOrdersHint": "{date} · 尚未确认",
-        "emptyDescriptionAll": "没有已报告的问题，没有未排入路线的订单，客户资料也都完整。"
+        "emptyDescriptionAll": "没有已报告的问题，没有未排入路线的订单，客户资料也都完整。",
+        "unsentRoutes": "{count} 条线路有司机尚未收到的更改"
       },
       "activity": {
         "title": "最近活动",
@@ -301,6 +302,7 @@
       "title": "每日规划",
       "day": "配送日 {date}",
       "save": "保存数量",
+      "saveShort": "保存",
       "saving": "保存中…",
       "saved": "{count, plural, other {已保存 # 个订单。}}",
       "savedMerged": "{count, plural, other {已合并 # 个重复订单。}}",
@@ -309,15 +311,10 @@
       "dayWeight": "{weight} kg",
       "dirty": "已修改 {count} 位客户",
       "readOnly": {
-        "released": {
-          "title": "这一天的线路已发布",
-          "body": "线路一旦发布，司机就按已发布的数量工作。请在配送线路页面通过“编辑”修改数量。"
-        },
         "past": {
           "title": "已过去的送货日",
           "body": "这一天的订单已成为历史，无法在此修改。"
-        },
-        "toTours": "前往线路规划"
+        }
       },
       "noRoutes": {
         "title": "还没有固定线路",
@@ -327,13 +324,17 @@
         "customer": "客户",
         "weight": "重量",
         "state": "状态",
-        "total": "合计"
+        "total": "合计",
+        "stop": "站点"
       },
       "state": {
         "nothing": "未订货",
         "fromRule": "来自定期订单",
         "cancelled": "已取消",
-        "merged": "多个订单"
+        "merged": "多个订单",
+        "delivered": "已送达",
+        "problem": "问题",
+        "noLocation": "无位置"
       },
       "route": {
         "summary": "{count, plural, other {# 个客户}} · {weight} kg",
@@ -341,11 +342,21 @@
         "noDriver": "无司机",
         "driverSaved": "已更改固定线路的司机。",
         "empty": "该固定线路还没有客户。",
-        "ruleHint": "标记为“来自定期订单”的行只有在保存数量后才会成为订单。"
+        "ruleHint": "标记为“来自定期订单”的行只有在保存数量后才会成为订单。",
+        "stops": "{count} 个站点",
+        "load": "{weight} / {capacity} 公斤",
+        "progress": "已送达 {done} / {count}",
+        "problems": "{count} 个问题",
+        "vehicle": "车辆",
+        "noVehicle": "无车辆",
+        "vehicleSaved": "已更换固定线路的车辆。",
+        "map": "地图",
+        "hideMap": "关闭地图",
+        "loadSheet": "装货单"
       },
       "offRoute": {
         "title": "不在固定线路中",
-        "body": "没有固定线路但这一天有订单的客户。“添加”只为这个送货日创建订单——固定线路保持不变。",
+        "body": "不属于任何固定线路的客户。“添加”只在当天带上该客户：他会加入合适的线路，固定线路保持不变。",
         "search": "搜索客户（名称、编号、城市）",
         "onlyWithOrder": "仅显示有订单",
         "empty": "未找到客户。",
@@ -355,11 +366,11 @@
         "generic": "出现问题，请重试。",
         "invalid": "输入无效。",
         "date_in_past": "已过去的日期无法修改数量。",
-        "tour_released": "这一天的线路已发布。请在配送线路页面通过“编辑”修改数量。",
         "customer_not_found": "未找到某个客户。请重新加载页面。",
         "customer_inactive": "某个客户已停用。请重新加载页面。",
         "product_not_found": "未找到某个产品。请重新加载页面。",
-        "product_inactive": "某个产品已停用。请重新加载页面。"
+        "product_inactive": "某个产品已停用。请重新加载页面。",
+        "stop_completed": "司机已为该客户送过货。数量保持为已送达的数量。"
       },
       "manage": {
         "open": "编辑固定线路",
@@ -390,6 +401,62 @@
           "customer_not_found": "未找到某个客户。",
           "customer_inactive": "某个客户已停用。",
           "customer_in_other": "该客户已属于另一个固定线路。"
+        }
+      },
+      "routeState": {
+        "empty": "无订单",
+        "ready": "未发送",
+        "sent": "已发给司机",
+        "changed": "更改未发送",
+        "running": "配送中",
+        "done": "已完成"
+      },
+      "extra": {
+        "label": "临时",
+        "move": "移动"
+      },
+      "move": {
+        "title": "移动 {name}",
+        "body": "仅适用于本配送日。",
+        "route": "线路",
+        "position": "顺序",
+        "first": "第一个",
+        "after": "在 {name} 之后",
+        "auto": "自动",
+        "save": "移动",
+        "saving": "正在保存……",
+        "saved": "已移动。点击“发送更改”后司机会收到。",
+        "errors": {
+          "invalid": "输入无效。",
+          "date_in_past": "过去的日期不能再更改。",
+          "not_found": "未找到线路或订单。请刷新页面。",
+          "standing_customer": "该客户属于固定线路。"
+        }
+      },
+      "send": {
+        "first": "发送给司机",
+        "changes": "发送更改",
+        "allSent": "全部已发给司机",
+        "nothing": "没有新的内容需要发送。",
+        "done": "已向司机发送 {count} 条线路。",
+        "noLocation": "{name} 在地图上没有位置，不在线路中。",
+        "overloadTitle": "线路超重",
+        "overloadBody": "{route} 比车辆载重多 {kg} 公斤。仍要发送吗？",
+        "overloadCancel": "取消",
+        "overloadConfirm": "仍然发送",
+        "errors": {
+          "invalid": "输入无效。",
+          "invalid_date": "日期无效。",
+          "date_in_past": "过去的日期不能再发送。",
+          "depot_not_set": "缺少公司位置。请在设置中填写。",
+          "no_routes": "没有启用的固定线路。请先创建一条。",
+          "no_stops": "这一天没有人订货。",
+          "driver_required": "{route} 没有司机。",
+          "driver_invalid": "{route} 的司机未启用。",
+          "vehicle_required": "{route} 没有车辆。",
+          "vehicle_invalid": "{route} 的车辆未启用。",
+          "overloaded": "{route} 超重。",
+          "conflict": "刚才有人同时做了更改。请再发送一次。"
         }
       }
     },
@@ -1690,7 +1757,7 @@
       },
       "print": {
         "open": "打印装车单",
-        "back": "返回路线",
+        "back": "返回每日规划",
         "printButton": "打印",
         "languageLabel": "打印语言",
         "outdatedScreen": "自这条路线生成或发布以来，订单已发生变更。装车单显示的是路线中的数量，而不是当前订单。装车前请检查路线并重新发布。",
@@ -1877,6 +1944,7 @@
         "standing_tour_create": "已创建固定线路",
         "standing_tour_update": "已修改固定线路",
         "standing_tour_driver": "已更换固定线路的司机",
+        "standing_tour_vehicle": "已更换固定线路的车辆",
         "standing_tour_activate": "已启用固定线路",
         "standing_tour_deactivate": "已停用固定线路",
         "user_delete": "已删除账号"

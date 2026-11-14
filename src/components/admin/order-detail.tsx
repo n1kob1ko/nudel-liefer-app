@@ -135,7 +135,7 @@ export function OrderDetailView({
                 {order.tour ? (
                   <>
                     <Link
-                      href={`/admin/tours?date=${order.tour.date}&tour=${order.tour.tourId}`}
+                      href={`/admin/planning?date=${order.tour.date}`}
                       className="link"
                       data-testid="detail-tour-link"
                     >

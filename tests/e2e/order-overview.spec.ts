@@ -261,7 +261,7 @@ test("order detail: edit a quantity, cancel, duplicate; tours are flagged outdat
     await expect(tid(page, "detail-tour-link")).toHaveText("In dieser Tour ansehen");
     await expect(tid(page, "detail-tour-link")).toHaveAttribute(
       "href",
-      new RegExp(`/admin/tours\\?date=${D1}&tour=${f.tourId}$`),
+      new RegExp(`/admin/planning\\?date=${D1}$`),
     );
     await expect(tid(page, "detail-tour-meta")).toContainText("Stopp Offen");
     await tid(page, "order-edit").click();

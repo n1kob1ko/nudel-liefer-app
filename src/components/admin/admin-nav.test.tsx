@@ -41,12 +41,14 @@ describe("AdminNav", () => {
     expect(current).toHaveAttribute("aria-current", "page");
     expect(current.querySelector('[data-slot="layout-thumb"]')).not.toBeNull();
     expect(document.querySelectorAll('[data-slot="layout-thumb"]')).toHaveLength(1);
-    expect(screen.getByTestId("nav-tours")).not.toHaveAttribute("aria-current");
+    expect(screen.getByTestId("nav-planning")).not.toHaveAttribute("aria-current");
+    // NUD-212: no "Touren" entry; routes are sent from the day plan.
+    expect(screen.queryByTestId("nav-tours")).not.toBeInTheDocument();
   });
 
   it("gives way under the finger: entries scale a little while pressed (rule 4)", () => {
     show(<AdminNav />);
-    expect(screen.getByTestId("nav-tours")).toHaveClass("active:scale-[.98]");
+    expect(screen.getByTestId("nav-planning")).toHaveClass("active:scale-[.98]");
   });
 
   it("keeps the label readable above the highlight", () => {
@@ -66,11 +68,12 @@ describe("AdminNav", () => {
 
 describe("AdminBottomNav", () => {
   it("moves one highlight between the tabs as well", () => {
-    pathname = "/admin/tours";
+    pathname = "/admin/planning";
     show(<AdminBottomNav />);
     const nav = screen.getByTestId("admin-bottom-nav");
     const current = nav.querySelector('[aria-current="page"]');
-    expect(current).toHaveTextContent("Touren");
+    expect(current).toHaveTextContent("Tagesplanung");
+    expect(nav).not.toHaveTextContent("Touren");
     expect(current?.querySelector('[data-slot="layout-thumb"]')).not.toBeNull();
     expect(nav.querySelectorAll('[data-slot="layout-thumb"]')).toHaveLength(1);
   });

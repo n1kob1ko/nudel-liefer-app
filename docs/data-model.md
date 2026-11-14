@@ -64,6 +64,7 @@ The provider is `postgresql`; the generated client is emitted to
   `status`, `source` (manual or from screenshot), optional `screenshotId` (`onDelete: SetNull`),
   `internalNote`, and the creating user (`Restrict`). Indexed on `(deliveryDate, status)` and
   `(customerId, deliveryDate)`.
+  NUD-212: `routeStandingTourId` / `routeSlot` hold the day route and the position (standing customers before it) the office chose for an order of a customer outside the standing tours; both `null` = where the detour is smallest (`src/domain/day-route.ts`).
 - **`OrderItem`** — one order line: product, quantity (`Int`, whole numbers since NUD-137). Cascades with its order,
   restricts product deletion.
 - **`Tour`** — a route for `date` (no unique constraint: several tours per date are allowed),
@@ -75,6 +76,7 @@ The provider is `postgresql`; the generated client is emitted to
   departure checklist times of NUD-151: `loadingStartedAt` (the driver opened the checklist) and
   `departedAt` ("Losfahren" or skipped), both written once by the driver app (first write wins).
   Stops cascade with their tour.
+  NUD-212: `standingTourId` is the standing tour a day route was built from ("An Fahrer senden" on the day plan); `null` for tours of the old "Touren planen" flow. `StandingTour.vehicleId` is the vehicle of that group's day routes.
 - **`Stop`** — one delivery stop in a tour: `sequence`, `status`, `etaAt`,
   `legDistanceM`/`legDurationS`, `problemReason`/`problemNote` (LocalizedText), `completedAt`,
   optional `clientMutationId` (unique, the driver's idempotency key), and the release snapshot

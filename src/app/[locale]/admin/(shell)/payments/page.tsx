@@ -159,7 +159,7 @@ async function Guarded({ locale }: { locale: string }) {
                             dueCents={row.dueCents}
                           />
                           <Link
-                            href={`/admin/tours?date=${row.date}&tour=${row.tourId}`}
+                            href={`/admin/planning?date=${row.date}`}
                             className="inline-flex h-11 items-center justify-center gap-1 px-3 text-base link max-md:flex-1 md:h-9 md:px-2"
                             data-testid={`cash-link-${row.stopId}`}
                           >

@@ -5,6 +5,7 @@ import {
   ImageOffIcon,
   MapPinOffIcon,
   PlusIcon,
+  SendIcon,
 } from "lucide-react";
 import type { createFormatter } from "next-intl";
 import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
@@ -25,8 +26,11 @@ import { tourHistoryQuery } from "@/server/audit-queries";
 import { requirePageActor } from "@/server/auth/page-guards";
 import { listCustomersQuery } from "@/server/customer-queries";
 import { dayOverviewQuery } from "@/server/day-overview";
+import { getDb } from "@/server/db";
 import { orderOverviewQuery } from "@/server/order-queries";
+import { todayIn } from "@/server/orders";
 import { getDefaultDeliveryDate, getFactoryTimezone, getSettings } from "@/server/settings";
+import { standingDayQuery } from "@/server/standing-tours";
 import {
   getLivePollIntervalMs,
   type TodayProgress,
@@ -57,7 +61,7 @@ async function Dashboard({ locale }: { locale: string }) {
     getSettings(),
   ]);
   const week = weekOf(today.date);
-  const [missingPhotos, parkingMissing, drafts, weekOrders] = await Promise.all([
+  const [missingPhotos, parkingMissing, drafts, weekOrders, todayPlan] = await Promise.all([
     listCustomersQuery({ status: "active", photosMissing: true, pageSize: 1 }),
     listCustomersQuery({ status: "active", parkingMissing: true, pageSize: 1 }),
     orderOverviewQuery({
@@ -66,6 +70,8 @@ async function Dashboard({ locale }: { locale: string }) {
       status: "DRAFT",
     }),
     orderOverviewQuery({ from: week[0], to: week[week.length - 1] }),
+    // NUD-212: routes of today whose orders the drivers do not have yet.
+    standingDayQuery(getDb(), today.date, todayIn(await getFactoryTimezone())),
   ]);
   // The five latest changes of all of today's tours, newest first (ISO times sort as text).
   const activity = (await Promise.all(overview.rows.map((row) => tourHistoryQuery(row.tourId))))
@@ -76,6 +82,12 @@ async function Dashboard({ locale }: { locale: string }) {
     missingPhotos: missingPhotos.total,
     parkingMissing: parkingMissing.total,
     drafts: { count: drafts.rows.length, date: nextDeliveryDay },
+    unsent: {
+      date: today.date,
+      routes: todayPlan.routes
+        .filter((route) => route.state === "changed" || route.state === "ready")
+        .map((route) => route.name),
+    },
   };
   const nextDay = {
     date: nextDeliveryDay,
@@ -203,14 +215,21 @@ function AttentionPanel({
     missingPhotos: number;
     parkingMissing: number;
     drafts: { count: number; date: string };
+    unsent: { date: string; routes: string[] };
   };
   fmt: AppFormatters;
   t: Translate;
 }) {
   const late = today.lateOrderCount;
-  const tourHref = `/admin/tours?date=${today.date}`;
+  const tourHref = `/admin/planning?date=${today.date}`;
   const { missingPhotos, parkingMissing, drafts } = attention;
-  const empty = late === 0 && missingPhotos === 0 && parkingMissing === 0 && drafts.count === 0;
+  const { unsent } = attention;
+  const empty =
+    late === 0 &&
+    missingPhotos === 0 &&
+    parkingMissing === 0 &&
+    drafts.count === 0 &&
+    unsent.routes.length === 0;
 
   return (
     <Card className="h-full" data-testid="attention-card">
@@ -242,6 +261,17 @@ function AttentionPanel({
                 hint={t("admin.dashboard.attention.unconfirmedOrdersHint", {
                   date: fmt.calendarDate(parseCalendarDate(drafts.date) ?? new Date(drafts.date)),
                 })}
+              />
+            ) : null}
+            {unsent.routes.length > 0 ? (
+              <AttentionItem
+                testId="attention-unsent-routes"
+                icon={SendIcon}
+                href={`/admin/planning?date=${unsent.date}`}
+                label={t("admin.dashboard.attention.unsentRoutes", {
+                  count: unsent.routes.length,
+                })}
+                hint={unsent.routes.join(", ")}
               />
             ) : null}
             {late > 0 ? (

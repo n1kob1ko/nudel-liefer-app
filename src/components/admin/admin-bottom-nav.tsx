@@ -12,7 +12,7 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
 /** The daily sections get a tab; everything else stays one tap away behind "Mehr". */
-const TAB_SECTIONS: ReadonlyArray<AdminSection> = ["dashboard", "orders", "tours", "customers"];
+const TAB_SECTIONS: ReadonlyArray<AdminSection> = ["dashboard", "planning", "orders", "customers"];
 
 /**
  * Bottom navigation of the office screens on a phone or tablet (colour refresh 2026-10). Below the

@@ -58,7 +58,23 @@ export type DayPlanRow = {
   nothing: boolean;
   /** Weight of `quantities` in kg, two decimals. */
   weightKg: number;
+  /**
+   * NUD-212: a customer of no standing tour that rides on this route today ("Zusatz"); `moved` =
+   * the office chose the place, otherwise it is where the detour is smallest.
+   */
+  extra: { moved: boolean; slot: number } | null;
+  /** NUD-212: the customer's stop on the route's tour once sent (number and state), else `null`. */
+  stop: { number: number; status: "PENDING" | "DELIVERED" | "PROBLEM" } | null;
+  /** NUD-212: the delivery point on the map (route rows only), `null` without any location. */
+  location: { lat: number; lng: number } | null;
 };
+
+/**
+ * NUD-212: where a day route stands. `empty` nothing ordered, `ready` not sent yet, `sent` the
+ * driver has it, `changed` something differs from what the driver has, `running` the driver is on
+ * the way, `done` every stop is completed.
+ */
+export type RouteState = "empty" | "ready" | "sent" | "changed" | "running" | "done";
 
 /** One standing tour of the day: its customers and their rows, in delivery order. */
 export type DayPlanRoute = {
@@ -66,11 +82,24 @@ export type DayPlanRoute = {
   name: string;
   driverId: string | null;
   driverName: string | null;
+  /** NUD-212: the vehicle of the route and its capacity in kg. */
+  vehicleId: string | null;
+  capacityKg: number | null;
+  state: RouteState;
+  /** The tour the driver has (load sheet, map), `null` before the first send. */
+  tourId: string | null;
+  /** Stops on the tour, and how many of them are delivered / have a problem. */
+  stopCount: number;
+  delivered: number;
+  problems: number;
+  /** The driven road of the sent tour as [lng, lat] pairs, `null` before sending. */
+  geometry: Array<[number, number]> | null;
+  /** Standing customers and the extras of the day, in delivery order. */
   rows: DayPlanRow[];
 };
 
-/** Today and earlier days are history; a released or running tour belongs to the driver (D32). */
-export type ReadOnlyReason = "released" | "past";
+/** Earlier days are history (D32). Since NUD-212 a sent route stays editable: changes are sent again. */
+export type ReadOnlyReason = "past";
 
 export type DayPlan = {
   /** `YYYY-MM-DD` */
@@ -82,6 +111,8 @@ export type DayPlan = {
   offRoute: DayPlanRow[];
   editable: boolean;
   readOnly: ReadOnlyReason | null;
+  /** NUD-212: the depot on the route maps, `null` while it is not set. */
+  depot: { lat: number; lng: number; name: string } | null;
 };
 
 /** A quantity of 0 for every product column. */

@@ -86,6 +86,16 @@ function orderSignature(orders: ReadonlyArray<{ id: string; updatedAt: Date }>):
 const hasRoutingPoint = (customer: Parameters<typeof routingPoint>[0] | undefined) =>
   !!customer && routingPoint(customer) !== null;
 
+/**
+ * A day route (NUD-212): the customers that belong on this tour and the position of each in the
+ * route. Orders of other customers are left out; stops are written in route order.
+ */
+export type DayRouteScope = {
+  customerIds: ReadonlySet<string>;
+  /** Position of a customer in the route; `undefined` keeps the stop where it is. */
+  orderKey: (customerId: string) => number | undefined;
+};
+
 export type LoadedReleasePlan = {
   plan: ReleasePlan;
   orderSignature: string;
@@ -101,9 +111,18 @@ export type LoadedReleasePlan = {
 export async function loadReleasePlan(
   db: Pick<PrismaClient, "order" | "customer">,
   tour: ReleaseTour,
+  route?: DayRouteScope,
 ): Promise<LoadedReleasePlan> {
   // Orders on a stop of another tour of the day (a completed tour before a follow-up) are not ours.
-  const orders = await listConfirmedOrdersForDate(db, tour.date, { tourId: tour.id });
+  const dayOrders = await listConfirmedOrdersForDate(db, tour.date, { tourId: tour.id });
+  // A day route (NUD-212) carries only its own customers; an order already on a completed stop of
+  // this tour stays, so its later edit is still reported.
+  const ownCompleted = new Set(
+    tour.stops.filter((s) => s.status !== "PENDING").flatMap((s) => s.orders.map((o) => o.orderId)),
+  );
+  const orders = route
+    ? dayOrders.filter((o) => route.customerIds.has(o.customerId) || ownCompleted.has(o.id))
+    : dayOrders;
   const customerIds = [
     ...new Set([...orders.map((o) => o.customerId), ...tour.stops.map((s) => s.customerId)]),
   ];
@@ -126,9 +145,18 @@ export async function loadReleasePlan(
     orderIds: s.orders.map((o) => o.orderId),
     items: readStopItems(s.items),
   }));
+  const plan = planReRelease(snapshot, usable);
+  if (route) {
+    // The stops follow the route (NUD-212), completed ones included; unknown keys keep their place.
+    const key = (customerId: string) => route.orderKey(customerId) ?? Number.POSITIVE_INFINITY;
+    plan.entries = plan.entries
+      .map((entry, index) => ({ entry, index }))
+      .sort((a, b) => key(a.entry.customerId) - key(b.entry.customerId) || a.index - b.index)
+      .map((x) => x.entry);
+  }
   return {
-    plan: planReRelease(snapshot, usable),
-    orderSignature: orderSignature(orders),
+    plan,
+    orderSignature: orderSignature(dayOrders),
     stopSignature: stopSignature(tour.stops),
     customers,
   };
@@ -225,6 +253,8 @@ export type ReReleaseDeps = {
     AppSettings,
     "timezone" | "departureTime" | "serviceMinutesPerStop"
   > | null>;
+  /** NUD-212: re-release as a day route (own customers only, stops in route order). */
+  route?: DayRouteScope;
 };
 
 export type ReReleaseOk = {
@@ -320,9 +350,15 @@ export async function reReleaseTourWith(
   if (!tour.driver?.active || tour.driver.role !== "DRIVER") return fail("driver_invalid");
   if (tour.updatedAt.getTime() !== version.getTime()) return fail("conflict");
 
-  const loaded = await loadReleasePlan(db, tour);
+  const loaded = await loadReleasePlan(db, tour, deps.route);
   const { plan } = loaded;
-  const dispatchable = isDispatchable(plan.diff);
+  // A day route may only have changed its order (an extra moved): that is news for the driver too.
+  const stopOrder = (ids: ReadonlyArray<string | null>) => ids.join("|");
+  const reordered =
+    !!deps.route &&
+    stopOrder(plan.entries.flatMap((e) => (e.kind === "new" ? [] : [e.stopId]))) !==
+      stopOrder(tour.stops.filter((s) => !plan.removedStopIds.includes(s.id)).map((s) => s.id));
+  const dispatchable = isDispatchable(plan.diff) || reordered;
   const lockKey = `tour:${tour.date.toISOString().slice(0, 10)}`;
   const counts = {
     added: plan.diff.added.length,

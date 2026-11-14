@@ -26,6 +26,15 @@ import { Toaster } from "./sonner";
 /** Below the sticky 56 px driver header, which itself starts below the notch. */
 const DRIVER_TOP_OFFSET = "calc(env(safe-area-inset-top, 0px) + 64px)";
 
+/**
+ * NUD-212: the day plan has a sticky bar with "Mengen speichern" and "An Fahrer senden" at the
+ * bottom (above the menu bar on a phone). A toast at the default place lay on the send button for
+ * seconds after every send, so a second "Änderungen senden" hit the toast (day simulation
+ * 2026-11-18). There the toasts start above the bar.
+ */
+const PLAN_BAR_OFFSET = { bottom: "104px" };
+const PLAN_BAR_MOBILE_OFFSET = { bottom: "216px" };
+
 export function ToasterArea() {
   const pathname = usePathname();
   const isDriver = pathname?.startsWith("/driver") ?? false;
@@ -34,6 +43,12 @@ export function ToasterArea() {
       position="top-center"
       offset={{ top: DRIVER_TOP_OFFSET }}
       mobileOffset={{ top: DRIVER_TOP_OFFSET }}
+    />
+  ) : pathname?.startsWith("/admin/planning") ? (
+    <Toaster
+      position="bottom-right"
+      offset={PLAN_BAR_OFFSET}
+      mobileOffset={PLAN_BAR_MOBILE_OFFSET}
     />
   ) : (
     <Toaster position="bottom-right" />

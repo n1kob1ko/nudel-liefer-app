@@ -62,7 +62,6 @@ describe("AdminCommandMenu", () => {
       "Übersicht",
       "Tagesplanung",
       "Bestellungen",
-      "Touren",
       "Zahlungen",
       "Kunden",
       "Produkte",
@@ -83,7 +82,7 @@ describe("AdminCommandMenu", () => {
     fireEvent.change(screen.getByPlaceholderText("Seite oder Aktion suchen …"), {
       target: { value: "Zahl" },
     });
-    expect(screen.queryByRole("option", { name: "Touren" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Kunden" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("option", { name: "Zahlungen" }));
     expect(push).toHaveBeenCalledWith("/admin/payments");
