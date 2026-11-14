@@ -7,17 +7,16 @@ import {
   LayoutDashboardIcon,
   type LucideIcon,
   PackageIcon,
-  RouteIcon,
   SettingsIcon,
   StoreIcon,
   TruckIcon,
 } from "lucide-react";
 
+/** NUD-212: no "tours" section; the routes of a day are sent from the day plan ("planning"). */
 export const ADMIN_SECTIONS = [
   "dashboard",
   "planning",
   "orders",
-  "tours",
   "payments",
   "customers",
   "products",
@@ -30,7 +29,7 @@ export type AdminSection = (typeof ADMIN_SECTIONS)[number];
 
 /** Sidebar groups (re-design.md §8.1): Betrieb / Stammdaten / System. */
 export const ADMIN_NAV_GROUPS = [
-  { id: "operations", sections: ["dashboard", "planning", "orders", "tours", "payments"] },
+  { id: "operations", sections: ["dashboard", "planning", "orders", "payments"] },
   { id: "masterData", sections: ["customers", "products", "vehicles", "drivers"] },
   { id: "system", sections: ["utilization", "settings"] },
 ] as const satisfies ReadonlyArray<{
@@ -45,7 +44,6 @@ export const ADMIN_NAV: ReadonlyArray<{ section: AdminSection; href: string; ico
   { section: "dashboard", href: "/admin", icon: LayoutDashboardIcon },
   { section: "planning", href: "/admin/planning", icon: CalendarDaysIcon },
   { section: "orders", href: "/admin/orders", icon: ClipboardListIcon },
-  { section: "tours", href: "/admin/tours", icon: RouteIcon },
   { section: "payments", href: "/admin/payments", icon: BanknoteIcon },
   { section: "customers", href: "/admin/customers", icon: StoreIcon },
   { section: "products", href: "/admin/products", icon: PackageIcon },
@@ -73,5 +71,7 @@ export function navItem(section: AdminSection) {
  * breadcrumb without reading any data (re-design.md §8.1/§14.3).
  */
 export function activeNavItem(pathname: string) {
+  // NUD-212: the old tour page and the load sheet have no menu entry; they belong to the day plan.
+  if (isNavActive("/admin/tours", pathname)) return navItem("planning");
   return ADMIN_NAV.find((entry) => isNavActive(entry.href, pathname)) ?? navItem("dashboard");
 }

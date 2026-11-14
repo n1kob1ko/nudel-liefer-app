@@ -339,7 +339,7 @@ function OrderRow({
         {order.tour ? (
           <Link
             href={{
-              pathname: "/admin/tours",
+              pathname: "/admin/planning",
               query: { date: formatCalendarDate(order.deliveryDate) },
             }}
             className="inline-flex"
@@ -358,7 +358,7 @@ function OrderRow({
         ) : order.late ? (
           <Link
             href={{
-              pathname: "/admin/tours",
+              pathname: "/admin/planning",
               query: { date: formatCalendarDate(order.deliveryDate) },
             }}
             className="inline-flex"
@@ -482,7 +482,7 @@ function OrderDrawer({
                   {order.tour ? (
                     <Link
                       href={{
-                        pathname: "/admin/tours",
+                        pathname: "/admin/planning",
                         query: { date: formatCalendarDate(order.deliveryDate) },
                       }}
                       className="font-medium underline-offset-4 hover:underline"

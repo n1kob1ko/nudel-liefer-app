@@ -208,7 +208,7 @@ function AttentionPanel({
   t: Translate;
 }) {
   const late = today.lateOrderCount;
-  const tourHref = `/admin/tours?date=${today.date}`;
+  const tourHref = `/admin/planning?date=${today.date}`;
   const { missingPhotos, parkingMissing, drafts } = attention;
   const empty = late === 0 && missingPhotos === 0 && parkingMissing === 0 && drafts.count === 0;
 

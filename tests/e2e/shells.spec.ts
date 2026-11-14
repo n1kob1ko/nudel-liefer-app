@@ -8,7 +8,7 @@ const TILE_PNG = Buffer.from(
   "base64",
 );
 const LOCALES = ["de", "en", "sr-Latn", "cs", "zh-Hans"] as const;
-const SECTIONS = ["orders", "tours", "customers", "products", "drivers", "settings"] as const;
+const SECTIONS = ["planning", "orders", "customers", "products", "drivers", "settings"] as const;
 const NOT_FOUND_TITLE: Record<(typeof LOCALES)[number], string> = {
   de: "Seite nicht gefunden",
   en: "Page not found",

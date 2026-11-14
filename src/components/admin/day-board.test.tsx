@@ -112,7 +112,7 @@ describe("DayBoard", () => {
     const first = within(lanes[0]!);
     expect(first.getByRole("link", { name: /Fahrer A/ })).toHaveAttribute(
       "href",
-      "/admin/tours?date=2099-07-02&tour=a",
+      "/admin/planning?date=2099-07-02",
     );
     expect(first.getByText("Tour 1 · Transporter 1")).toBeInTheDocument();
     expect(first.getByTestId("lane-status")).toHaveTextContent("Unterwegs");
@@ -166,7 +166,7 @@ describe("DayBoard", () => {
     expect(problem).toHaveClass("bg-destructive-soft");
     expect(within(problem).getByRole("link", { name: "Ansehen" })).toHaveAttribute(
       "href",
-      "/admin/tours?date=2099-07-02&tour=b",
+      "/admin/planning?date=2099-07-02",
     );
     expect(
       problem.compareDocumentPosition(screen.getAllByTestId("driver-lane")[0]!) &
@@ -216,7 +216,7 @@ describe("DayBoard", () => {
     expect(screen.getByTestId("today-no-tour")).toHaveTextContent("Für heute gibt es keine Tour.");
     expect(screen.getByRole("link", { name: "Tour planen" })).toHaveAttribute(
       "href",
-      "/admin/tours?date=2099-07-02",
+      "/admin/planning?date=2099-07-02",
     );
     expect(screen.getByTestId("live-refresh")).toBeInTheDocument();
   });

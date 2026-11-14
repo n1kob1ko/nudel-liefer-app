@@ -32,7 +32,7 @@ describe("admin nav groups", () => {
   it("puts the operations sections in the Betrieb group", () => {
     expect(ADMIN_NAV_GROUPS[0]).toEqual({
       id: "operations",
-      sections: ["dashboard", "planning", "orders", "tours", "payments"],
+      sections: ["dashboard", "planning", "orders", "payments"],
     });
   });
 });
@@ -40,7 +40,9 @@ describe("admin nav groups", () => {
 describe("activeNavItem", () => {
   it("resolves a section and its sub-pages, and falls back to the dashboard", () => {
     expect(activeNavItem("/admin/customers/42").section).toBe("customers");
-    expect(activeNavItem("/admin/tours").href).toBe("/admin/tours");
+    // NUD-212: the old tour page has no menu entry; it belongs to the day plan.
+    expect(activeNavItem("/admin/tours").section).toBe("planning");
+    expect(ADMIN_NAV.some((item) => item.href === "/admin/tours")).toBe(false);
     expect(activeNavItem("/admin").section).toBe("dashboard");
     expect(activeNavItem("/admin/unknown").section).toBe("dashboard");
   });

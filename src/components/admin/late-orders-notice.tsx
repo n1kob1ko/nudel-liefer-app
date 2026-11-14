@@ -34,7 +34,7 @@ export function LateOrdersNotice({ orders }: { orders: OrderOverviewRow[] }) {
           {[...days.entries()].map(([key, day]) => (
             <li key={key} data-testid="late-orders-day" data-date={key}>
               <Link
-                href={`/admin/tours?date=${key}`}
+                href={`/admin/planning?date=${key}`}
                 className="font-medium underline"
                 data-testid="late-orders-link"
               >
