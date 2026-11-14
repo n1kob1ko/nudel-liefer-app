@@ -157,13 +157,13 @@ describe("ClaudeOrderExtractor", () => {
   });
 
   it("records the model that answered, not the one that was asked", async () => {
-    const { fetchFn } = recordingFetch(() => answer(EMPTY_ANSWER, { model: "claude-opus-5" }));
+    const { fetchFn } = recordingFetch(() => answer(EMPTY_ANSWER, { model: "claude-sonnet-5" }));
     const extractor = new ClaudeOrderExtractor(client({ fetch: fetchFn }));
     const result = await extractor.extract({ text: "2 Kiste Nudeln" }, CONTEXT);
-    expect(result.model).toBe("claude-opus-5");
+    expect(result.model).toBe("claude-sonnet-5");
   });
 
-  it("asks Claude Opus 5.5 at low effort for JSON in the answer's schema", async () => {
+  it("asks Claude Sonnet 5.5 at low effort for JSON in the answer's schema", async () => {
     const { calls, fetchFn } = recordingFetch(() => answer(EMPTY_ANSWER));
     const extractor = new ClaudeOrderExtractor(client({ fetch: fetchFn }));
     await extractor.extract({ text: "2 Kiste Nudeln" }, CONTEXT);
@@ -171,7 +171,7 @@ describe("ClaudeOrderExtractor", () => {
       model: string;
       output_config: { effort: string; format: { type: string; schema: { required: string[] } } };
     };
-    expect(body.model).toBe("claude-opus-5-5");
+    expect(body.model).toBe("claude-sonnet-5-5");
     expect(body.output_config.effort).toBe("low");
     expect(body.output_config.format.type).toBe("json_schema");
     expect(body.output_config.format.schema.required).toEqual([

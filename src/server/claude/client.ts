@@ -14,12 +14,12 @@ import type {
  */
 
 /**
- * Default model: Claude Opus 5.5, the most accurate of the current generation on photos, handwriting
- * and mixed German/Chinese messages. A misread quantity is the one thing that must not happen
- * (backlog §1) and the office reads a handful of photos a day, so accuracy beats the price here.
- * `ANTHROPIC_MODEL` switches to `claude-sonnet-5-5` or `claude-haiku-5-5` without a code change.
+ * Default model: Claude Sonnet 5.5, the owner's choice of 2026-11-14 for about 100 order photos a
+ * day: it reads photos and mixed German/Chinese messages reliably, at half the price and in less
+ * time than Claude Opus 5.5, and the office checks every draft anyway. `ANTHROPIC_MODEL` switches
+ * to `claude-opus-5-5` (most accurate) or `claude-haiku-5-5` (cheapest) without a code change.
  */
-export const CLAUDE_DEFAULT_MODEL = "claude-opus-5-5";
+export const CLAUDE_DEFAULT_MODEL = "claude-sonnet-5-5";
 
 /**
  * How hard the model thinks before it answers. Both jobs are short, well-specified transformations
