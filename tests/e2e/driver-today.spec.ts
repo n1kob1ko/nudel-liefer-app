@@ -184,21 +184,18 @@ for (const locale of LOCALES) {
     );
 
     // Mixed units are not added together: stop 3 has 5 kg and 3 packs. Select the row by its stop
-    // id: the redesign groups finished stops into a collapsible "done" section, so the DOM order of
-    // `stop-row` no longer equals the sequence number.
+    // id rather than by position.
     const row3 = page.locator(`[data-testid="stop-row"][data-stop-id="${stopIds[2]}"]`);
     await expect(row3.getByTestId("summary-total")).toHaveCount(2);
     await expect(row3.getByTestId("summary-total").nth(0)).toHaveAttribute("data-unit", "KG");
     await expect(row3.getByTestId("summary-total").nth(1)).toHaveAttribute("data-unit", "PACK");
 
-    // List: all four stops with a status each. The delivered stop now lives in the collapsible
-    // "done" group at the end, so identify it by id instead of by position (see above).
-    await expect(page.getByTestId("stop-row")).toHaveCount(4);
+    // List: the three open stops. A delivered stop leaves the driver's list (owner 2026-11-14:
+    // the driver sees no history), only the progress counts it.
+    await expect(page.getByTestId("stop-row")).toHaveCount(3);
     await expect(
-      page
-        .locator(`[data-testid="stop-row"][data-stop-id="${stopIds[0]}"]`)
-        .getByTestId("stop-status"),
-    ).toHaveAttribute("data-status", "DELIVERED");
+      page.locator(`[data-testid="stop-row"][data-stop-id="${stopIds[0]}"]`),
+    ).toHaveCount(0);
 
     // Driver UI rules: touch targets >= 48 px, body >= 16 px, quantities >= 28 px bold.
     for (const id of ["navigate", "details", "view-list", "view-map"]) {
@@ -224,10 +221,10 @@ for (const locale of LOCALES) {
       fullPage: true,
     });
 
-    // Map view: numbered markers for all four stops.
+    // Map view: numbered markers for the three open stops (the delivered one is gone there too).
     await page.getByTestId("view-map").click();
     await expect(page.getByTestId("tour-map")).toBeVisible();
-    await expect(page.getByTestId("stop-marker")).toHaveCount(4);
+    await expect(page.getByTestId("stop-marker")).toHaveCount(3);
     expect(await noHorizontalScroll(page)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath(`today-map-${locale}.png`) });
     expect(errors).toEqual([]);
@@ -270,7 +267,7 @@ test("details link opens the stop route, other drivers get 404, next stop advanc
   await expect(page.getByTestId("stop-detail")).toContainText(names[1]);
 
   await page.goto("/de/driver");
-  // Done stops are grouped at the end of the list, so pick the row by stop id, not by position.
+  // Pick the row by stop id, not by position.
   await page.locator(`[data-testid="stop-row"][data-stop-id="${stopIds[3]}"]`).click();
   await expect(page).toHaveURL(new RegExp(`/stops/${stopIds[3]}$`));
 
