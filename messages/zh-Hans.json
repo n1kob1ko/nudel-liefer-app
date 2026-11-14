@@ -1736,12 +1736,12 @@
         "open": "规划配送线路",
         "hint": "按载重把当天所有站点分配给所选车辆",
         "title": "规划配送线路",
-        "description": "这一天的站点按载重分配给所选车辆。配送线路数量最多等于所选司机人数：司机回到仓库后，换乘下一辆已装好货的车辆。只有在没有空闲的已装货车辆时才返回补货。",
+        "description": "每位司机负责其固定路线上的客户。其余站点按载重分配到所选车辆；装不下的在仓库补装。",
         "vehicles": "可用车辆",
         "capacity": "{capacity} 千克",
         "noVehicles": "还没有启用的车辆，请先在“车辆”中添加。",
         "drivers": "可用司机",
-        "driversHint": "司机会按顺序分配给各条配送线路，缺少的司机可以稍后再指派。",
+        "driversHint": "有固定路线的司机配送该路线的客户。其他司机按顺序分配剩余路线。缺少的司机可以之后再指定。",
         "noDrivers": "没有启用的司机。",
         "replaceNote": "当天尚未发布的配送线路将被重新生成。",
         "confirm": "立即规划",
@@ -2014,7 +2014,24 @@
         "openTotal": "现金未结（{count}）",
         "emptyTitle": "没有未收现金",
         "emptyBody": "所有现金订单都已收齐，或尚未送货。",
-        "toTour": "前往线路"
+        "toTour": "前往线路",
+        "receive": {
+          "button": "已收",
+          "hint": "已收现金",
+          "title": "已收现金",
+          "amount": "共收到（€）",
+          "cancel": "取消",
+          "confirm": "已收",
+          "toast": "已记录 {customer} 的现金",
+          "errors": {
+            "invalid": "请输入金额，例如 42.50。",
+            "generic": "操作失败，请重试。",
+            "forbidden": "只有办公室可以记录。",
+            "not_found": "该站点已不存在。",
+            "not_completed": "该站点尚未送达。",
+            "tour_not_active": "该路线尚未发布。"
+          }
+        }
       },
       "monthly": {
         "title": "未结月度账单",

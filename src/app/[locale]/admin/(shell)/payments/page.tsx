@@ -3,12 +3,15 @@ import { getFormatter, getTranslations, setRequestLocale } from "next-intl/serve
 import { Suspense } from "react";
 
 import { MonthExportForm } from "@/components/admin/bill-export";
+import { CashReceiveButton } from "@/components/admin/cash-receive";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState, LoadingSkeleton } from "@/components/shared/states";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { InfoTip } from "@/components/ui/info-tip";
+import { RowButtons } from "@/components/ui/row-actions";
 import {
+  stackedTable,
   Table,
   TableBody,
   TableCell,
@@ -20,6 +23,7 @@ import { parseCalendarDate } from "@/domain/order";
 import { addMonths, monthKey, monthStart } from "@/domain/payment";
 import { Link } from "@/i18n/navigation";
 import { createAppFormatters } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { requirePageActor } from "@/server/auth/page-guards";
 import { getDb } from "@/server/db";
 import { todayIn } from "@/server/orders";
@@ -101,32 +105,35 @@ async function Guarded({ locale }: { locale: string }) {
               className="border-0 p-0"
             />
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t("columns.date")}</TableHead>
-                    <TableHead>{t("columns.customer")}</TableHead>
-                    {/* A phone shows the day, the customer and what is still open. */}
-                    <TableHead className="max-md:hidden">{t("columns.driver")}</TableHead>
-                    <TableHead className="text-right max-md:hidden">{t("columns.due")}</TableHead>
-                    <TableHead className="text-right max-md:hidden">
-                      {t("columns.collected")}
-                    </TableHead>
-                    <TableHead className="text-right">{t("columns.open")}</TableHead>
-                    <TableHead />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {cash.map((row) => (
-                    <TableRow key={row.stopId} data-testid={`cash-row-${row.stopId}`}>
-                      <TableCell className="tabular-nums">
-                        {fmt.calendarDate(parseCalendarDate(row.date) ?? today)}
-                      </TableCell>
-                      <TableCell>
+            // A phone shows each open stop as a block: customer and day, what is still open, then
+            // the two actions with words on them. From 768 px it is a table row again.
+            <Table className={stackedTable.table}>
+              <TableHeader className={stackedTable.header}>
+                <TableRow>
+                  <TableHead>{t("columns.date")}</TableHead>
+                  <TableHead>{t("columns.customer")}</TableHead>
+                  <TableHead>{t("columns.driver")}</TableHead>
+                  <TableHead className="text-right">{t("columns.due")}</TableHead>
+                  <TableHead className="text-right">{t("columns.collected")}</TableHead>
+                  <TableHead className="text-right">{t("columns.open")}</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody className={stackedTable.body}>
+                {cash.map((row) => {
+                  const dateText = fmt.calendarDate(parseCalendarDate(row.date) ?? today);
+                  return (
+                    <TableRow
+                      key={row.stopId}
+                      data-testid={`cash-row-${row.stopId}`}
+                      className={stackedTable.row}
+                    >
+                      <TableCell className="tabular-nums max-md:hidden">{dateText}</TableCell>
+                      <TableCell className={stackedTable.cell}>
                         <span className="block font-medium">{row.customerName}</span>
-                        <span className="block text-sm text-muted-foreground">
+                        <span className="block text-sm text-muted-foreground tabular-nums">
                           {row.customerNumber}
+                          <span className="md:hidden"> · {dateText}</span>
                         </span>
                       </TableCell>
                       <TableCell className="max-md:hidden">
@@ -138,24 +145,34 @@ async function Guarded({ locale }: { locale: string }) {
                       <TableCell className="text-right tabular-nums max-md:hidden">
                         {row.collectedCents === null ? "—" : fmt.amount(row.collectedCents)}
                       </TableCell>
-                      <TableCell className="text-right font-semibold tabular-nums">
+                      <TableCell
+                        className={cn("text-right font-semibold tabular-nums", stackedTable.cell)}
+                      >
                         {fmt.amount(row.dueCents - (row.collectedCents ?? 0))}
                       </TableCell>
-                      <TableCell>
-                        <Link
-                          href={`/admin/tours?date=${row.date}&tour=${row.tourId}`}
-                          className="inline-flex items-center gap-1 text-base link"
-                          data-testid={`cash-link-${row.stopId}`}
-                        >
-                          <span className="max-sm:sr-only">{t("cash.toTour")}</span>
-                          <ArrowRightIcon className="size-4 rtl:rotate-180" aria-hidden />
-                        </Link>
+                      <TableCell className={cn(stackedTable.cell, "max-md:col-span-2")}>
+                        <RowButtons>
+                          <CashReceiveButton
+                            stopId={row.stopId}
+                            customerName={row.customerName}
+                            dateText={dateText}
+                            dueCents={row.dueCents}
+                          />
+                          <Link
+                            href={`/admin/tours?date=${row.date}&tour=${row.tourId}`}
+                            className="inline-flex h-11 items-center justify-center gap-1 px-3 text-base link max-md:flex-1 md:h-9 md:px-2"
+                            data-testid={`cash-link-${row.stopId}`}
+                          >
+                            {t("cash.toTour")}
+                            <ArrowRightIcon className="size-4 rtl:rotate-180" aria-hidden />
+                          </Link>
+                        </RowButtons>
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  );
+                })}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

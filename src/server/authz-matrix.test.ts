@@ -382,6 +382,9 @@ const MATRIX: Record<string, Row> = {
   "src/server/payment-actions.ts#removeMonthlyAdjustmentAction": adminAction("payments", async () =>
     (await import("./payment-actions")).removeMonthlyAdjustmentAction({}),
   ),
+  "src/server/payment-actions.ts#recordOfficeCashAction": adminAction("payments", async () =>
+    (await import("./payment-actions")).recordOfficeCashAction({}),
+  ),
 
   // ---- driver-only server actions
   "src/server/stop-status-actions.ts#stopStatusAction": driverAction(

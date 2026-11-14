@@ -3,12 +3,14 @@ import { z } from "zod";
 import { isOpenTour, sortDayTours } from "@/domain/day-tours";
 import { secondsOfDayIn } from "@/domain/delivery-window";
 import {
+  attachToNearestGroup,
   type FleetStop,
   groupChainsByDriver,
   orderTrip,
   packReloadTrips,
   pickStopsWithinLimit,
   RELOAD_SECONDS,
+  splitByStandingTours,
   tripLoadsKg,
   tripPausesS,
   vehiclesForLoad,
@@ -274,6 +276,8 @@ export async function planDayWith(
   type VehicleChain = { vehicleId: string; trips: string[][] };
   /** A tour = one driver's day: one or more vehicle chains after one another (NUD-158). */
   type BuiltTour = {
+    /** The driver of the tour, `null` = assigned later. */
+    driverId: string | null;
     vehicleIds: string[];
     ordered: PlannedStop[];
     tripOfStop: number[];
@@ -285,38 +289,46 @@ export async function planDayWith(
     schedule: ReturnType<typeof scheduleTrips>;
     loads: number[];
   };
-  let oversized: string[];
+  let oversized: string[] = [];
   let approximate = false;
   const built: BuiltTour[] = [];
   const departure = departureInstant(date, settings.departureTime, settings.timezone);
-  try {
+
+  /**
+   * Builds the tours of `subset` with the vehicles `fleet` and the drivers `tourDrivers` (paired in
+   * order; none = assigned later): distribute, reload trips for what fits nowhere, route.
+   */
+  async function buildTours(
+    subset: FleetStop[],
+    fleet: typeof vehicles,
+    tourDrivers: readonly string[],
+  ): Promise<BuiltTour[]> {
+    const tours: BuiltTour[] = [];
     // Fewer drivers than vehicles (NUD-158): load only as many vehicles as the day needs (the
     // largest first), but at least one per driver. The drivers who come back early take the
     // next loaded vehicle; reloading one comes last.
     const firstLoadVehicles =
-      driverIds.length > 0 && driverIds.length < vehicles.length
-        ? vehiclesForLoad(vehicles, driverIds.length, fleetStops)
-        : vehicles;
+      tourDrivers.length > 0 && tourDrivers.length < fleet.length
+        ? vehiclesForLoad(fleet, tourDrivers.length, subset)
+        : fleet;
     const distribution = await provider.distribute({
       depot: depotPoint,
       vehicles: firstLoadVehicles.map((v) => ({ id: v.id, capacityKg: v.capacityKg })),
-      stops: fleetStops.map((s) => ({ ...s, serviceSeconds })),
+      stops: subset.map((s) => ({ ...s, serviceSeconds })),
       departureS,
     });
-    approximate = distribution.approximate;
-    const tripsByVehicle = new Map<string, string[][]>(
-      vehicles.map((v) => [v.id, [] as string[][]]),
-    );
+    approximate = approximate || distribution.approximate;
+    const tripsByVehicle = new Map<string, string[][]>(fleet.map((v) => [v.id, [] as string[][]]));
     for (const route of distribution.routes)
       tripsByVehicle.get(route.vehicleId)?.push(route.stopIds);
     // What fits nowhere: a vehicle that is still loaded and unused first, then reload trips.
     const reload = packReloadTrips(
       depotPoint,
-      vehicles,
+      fleet,
       new Map([...tripsByVehicle].map(([id, trips]) => [id, trips.length])),
       distribution.unassigned.map((id) => fleetById.get(id)!),
     );
-    oversized = reload.oversized;
+    oversized = [...oversized, ...reload.oversized];
     for (const trip of reload.trips) {
       const stops = trip.stopIds.map((id) => fleetById.get(id)!);
       let order = trip.stopIds;
@@ -339,7 +351,7 @@ export async function planDayWith(
       }
       tripsByVehicle.get(trip.vehicleId)!.push(order);
     }
-    const chains: VehicleChain[] = vehicles
+    const chains: VehicleChain[] = fleet
       .map((v) => ({ vehicleId: v.id, trips: tripsByVehicle.get(v.id)! }))
       .filter((v) => v.trips.length > 0);
 
@@ -364,7 +376,7 @@ export async function planDayWith(
       routedChains.push({ chain, ordered, tripOfStop, routed, durationS: schedule.totalDurationS });
     }
 
-    for (const group of groupChainsByDriver(routedChains, driverIds.length)) {
+    for (const group of groupChainsByDriver(routedChains, tourDrivers.length)) {
       const parts = group.map((index) => routedChains[index]!);
       const ordered = parts.flatMap((p) => p.ordered);
       const tripOfStop: number[] = [];
@@ -391,7 +403,8 @@ export async function planDayWith(
           weightKg: fleetById.get(s.customerId)!.weightKg,
         })),
       );
-      built.push({
+      tours.push({
+        driverId: tourDrivers[tours.length] ?? null,
         vehicleIds: parts.map((p) => p.chain.vehicleId),
         ordered,
         tripOfStop,
@@ -402,6 +415,53 @@ export async function planDayWith(
         schedule,
         loads,
       });
+    }
+    return tours;
+  }
+
+  try {
+    // Standing tours (NUD-209): the customers of a standing tour go to its default driver, each
+    // standing driver in a vehicle of his own (the heaviest group gets the largest vehicle). The
+    // customers outside the standing tours go to the remaining drivers and vehicles; when none are
+    // left, to the standing tour with the nearest customer. Without a standing tour for the
+    // selected drivers, or with more standing drivers than vehicles, the whole day is planned
+    // freely as before.
+    const standing = await db.standingTour.findMany({
+      where: { active: true, driverId: { in: driverIds } },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+      select: {
+        driverId: true,
+        customers: { orderBy: { sortOrder: "asc" }, select: { customerId: true } },
+      },
+    });
+    const split = splitByStandingTours(
+      fleetStops,
+      standing.map((tour) => ({
+        driverId: tour.driverId,
+        customerIds: tour.customers.map((c) => c.customerId),
+      })),
+      driverIds,
+    );
+    if (split.groups.length === 0 || split.groups.length > vehicles.length) {
+      built.push(...(await buildTours(fleetStops, vehicles, driverIds)));
+    } else {
+      const weight = (stops: FleetStop[]) => stops.reduce((sum, s) => sum + s.weightKg, 0);
+      const byCapacity = [...vehicles].sort((a, b) => b.capacityKg - a.capacityKg);
+      const heaviestFirst = [...split.groups].sort((a, b) => weight(b.stops) - weight(a.stops));
+      const vehicleOf = new Map(heaviestFirst.map((group, i) => [group.driverId, byCapacity[i]!]));
+      const spareVehicles = byCapacity.slice(split.groups.length);
+      const standingDrivers = new Set(split.groups.map((g) => g.driverId));
+      const freeDrivers = driverIds.filter((id) => !standingDrivers.has(id));
+      const looseOnOwn =
+        split.loose.length > 0 && freeDrivers.length > 0 && spareVehicles.length > 0;
+      if (split.loose.length > 0 && !looseOnOwn) attachToNearestGroup(split.groups, split.loose);
+      // `split.groups` is in the order of the selected drivers, so the result reads like the selection.
+      for (const group of split.groups) {
+        built.push(
+          ...(await buildTours(group.stops, [vehicleOf.get(group.driverId)!], [group.driverId])),
+        );
+      }
+      if (looseOnOwn) built.push(...(await buildTours(split.loose, spareVehicles, freeDrivers)));
     }
   } catch (error) {
     if (error instanceof RoutingError && error.code === "TOO_MANY_STOPS") {
@@ -439,7 +499,7 @@ export async function planDayWith(
       }
 
       for (const [index, item] of built.entries()) {
-        const driverId = driverIds[index] ?? null;
+        const driverId = item.driverId;
         const data = {
           status: "OPTIMIZED" as const,
           isOutdated: false,

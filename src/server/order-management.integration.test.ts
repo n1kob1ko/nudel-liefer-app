@@ -570,7 +570,10 @@ describe.skipIf(!process.env.DATABASE_URL)("order overview & editing", { timeout
       const { filters } = await orderOverviewQuery({});
       expect(filters.from).toBe(filters.to);
       expect(filters).toMatchObject({ customerId: null, status: null, source: null });
-      expect(filters.from <= new Date().toISOString().slice(0, 10)).toBe(true);
+      // "Today" is the factory's day (Europe/Vienna), which is the next UTC day after 23:00 UTC:
+      // no time zone is more than 14 hours ahead of UTC.
+      const latestToday = new Date(Date.now() + 14 * 3_600_000).toISOString().slice(0, 10);
+      expect(filters.from <= latestToday).toBe(true);
       const garbage = await orderOverviewQuery({ from: "x", to: "y", status: "ZZ", source: "ZZ" });
       expect(garbage.filters).toEqual(filters);
     });
@@ -586,7 +589,11 @@ describe.skipIf(!process.env.DATABASE_URL)("order overview & editing", { timeout
       });
       // (a) the order of D1 sits on a tour of D2: the link names THAT day ...
       const crossDay = await orderDetailQuery(id);
-      expect(crossDay?.tour).toMatchObject({ tourId: otherTour, date: otherDay, stopStatus: "PENDING" });
+      expect(crossDay?.tour).toMatchObject({
+        tourId: otherTour,
+        date: otherDay,
+        stopStatus: "PENDING",
+      });
       // ... and it is not offered to a new tour of D1 any more. Before, it was "planned" and
       // "waiting for a tour" at the same time.
       const stillOffered = await listConfirmedOrdersForDate(t.prisma, date(D1), { tourId: null });
@@ -597,9 +604,9 @@ describe.skipIf(!process.env.DATABASE_URL)("order overview & editing", { timeout
       expect(cancelled?.status).toBe("CANCELLED");
       expect(cancelled?.tour).toMatchObject({ tourId: otherTour, stopId: otherStop.id });
       // (c) a cancelled order is never offered to a tour ...
-      expect((await listConfirmedOrdersForDate(t.prisma, date(otherDay))).map((o) => o.id)).not.toContain(
-        id,
-      );
+      expect(
+        (await listConfirmedOrdersForDate(t.prisma, date(otherDay))).map((o) => o.id),
+      ).not.toContain(id);
       // (d) an order on no stop has no link at all.
       const loose = await create();
       expect((await orderDetailQuery(loose))?.tour).toBeNull();
