@@ -1359,7 +1359,21 @@
         "paymentCash": "Cash on delivery",
         "amount": "Amount",
         "amountHint": "Amount of this order in euro, e.g. 42.50. Empty = no amount yet (shows as “no amount” on the monthly bill).",
-        "amountInvalid": "Please enter an amount like 42 or 42.50 (at most two decimals)."
+        "amountInvalid": "Please enter an amount like 42 or 42.50 (at most two decimals).",
+        "inbox": {
+          "title": "Check photo",
+          "back": "Back to the photo inbox",
+          "remaining": "{count, plural, =0 {Last photo} one {1 more photo} other {# more photos}}",
+          "saveNext": "Confirm and next",
+          "skip": "Skip",
+          "discard": "Discard",
+          "discarded": "Photo discarded",
+          "undo": "Undo",
+          "customerSuggested": "Suggestion. On the photo: {name}",
+          "customerHint": "On the photo: {name}",
+          "notRead": "This photo was not read. Please type the order from the photo.",
+          "photo": "Photo"
+        }
       },
       "detail": {
         "title": "Order",
@@ -1474,7 +1488,40 @@
       "paymentTerm": "Payment",
       "paymentMonthly": "Monthly bill",
       "paymentCash": "Cash on delivery",
-      "amountNone": "No amount entered"
+      "amountNone": "No amount entered",
+      "inbox": {
+        "title": "Photo inbox",
+        "info": "Upload photos of orders, many at once. The app reads each photo and suggests the customer. An order is only created when you confirm it.",
+        "summary": "{count, plural, =0 {No photos waiting} one {1 photo waiting} other {# photos waiting}}",
+        "reading": "{count, plural, one {1 is being read} other {# are being read}}",
+        "upload": "Upload photos",
+        "start": "Start checking",
+        "drop": "Drop photos here",
+        "empty": {
+          "title": "No photos yet",
+          "description": "Drag photos here, paste them or pick them. Many at once is fine."
+        },
+        "uploading": "{done} of {total} uploaded",
+        "uploadFailed": "{count, plural, one {1 photo could not be uploaded.} other {# photos could not be uploaded.}}",
+        "noAi": "Automatic reading is not set up yet. The photos can be checked by hand.",
+        "discarded": "Photo discarded",
+        "undo": "Undo",
+        "actionFailed": "That did not work. Please try again.",
+        "row": {
+          "review": "Check",
+          "discard": "Discard",
+          "retry": "Again",
+          "retryHint": "Read again",
+          "reading": "Being read",
+          "unread": "Not read",
+          "failed": "Not readable",
+          "noCustomer": "Customer missing",
+          "hint": "On the photo: {name}",
+          "noLines": "No products found",
+          "unmatched": "{count, plural, one {1 unclear} other {# unclear}}",
+          "photoAlt": "Photo"
+        }
+      }
     },
     "tours": {
       "title": "Tours",

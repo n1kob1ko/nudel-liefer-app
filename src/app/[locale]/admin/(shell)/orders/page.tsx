@@ -1,4 +1,4 @@
-import { CalendarOffIcon } from "lucide-react";
+import { CalendarOffIcon, ImagesIcon } from "lucide-react";
 import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense } from "react";
 
@@ -13,7 +13,7 @@ import { formatCalendarDate, parseCalendarDate } from "@/domain/order";
 import { Link } from "@/i18n/navigation";
 import { createAppFormatters } from "@/lib/format";
 import { requirePageActor } from "@/server/auth/page-guards";
-import { orderOverviewQuery } from "@/server/order-queries";
+import { inboxCountQuery, orderOverviewQuery } from "@/server/order-queries";
 import { type DateTotalsView, OVERVIEW_LIMIT, todayIn } from "@/server/orders";
 import { getDefaultDeliveryDate, getFactoryTimezone } from "@/server/settings";
 
@@ -70,11 +70,12 @@ async function Guarded({
 }) {
   await requirePageActor("admin", locale);
   const t = await getTranslations({ locale, namespace: "admin.orders" });
-  const [overview, defaultDate, timezone, formatter] = await Promise.all([
+  const [overview, defaultDate, timezone, formatter, inboxCount] = await Promise.all([
     orderOverviewQuery(await searchParams),
     getDefaultDeliveryDate(),
     getFactoryTimezone(),
     getFormatter(),
+    inboxCountQuery(),
   ]);
   const fmt = createAppFormatters(formatter);
   const today = formatCalendarDate(todayIn(timezone));
@@ -113,9 +114,29 @@ async function Guarded({
             : t("header.rangeSpan", rangeText)
         }
         actions={
-          <Link href="/admin/orders/new" className={buttonVariants()} data-testid="new-order">
-            {t("new")}
-          </Link>
+          <>
+            {/* The order inbox (NUD-210): photos of orders, many at once. The number says how
+                many still wait to be checked. */}
+            <Link
+              href="/admin/orders/inbox"
+              className={buttonVariants({ variant: "outline" })}
+              data-testid="order-inbox-link"
+            >
+              <ImagesIcon aria-hidden />
+              {t("inbox.title")}
+              {inboxCount > 0 ? (
+                <span
+                  className="rounded-full bg-primary-soft px-2 text-sm font-semibold text-primary-soft-foreground tabular-nums"
+                  data-testid="order-inbox-count"
+                >
+                  {inboxCount}
+                </span>
+              ) : null}
+            </Link>
+            <Link href="/admin/orders/new" className={buttonVariants()} data-testid="new-order">
+              {t("new")}
+            </Link>
+          </>
         }
       >
         <OrderFilters

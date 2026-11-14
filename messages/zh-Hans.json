@@ -1359,7 +1359,21 @@
         "paymentCash": "货到付款",
         "amount": "金额",
         "amountHint": "此订单的欧元金额，例如 42.50。留空 = 尚未填写（月度账单上显示为“无金额”）。",
-        "amountInvalid": "请输入如 42 或 42.50 的金额（最多两位小数）。"
+        "amountInvalid": "请输入如 42 或 42.50 的金额（最多两位小数）。",
+        "inbox": {
+          "title": "核对照片",
+          "back": "返回照片收件箱",
+          "remaining": "{count, plural, =0 {最后一张} other {还有 # 张}}",
+          "saveNext": "确认并继续",
+          "skip": "跳过",
+          "discard": "丢弃",
+          "discarded": "照片已丢弃",
+          "undo": "撤销",
+          "customerSuggested": "建议。照片上：{name}",
+          "customerHint": "照片上：{name}",
+          "notRead": "这张照片未被读取。请按照片手动录入订单。",
+          "photo": "照片"
+        }
       },
       "detail": {
         "title": "订单",
@@ -1474,7 +1488,40 @@
       "paymentTerm": "付款方式",
       "paymentMonthly": "月度账单",
       "paymentCash": "货到付款",
-      "amountNone": "未填写金额"
+      "amountNone": "未填写金额",
+      "inbox": {
+        "title": "照片收件箱",
+        "info": "上传订单照片，可一次上传多张。系统会读取每张照片并建议客户。只有在你确认后才会生成订单。",
+        "summary": "{count, plural, =0 {没有待处理的照片} other {# 张照片待处理}}",
+        "reading": "{count, plural, other {# 张正在读取}}",
+        "upload": "上传照片",
+        "start": "开始核对",
+        "drop": "把照片放在这里",
+        "empty": {
+          "title": "还没有照片",
+          "description": "把照片拖到这里、粘贴或选择。可以一次上传多张。"
+        },
+        "uploading": "已上传 {done} / {total}",
+        "uploadFailed": "{count, plural, other {# 张照片上传失败。}}",
+        "noAi": "自动读取尚未设置。可以手动核对照片。",
+        "discarded": "照片已丢弃",
+        "undo": "撤销",
+        "actionFailed": "操作失败，请重试。",
+        "row": {
+          "review": "核对",
+          "discard": "丢弃",
+          "retry": "重试",
+          "retryHint": "重新读取",
+          "reading": "正在读取",
+          "unread": "未读取",
+          "failed": "无法读取",
+          "noCustomer": "缺少客户",
+          "hint": "照片上：{name}",
+          "noLines": "未识别到产品",
+          "unmatched": "{count, plural, other {# 项不明确}}",
+          "photoAlt": "照片"
+        }
+      }
     },
     "tours": {
       "title": "配送线路",

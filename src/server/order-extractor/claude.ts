@@ -52,10 +52,11 @@ const ANSWER_SCHEMA = {
         { type: "null" },
       ],
     },
+    customer: { type: ["string", "null"] },
     note: { type: ["string", "null"] },
     confidence: { type: "number" },
   },
-  required: ["lines", "window", "note", "confidence"],
+  required: ["lines", "window", "customer", "note", "confidence"],
   additionalProperties: false,
 } satisfies ClaudeRequest["jsonSchema"];
 

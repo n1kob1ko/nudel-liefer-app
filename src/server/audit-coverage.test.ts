@@ -56,6 +56,8 @@ const EXEMPT: Record<string, string> = {
     "retention job (NUD-112): sets only Stop.problemNote to NULL on stops completed more than DRIVER_TEXT_RETENTION_DAYS ago (default dry-run); no user action and no actor (an audit entry needs a user id and a per-record entity, neither exists for a system job; precedent: screenshot-retention). Counts only go to the cron response and the log; the test data-retention.integration.test.ts proves that nothing else on the stop changes",
   "server/order-retention.ts":
     "retention job (NUD-201): deletes orders, their stops and tours 30 days after they were paid, because the customer does not want them kept (default dry-run); no user action and no actor (same reasoning as data-retention). Counts only go to the cron response and the log; order-retention.integration.test.ts proves that unpaid orders, customers, products, users and the audit log itself are not touched",
+  "server/order-inbox.ts":
+    "order inbox (NUD-210): a photo that waits there is not an order yet; nothing but the photo's reading state and the proposed customer is written. The order the office saves from it is audited as order.create (source SCREENSHOT) in orders.ts, the background reading has no actor, and a discarded photo is deleted with its file a few minutes later (the customer wants nothing kept)",
   "server/demo-seed.ts": "demo data seeding script, not an application flow",
   "server/testing/seed-customers.ts": "test helper",
 };

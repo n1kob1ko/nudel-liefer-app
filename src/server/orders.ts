@@ -131,6 +131,13 @@ export type OrderSaveResult =
 
 const idSchema = z.string().trim().min(1).max(64);
 
+/** States in which a photo of the order inbox (NUD-210) still waits for the office. */
+const OPEN_INBOX_STATUSES = ["NEW", "READING", "READY", "FAILED"] as const;
+
+function isOpenInboxStatus(status: string | null): boolean {
+  return (OPEN_INBOX_STATUSES as readonly string[]).includes(status ?? "");
+}
+
 /** The factory-time-zone calendar day of `now` as a `DATE` value (UTC midnight). */
 export function todayIn(timezone: string, now: Date = new Date()): Date {
   const { y, m, d } = calendarDayIn(now, timezone);
@@ -141,7 +148,8 @@ export function todayIn(timezone: string, now: Date = new Date()): Date {
  * Creates an order (status CONFIRMED or DRAFT) with its items in one statement. Source is MANUAL,
  * or SCREENSHOT when a screenshot is attached (NUD-031): the key must be one the upload endpoint
  * issues (`screenshots/<uuid>.<ext>`), the object must really exist in storage and the key may be
- * attached only once; then a `Screenshot` row is created together with the order. The caller checked the role. Validation is repeated here because the client is
+ * attached only once; then a `Screenshot` row is created together with the order. A photo that waits
+ * in the order inbox (NUD-210) already has its row: it is attached and marked done instead. The caller checked the role. Validation is repeated here because the client is
  * never trusted: quantities > 0, at least one line, same product merged, customer and products
  * must exist and be active (archived customers / inactive products are not accepted), and the
  * delivery day must not lie in the past. Afterwards the tours of that day are flagged outdated.
@@ -176,6 +184,7 @@ export async function createOrder(
   if (products.length !== v.lines.length) return { ok: false, error: "product_not_found" };
   if (products.some((p) => !p.active)) return { ok: false, error: "product_inactive" };
 
+  let inboxPhotoId: string | null = null;
   if (v.screenshotKey) {
     const stored = await storage.head(v.screenshotKey);
     if (!stored) return { ok: false, error: "screenshot_missing" };
@@ -183,9 +192,16 @@ export async function createOrder(
       return { ok: false, error: "invalid" };
     const used = await db.screenshot.findFirst({
       where: { storageKey: v.screenshotKey },
-      select: { id: true },
+      select: { id: true, inboxStatus: true, _count: { select: { orders: true } } },
     });
-    if (used) return { ok: false, error: "screenshot_in_use" };
+    if (used) {
+      // A photo of the order inbox (NUD-210) that still waits there is attached to this order;
+      // any other known key already belongs to an order (or was thrown away).
+      if (!isOpenInboxStatus(used.inboxStatus) || used._count.orders > 0) {
+        return { ok: false, error: "screenshot_in_use" };
+      }
+      inboxPhotoId = used.id;
+    }
   }
 
   const planned = await resolvePlannedDay(db, {
@@ -196,6 +212,18 @@ export async function createOrder(
   });
 
   const order = await db.$transaction(async (tx) => {
+    if (inboxPhotoId) {
+      // One order per photo: whoever marks the photo done first wins, the other save is refused.
+      const { count } = await tx.screenshot.updateMany({
+        where: {
+          id: inboxPhotoId,
+          inboxStatus: { in: [...OPEN_INBOX_STATUSES] },
+          orders: { none: {} },
+        },
+        data: { inboxStatus: "DONE", readStartedAt: null },
+      });
+      if (count !== 1) return null;
+    }
     const created = await tx.order.create({
       data: {
         customer: { connect: { id: v.customerId } },
@@ -208,9 +236,11 @@ export async function createOrder(
         source: v.screenshotKey ? "SCREENSHOT" : "MANUAL",
         paymentTerm: v.paymentTerm,
         amountCents: v.amountCents,
-        screenshot: v.screenshotKey
-          ? { create: { storageKey: v.screenshotKey, uploadedById: actorId } }
-          : undefined,
+        screenshot: inboxPhotoId
+          ? { connect: { id: inboxPhotoId } }
+          : v.screenshotKey
+            ? { create: { storageKey: v.screenshotKey, uploadedById: actorId } }
+            : undefined,
         internalNote: v.internalNote,
         // AI order draft (NUD-150): the pasted message and what the model read, both optional.
         sourceText: v.sourceText,
@@ -257,6 +287,7 @@ export async function createOrder(
     });
     return created;
   });
+  if (!order) return { ok: false, error: "screenshot_in_use" };
   return {
     ok: true,
     id: order.id,

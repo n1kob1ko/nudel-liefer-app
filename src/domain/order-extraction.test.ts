@@ -7,6 +7,7 @@ import {
   buildExtractionPrompt,
   type CatalogProduct,
   extractionAnswerSchema,
+  matchCustomer,
   matchProduct,
   normalizeLabel,
   unitHintFromLabel,
@@ -220,5 +221,66 @@ describe("buildExtractionPrompt", () => {
 
   it("forbids the window as a plain string and asks for an object or null", () => {
     expect(prompt).toContain("never a string");
+  });
+});
+
+describe("the sender's name (NUD-210)", () => {
+  it("keeps the name the model read and accepts answers without one", () => {
+    expect(answer({ lines: [], customer: "  Wok Palace  " }).customer).toBe("Wok Palace");
+    expect(answer({ lines: [], customer: null }).customer).toBeNull();
+    expect(answer({ lines: [] }).customer).toBeUndefined();
+  });
+
+  it("asks for the name as written and forbids guessing", () => {
+    const prompt = buildExtractionPrompt(CATALOG, "2026-10-28", "Europe/Vienna");
+    expect(prompt).toContain("`customer`");
+    expect(prompt).toContain('"customer":"Wok Palace"');
+  });
+});
+
+describe("matchCustomer", () => {
+  const CUSTOMERS = [
+    { id: "wok", name: "Wok Palace", companyName: "Wok Palace GmbH", abbreviation: "WOK" },
+    { id: "lotus", name: "Lotus Garten", companyName: null, abbreviation: null },
+    { id: "lotus2", name: "Lotus Garten Süd", companyName: null, abbreviation: null },
+    { id: "long", name: "龙凤饭店", companyName: "Drachen & Phönix KG", abbreviation: null },
+    { id: "li", name: "Li", companyName: null, abbreviation: null },
+  ];
+
+  it("finds a customer by its exact name, whatever the case and accents", () => {
+    expect(matchCustomer("wok palace", CUSTOMERS)).toBe("wok");
+    expect(matchCustomer("LOTUS GARTEN SUD", CUSTOMERS)).toBe("lotus2");
+    expect(matchCustomer("龙凤饭店", CUSTOMERS)).toBe("long");
+  });
+
+  it("finds a customer by its company name or abbreviation", () => {
+    expect(matchCustomer("Drachen & Phönix KG", CUSTOMERS)).toBe("long");
+    expect(matchCustomer("WOK", CUSTOMERS)).toBe("wok");
+  });
+
+  it("accepts a name with extra words around it", () => {
+    expect(matchCustomer("Wok Palace Küche (Hr. Chen)", CUSTOMERS)).toBe("wok");
+    expect(matchCustomer("Bestellung 龙凤饭店 厨房", CUSTOMERS)).toBe("long");
+  });
+
+  it("prefers the exact name over a longer name that contains it", () => {
+    expect(matchCustomer("Lotus Garten", CUSTOMERS)).toBe("lotus");
+  });
+
+  it("proposes nobody when two customers fit equally well", () => {
+    const twins = [
+      { id: "a", name: "Asia Imbiss", companyName: null, abbreviation: null },
+      { id: "b", name: "Asia Imbiss", companyName: null, abbreviation: null },
+    ];
+    expect(matchCustomer("Asia Imbiss", twins)).toBeNull();
+  });
+
+  it("proposes nobody for an unknown, empty or too short name", () => {
+    expect(matchCustomer("Pizzeria Roma", CUSTOMERS)).toBeNull();
+    expect(matchCustomer("", CUSTOMERS)).toBeNull();
+    expect(matchCustomer(null, CUSTOMERS)).toBeNull();
+    // "Li" is a real customer, but two letters inside other words must not match ("Lieferung").
+    expect(matchCustomer("Lieferung morgen", CUSTOMERS)).toBeNull();
+    expect(matchCustomer("Li", CUSTOMERS)).toBe("li");
   });
 });

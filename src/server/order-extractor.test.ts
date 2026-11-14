@@ -177,6 +177,7 @@ describe("ClaudeOrderExtractor", () => {
     expect(body.output_config.format.schema.required).toEqual([
       "lines",
       "window",
+      "customer",
       "note",
       "confidence",
     ]);

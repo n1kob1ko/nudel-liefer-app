@@ -6,6 +6,7 @@ import {
   MessageSquareTextIcon,
   PlusIcon,
   RepeatIcon,
+  SkipForwardIcon,
   SparklesIcon,
   Trash2Icon,
   XIcon,
@@ -21,7 +22,7 @@ import {
 import { ZoomableImage } from "@/components/shared/image-preview";
 import { ImageUploader } from "@/components/shared/image-uploader";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { FormField } from "@/components/ui/form-field";
@@ -45,7 +46,7 @@ import {
 } from "@/domain/order";
 import type { ExtractionAnswer, OrderDraft, UnmatchedLine } from "@/domain/order-extraction";
 import { DEFAULT_PAYMENT_TERM, type PaymentTerm } from "@/domain/payment";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
   confirmedOrderCountAction,
@@ -56,6 +57,8 @@ import {
   updateOrderAction,
 } from "@/server/order-actions";
 import type { OrderDraftFailure } from "@/server/order-extraction";
+import type { InboxPrefill } from "@/server/order-inbox";
+import { discardInboxPhotoAction, restoreInboxPhotoAction } from "@/server/order-inbox-actions";
 
 export type CustomerOption = ComboboxOption;
 export type ProductOption = ComboboxOption & { unit: "KG" | "PACK" | "CRATE" | "PIECE" };
@@ -91,6 +94,11 @@ type Props = {
   order?: EditableOrder;
   /** The AI order draft (NUD-150) is configured: an `OrderExtractor` API key is present. */
   aiAvailable?: boolean;
+  /**
+   * Checking one photo of the order inbox (NUD-210): the photo, what the app read and the customer
+   * it proposes are filled in; saving goes on to the next photo. Give the form `key={inbox.id}`.
+   */
+  inbox?: InboxPrefill;
 };
 
 type Line = { key: number; productId: string | undefined; quantity: string };
@@ -137,29 +145,58 @@ type Screenshot = { storageKey: string; url: string };
  *
  * Edit mode (NUD-032, `order` given): same fields and the same server validation; the customer is
  * fixed, the attached screenshot (if any) is shown read-only, the import tools are hidden.
+ *
+ * Inbox mode (NUD-210, `inbox` given): one photo of the order inbox is checked. The form opens with
+ * the photo, the lines the app read and the customer it proposes; the import tools are gone (the
+ * photo is already read), and saving, skipping or discarding leads to the next photo.
  */
-export function OrderForm({ customers, products, defaultDate, order, aiAvailable = false }: Props) {
+export function OrderForm({
+  customers,
+  products,
+  defaultDate,
+  order,
+  aiAvailable = false,
+  inbox,
+}: Props) {
   const t = useTranslations("admin.orders.form");
   const amountLocale = useLocale();
   const tc = useTranslations("common");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const editing = Boolean(order);
-  const nextKey = useRef(order ? order.lines.length + 1 : 2);
+  const inboxMode = Boolean(inbox);
+  // What the app read from the inbox photo (`null`: not read, the office types the order).
+  const inboxDraft = inbox?.draft ?? null;
+  const inboxLines = inboxDraft?.lines ?? [];
+  const inboxCustomerId =
+    inbox?.customerId && customers.some((c) => c.value === inbox.customerId)
+      ? inbox.customerId
+      : undefined;
+  const nextKey = useRef(Math.max(order ? order.lines.length : inboxLines.length, 1) + 1);
   const focusKey = useRef<number | null>(null);
-  const [customerId, setCustomerId] = useState<string | undefined>(order?.customerId);
+  const [customerId, setCustomerId] = useState<string | undefined>(
+    order?.customerId ?? inboxCustomerId,
+  );
   // Requested window (NUD-148). The planned day below stays empty = automatic unless the office sets it.
-  const [windowFrom, setWindowFrom] = useState(order?.windowFrom ?? defaultDate);
-  const [windowTo, setWindowTo] = useState(order?.windowTo ?? defaultDate);
-  const [windowFromTime, setWindowFromTime] = useState(order?.windowFromTime ?? "");
-  const [windowToTime, setWindowToTime] = useState(order?.windowToTime ?? "");
+  const [windowFrom, setWindowFrom] = useState(
+    order?.windowFrom ?? inboxDraft?.window?.from ?? defaultDate,
+  );
+  const [windowTo, setWindowTo] = useState(order?.windowTo ?? inboxDraft?.window?.to ?? defaultDate);
+  const [windowFromTime, setWindowFromTime] = useState(
+    order?.windowFromTime ?? inboxDraft?.window?.fromTime ?? "",
+  );
+  const [windowToTime, setWindowToTime] = useState(
+    order?.windowToTime ?? inboxDraft?.window?.toTime ?? "",
+  );
   const [plannedDay, setPlannedDay] = useState(order?.date ?? "");
-  const windowTouched = useRef(Boolean(order));
+  const windowTouched = useRef(Boolean(order) || Boolean(inboxDraft?.window));
   const plannedTouched = useRef(false);
   const [lines, setLines] = useState<Line[]>(
     order && order.lines.length > 0
       ? order.lines.map((l, i) => ({ key: i + 1, productId: l.productId, quantity: l.quantity }))
-      : [{ key: 1, productId: undefined, quantity: "" }],
+      : inboxLines.length > 0
+        ? inboxLines.map((l, i) => ({ key: i + 1, productId: l.productId, quantity: l.quantity }))
+        : [{ key: 1, productId: undefined, quantity: "" }],
   );
   const [note, setNote] = useState(order?.note ?? "");
   // Payment (D33, NUD-196): monthly bill is the default, cash at the stop the exception; the amount
@@ -171,7 +208,9 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
   const [submitted, setSubmitted] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [screenshot, setScreenshot] = useState<Screenshot | null>(
-    order?.screenshotUrl ? { storageKey: "", url: order.screenshotUrl } : null,
+    order?.screenshotUrl
+      ? { storageKey: "", url: order.screenshotUrl }
+      : (inbox?.screenshot ?? null),
   );
   const [screenshotError, setScreenshotError] = useState(false);
   const [counted, setCounted] = useState<{ key: string; count: number } | null>(null);
@@ -182,16 +221,33 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
   const [sourceText, setSourceText] = useState("");
   const [aiPending, setAiPending] = useState(false);
   const [aiError, setAiError] = useState<OrderDraftFailure | null>(null);
-  const [aiExtraction, setAiExtraction] = useState<ExtractionAnswer | null>(null);
-  const [aiConfidences, setAiConfidences] = useState<Record<number, number>>({});
-  const [aiLabels, setAiLabels] = useState<Record<number, string>>({});
-  const [aiConfidence, setAiConfidence] = useState<number | null>(null);
+  const [aiExtraction, setAiExtraction] = useState<ExtractionAnswer | null>(
+    inbox?.extraction ?? null,
+  );
+  const [aiConfidences, setAiConfidences] = useState<Record<number, number>>(() =>
+    Object.fromEntries(inboxLines.map((line, i) => [i + 1, line.confidence])),
+  );
+  const [aiLabels, setAiLabels] = useState<Record<number, string>>(() =>
+    Object.fromEntries(inboxLines.map((line, i) => [i + 1, line.label])),
+  );
+  const [aiConfidence, setAiConfidence] = useState<number | null>(
+    inboxDraft && inboxLines.length > 0 ? inboxDraft.confidence : null,
+  );
   const [aiNotice, setAiNotice] = useState<{
     unmatched: UnmatchedLine[];
     note: string | null;
     /** Window words the model read but did not turn into dates ("morgen vormittag"). */
     windowNote: string | null;
-  } | null>(null);
+  } | null>(
+    inboxDraft
+      ? {
+          unmatched: inboxDraft.unmatched,
+          note: inboxDraft.note,
+          windowNote: inboxDraft.windowNote,
+        }
+      : null,
+  );
+  const [discarding, setDiscarding] = useState(false);
   // Recurring order (NUD-166): the rule is created from the lines typed above, not from a copy.
   const [recurringOpen, setRecurringOpen] = useState(false);
   // Below 1024 px the message/screenshot import is folded behind one row; a screenshot opens it.
@@ -488,6 +544,9 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
       if (order) {
         toast.success(t("savedChanges"));
         router.push(`/admin/orders/${order.id}`);
+      } else if (inbox) {
+        toast.success(t(result.status === "DRAFT" ? "savedDraft" : "savedConfirmed"));
+        router.push(inboxNext);
       } else {
         toast.success(t(result.status === "DRAFT" ? "savedDraft" : "savedConfirmed"));
         resetForm();
@@ -499,6 +558,82 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
       router.refresh();
     });
   }
+
+  /** Where the inbox goes on after this photo: the next one to check, or back to the list. */
+  const inboxNext = inbox?.nextId
+    ? { pathname: "/admin/orders/new" as const, query: { inbox: inbox.nextId } }
+    : ("/admin/orders/inbox" as const);
+
+  /** Throws the inbox photo away (it is not an order); "Rückgängig" brings it back. */
+  async function discardInboxPhoto() {
+    if (!inbox) return;
+    setDiscarding(true);
+    try {
+      const result = await discardInboxPhotoAction(inbox.id);
+      if (!result.ok) throw new Error(result.error);
+    } catch {
+      setDiscarding(false);
+      return setServerError("generic");
+    }
+    const id = inbox.id;
+    toast(t("inbox.discarded"), {
+      action: {
+        label: t("inbox.undo"),
+        onClick: () => {
+          void restoreInboxPhotoAction(id).then((restored) => {
+            if (restored.ok) router.push({ pathname: "/admin/orders/new", query: { inbox: id } });
+            else toast.error(t("errors.generic"));
+          });
+        },
+      },
+    });
+    router.push(inboxNext);
+    router.refresh();
+  }
+
+  /** What the app read but could not put into the form by itself; the office sorts it out. */
+  const aiAlerts = (
+    <>
+      {aiConfidence !== null && aiConfidence < 0.6 ? (
+        <Alert variant="warning" role="status" data-testid="ai-low-confidence">
+          <AlertTriangleIcon aria-hidden />
+          <div>{t("ai.lowConfidence", { percent: Math.round(aiConfidence * 100) })}</div>
+        </Alert>
+      ) : null}
+      {aiNotice && (aiNotice.unmatched.length > 0 || aiNotice.note || aiNotice.windowNote) ? (
+        <Alert variant="info" role="status" data-testid="ai-notice">
+          <div className="flex flex-col gap-1">
+            {aiNotice.unmatched.length > 0 ? (
+              <>
+                <p className="font-medium">{t("ai.unmatchedHeading")}</p>
+                <ul className="list-disc pl-5">
+                  {aiNotice.unmatched.map((line, index) => (
+                    <li key={`${line.label}-${index}`} data-testid="ai-unmatched-line">
+                      {t("ai.unmatchedLine", {
+                        label: line.label,
+                        quantity: line.quantity ?? t("ai.quantityUnknown"),
+                      })}
+                      {candidateNames(line.candidates).length > 0
+                        ? ` ${t("ai.candidates", {
+                            names: candidateNames(line.candidates).join(", "),
+                          })}`
+                        : ""}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+            {aiNotice.note ? <p>{t("ai.note", { note: aiNotice.note })}</p> : null}
+            {aiNotice.windowNote ? (
+              <p data-testid="ai-window-note">
+                {t("ai.windowUnclear", { text: aiNotice.windowNote })}
+              </p>
+            ) : null}
+          </div>
+        </Alert>
+      ) : null}
+    </>
+  );
 
   const hasSide = !editing || screenshot !== null;
   const showImportPanel = importOpen || screenshot !== null;
@@ -529,7 +664,7 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
             )}
             data-testid="order-import"
           >
-            {editing ? null : (
+            {editing || inboxMode ? null : (
               <button
                 type="button"
                 aria-expanded={showImportPanel}
@@ -562,13 +697,28 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
             >
               {screenshot ? (
                 <aside
-                  aria-label={t("screenshot.heading")}
+                  aria-label={inboxMode ? t("inbox.photo") : t("screenshot.heading")}
                   className="flex min-w-0 flex-col gap-3 rounded-xl bg-card p-3 shadow-sm"
                   data-testid="screenshot-pane"
                 >
                   <div className="flex items-center justify-between gap-2 px-1">
-                    <h2 className="text-base font-semibold">{t("screenshot.heading")}</h2>
-                    {editing ? null : (
+                    <h2 className="text-base font-semibold">
+                      {inboxMode ? t("inbox.photo") : t("screenshot.heading")}
+                    </h2>
+                    {editing ? null : inboxMode ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive"
+                        disabled={pending || discarding}
+                        onClick={() => void discardInboxPhoto()}
+                        data-testid="inbox-discard"
+                      >
+                        <Trash2Icon aria-hidden />
+                        {t("inbox.discard")}
+                      </Button>
+                    ) : (
                       <Button
                         type="button"
                         variant="ghost"
@@ -587,7 +737,16 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
                   <p className="px-1 text-xs text-muted-foreground">{t("screenshot.zoomHint")}</p>
                 </aside>
               ) : null}
-              {editing ? null : (
+              {inboxMode ? (
+                <div className="flex flex-col gap-3" data-testid="inbox-notes">
+                  {inboxDraft ? null : (
+                    <Alert variant="info" role="status" data-testid="inbox-not-read">
+                      <div>{t("inbox.notRead")}</div>
+                    </Alert>
+                  )}
+                  {aiAlerts}
+                </div>
+              ) : editing ? null : (
                 <Card data-testid="order-ai" aria-labelledby="order-ai-heading">
                   <CardHeader>
                     <CardTitle id="order-ai-heading">{t("ai.heading")}</CardTitle>
@@ -649,50 +808,7 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
                         {t(`ai.errors.${AI_ERRORS[aiError]}`)}
                       </p>
                     ) : null}
-                    {aiConfidence !== null && aiConfidence < 0.6 ? (
-                      <Alert variant="warning" role="status" data-testid="ai-low-confidence">
-                        <AlertTriangleIcon aria-hidden />
-                        <div>
-                          {t("ai.lowConfidence", { percent: Math.round(aiConfidence * 100) })}
-                        </div>
-                      </Alert>
-                    ) : null}
-                    {aiNotice &&
-                    (aiNotice.unmatched.length > 0 || aiNotice.note || aiNotice.windowNote) ? (
-                      <Alert variant="info" role="status" data-testid="ai-notice">
-                        <div className="flex flex-col gap-1">
-                          {aiNotice.unmatched.length > 0 ? (
-                            <>
-                              <p className="font-medium">{t("ai.unmatchedHeading")}</p>
-                              <ul className="list-disc pl-5">
-                                {aiNotice.unmatched.map((line, index) => (
-                                  <li
-                                    key={`${line.label}-${index}`}
-                                    data-testid="ai-unmatched-line"
-                                  >
-                                    {t("ai.unmatchedLine", {
-                                      label: line.label,
-                                      quantity: line.quantity ?? t("ai.quantityUnknown"),
-                                    })}
-                                    {candidateNames(line.candidates).length > 0
-                                      ? ` ${t("ai.candidates", {
-                                          names: candidateNames(line.candidates).join(", "),
-                                        })}`
-                                      : ""}
-                                  </li>
-                                ))}
-                              </ul>
-                            </>
-                          ) : null}
-                          {aiNotice.note ? <p>{t("ai.note", { note: aiNotice.note })}</p> : null}
-                          {aiNotice.windowNote ? (
-                            <p data-testid="ai-window-note">
-                              {t("ai.windowUnclear", { text: aiNotice.windowNote })}
-                            </p>
-                          ) : null}
-                        </div>
-                      </Alert>
-                    ) : null}
+                    {aiAlerts}
                   </CardContent>
                 </Card>
               )}
@@ -712,7 +828,18 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
               <FormField
                 label={t("customer")}
                 required={!editing}
-                description={editing ? t("customerFixed") : undefined}
+                description={
+                  editing
+                    ? t("customerFixed")
+                    : inbox?.customerHint
+                      ? t(
+                          inboxCustomerId && customerId === inboxCustomerId
+                            ? "inbox.customerSuggested"
+                            : "inbox.customerHint",
+                          { name: inbox.customerHint },
+                        )
+                      : undefined
+                }
                 error={submitted && !customerId ? t("errors.customerRequired") : undefined}
               >
                 <Combobox
@@ -827,7 +954,7 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
                   <PlusIcon aria-hidden />
                   {t("addLine")}
                 </Button>
-                {editing ? null : (
+                {editing || inboxMode ? null : (
                   <Button
                     type="button"
                     variant="ghost"
@@ -1051,7 +1178,14 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
           ) : null}
 
           <div
-            className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center"
+            className={cn(
+              "flex flex-col gap-3 pt-2 sm:flex-row sm:items-center",
+              // Checking a hundred photos a day: next to the photo the buttons stay in reach while
+              // the lines are compared. A solid bar, no blur. On a phone they stay in the page flow,
+              // after the lines (a button that floats above them invites a tap before reading).
+              inboxMode &&
+                "lg:sticky lg:bottom-0 lg:z-10 lg:border-t lg:border-border lg:bg-background lg:py-3",
+            )}
             data-testid="order-save-bar"
           >
             <Button
@@ -1061,7 +1195,7 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
               data-testid="order-save"
               className="w-full sm:w-auto"
             >
-              {t("saveConfirmed")}
+              {inbox?.nextId ? t("inbox.saveNext") : t("saveConfirmed")}
             </Button>
             <Button
               type="button"
@@ -1073,6 +1207,16 @@ export function OrderForm({ customers, products, defaultDate, order, aiAvailable
             >
               {t("saveDraft")}
             </Button>
+            {inbox?.nextId ? (
+              <Link
+                href={inboxNext}
+                className={cn(buttonVariants({ variant: "ghost" }), "w-full sm:ms-auto sm:w-auto")}
+                data-testid="inbox-skip"
+              >
+                <SkipForwardIcon aria-hidden />
+                {t("inbox.skip")}
+              </Link>
+            ) : null}
           </div>
         </form>
       </div>

@@ -3,6 +3,8 @@ import { type OrderFilters, parseOrderFilters } from "@/domain/order-overview";
 import { requireRole } from "./auth/guards";
 import { getDb } from "./db";
 import { lateOrderIdsForRows } from "./late-orders";
+import { isOrderExtractorAvailable } from "./order-extractor";
+import { countInbox, getInboxPrefill, listInbox, nextInboxPhoto } from "./order-inbox";
 import {
   getDateTotals,
   getOrderDetail,
@@ -62,4 +64,28 @@ export async function orderOverviewQuery(
 export async function orderDetailQuery(id: unknown) {
   await requireRole("ADMIN");
   return getOrderDetail(getDb(), getStorage(), id, todayIn(await getFactoryTimezone()));
+}
+
+/** The order inbox (NUD-210): the photos that wait for the office, and whether a model reads them. */
+export async function orderInboxQuery() {
+  await requireRole("ADMIN");
+  const [view, next] = await Promise.all([
+    listInbox(getDb(), getStorage()),
+    nextInboxPhoto(getDb(), null, !isOrderExtractorAvailable()),
+  ]);
+  return { view, firstId: next, aiAvailable: isOrderExtractorAvailable() };
+}
+
+/** One photo of the inbox for the order form, or `null` when it is no longer open. */
+export async function inboxPrefillQuery(id: unknown) {
+  await requireRole("ADMIN");
+  return getInboxPrefill(getDb(), id, getStorage(), {
+    includeUnread: !isOrderExtractorAvailable(),
+  });
+}
+
+/** How many photos wait in the inbox, for the button on the orders page. */
+export async function inboxCountQuery(): Promise<number> {
+  await requireRole("ADMIN");
+  return countInbox(getDb());
 }

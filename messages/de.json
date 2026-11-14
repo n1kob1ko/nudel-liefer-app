@@ -1359,7 +1359,21 @@
         "paymentCash": "Bar bei Lieferung",
         "amount": "Betrag",
         "amountHint": "Betrag dieser Bestellung in Euro, z. B. 42,50. Leer = noch kein Betrag (erscheint auf der Monatsrechnung als „ohne Betrag“).",
-        "amountInvalid": "Bitte einen Betrag wie 42 oder 42,50 eingeben (höchstens zwei Nachkommastellen)."
+        "amountInvalid": "Bitte einen Betrag wie 42 oder 42,50 eingeben (höchstens zwei Nachkommastellen).",
+        "inbox": {
+          "title": "Foto prüfen",
+          "back": "Zurück zum Foto-Eingang",
+          "remaining": "{count, plural, =0 {Letztes Foto} one {Noch 1 weiteres Foto} other {Noch # weitere Fotos}}",
+          "saveNext": "Bestätigen und weiter",
+          "skip": "Überspringen",
+          "discard": "Verwerfen",
+          "discarded": "Foto verworfen",
+          "undo": "Rückgängig",
+          "customerSuggested": "Vorschlag. Auf dem Foto: {name}",
+          "customerHint": "Auf dem Foto: {name}",
+          "notRead": "Dieses Foto wurde nicht gelesen. Bitte die Bestellung vom Foto abtippen.",
+          "photo": "Foto"
+        }
       },
       "detail": {
         "title": "Bestellung",
@@ -1474,7 +1488,40 @@
       "paymentTerm": "Zahlung",
       "paymentMonthly": "Monatsrechnung",
       "paymentCash": "Bar bei Lieferung",
-      "amountNone": "Kein Betrag eingetragen"
+      "amountNone": "Kein Betrag eingetragen",
+      "inbox": {
+        "title": "Foto-Eingang",
+        "info": "Fotos von Bestellungen hochladen, viele auf einmal. Die App liest jedes Foto und schlägt den Kunden vor. Eine Bestellung entsteht erst, wenn du sie bestätigst.",
+        "summary": "{count, plural, =0 {Keine Fotos offen} one {1 Foto offen} other {# Fotos offen}}",
+        "reading": "{count, plural, one {1 wird gelesen} other {# werden gelesen}}",
+        "upload": "Fotos hochladen",
+        "start": "Prüfen starten",
+        "drop": "Fotos hier ablegen",
+        "empty": {
+          "title": "Noch keine Fotos",
+          "description": "Fotos hierher ziehen, einfügen oder auswählen. Es gehen viele auf einmal."
+        },
+        "uploading": "{done} von {total} hochgeladen",
+        "uploadFailed": "{count, plural, one {1 Foto konnte nicht hochgeladen werden.} other {# Fotos konnten nicht hochgeladen werden.}}",
+        "noAi": "Das automatische Lesen ist noch nicht eingerichtet. Die Fotos lassen sich von Hand prüfen.",
+        "discarded": "Foto verworfen",
+        "undo": "Rückgängig",
+        "actionFailed": "Das hat nicht geklappt. Bitte erneut versuchen.",
+        "row": {
+          "review": "Prüfen",
+          "discard": "Verwerfen",
+          "retry": "Nochmal",
+          "retryHint": "Nochmal lesen",
+          "reading": "Wird gelesen",
+          "unread": "Nicht gelesen",
+          "failed": "Nicht lesbar",
+          "noCustomer": "Kunde fehlt",
+          "hint": "Auf dem Foto: {name}",
+          "noLines": "Keine Produkte erkannt",
+          "unmatched": "{count, plural, one {1 unklar} other {# unklar}}",
+          "photoAlt": "Foto"
+        }
+      }
     },
     "tours": {
       "title": "Touren",
