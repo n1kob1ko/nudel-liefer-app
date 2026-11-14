@@ -5,6 +5,7 @@ import {
   ArrowLeftRightIcon,
   CheckIcon,
   CircleSlashIcon,
+  LockIcon,
   MapIcon,
   PlusIcon,
   PrinterIcon,
@@ -972,6 +973,7 @@ function PlanRow({
   const t = useTranslations("admin.planning");
   const tc = useTranslations("common");
   const format = useFormatter();
+  const ordered = products.some((p) => quantityOf(values[p.id]) > 0);
   return (
     // Below `md` a row is a wrapped line (like the orders list): number and customer, then the
     // quantity fields with their product names, then the states. No sideways scrolling on a phone.
@@ -1028,24 +1030,27 @@ function PlanRow({
         <span className="md:hidden"> kg</span>
       </TableCell>
       <TableCell className="max-md:basis-full max-md:p-0">
-        {/* Two toggles with a word each: pressed = the driver sees the symbol at this stop. */}
+        {/* Two toggles with a word each: pressed = the driver sees the symbol at this stop. They
+            count for this day only (owner 2026-11-14); "always" comes from the customer and is
+            shown pressed and locked. Nothing ordered: there is no delivery to mark. */}
         <div className="flex flex-wrap gap-1.5 md:flex-nowrap">
           <MarkToggle
             on={invoice}
+            always={row.invoiceAlways}
+            alwaysLabel={t("marks.always")}
             icon={ReceiptTextIcon}
             label={t("marks.invoice")}
-            // Nothing ordered: there is no delivery to hand an invoice with.
-            disabled={
-              !editable || (!invoice && !products.some((p) => quantityOf(values[p.id]) > 0))
-            }
+            disabled={!editable || (!invoice && !ordered)}
             onClick={() => onInvoice(row.customerId)}
             testId={`invoice-${row.customerId}`}
           />
           <MarkToggle
             on={fridge}
+            always={row.fridgeAlways}
+            alwaysLabel={t("marks.always")}
             icon={RefrigeratorIcon}
             label={t("marks.fridge")}
-            disabled={!editable && !fridge}
+            disabled={!editable || (!fridge && !ordered)}
             onClick={() => onFridge(row.customerId)}
             testId={`fridge-${row.customerId}`}
           />
@@ -1202,9 +1207,14 @@ function RouteSelect({
   );
 }
 
-/** A small on/off button with a word (the driver's invoice / fridge symbol). */
+/**
+ * A small on/off button with a word (the driver's invoice / fridge symbol) for this day. `always`
+ * (customer setting) shows it pressed and locked, with the reason as tooltip and accessible name.
+ */
 function MarkToggle({
   on,
+  always,
+  alwaysLabel,
   icon: Icon,
   label,
   disabled,
@@ -1212,30 +1222,43 @@ function MarkToggle({
   testId,
 }: {
   on: boolean;
+  always: boolean;
+  alwaysLabel: string;
   icon: LucideIcon;
   label: string;
   disabled: boolean;
   onClick: () => void;
   testId: string;
 }) {
+  const pressed = on || always;
   return (
     <Button
       type="button"
       size="sm"
       variant="outline"
-      aria-pressed={on}
-      disabled={disabled}
+      aria-pressed={pressed}
+      disabled={disabled || always}
       onClick={onClick}
+      title={always ? alwaysLabel : undefined}
+      aria-label={always ? `${label}: ${alwaysLabel}` : undefined}
       className={cn(
         "h-8 px-2.5 max-md:min-h-11",
-        on
-          ? "border-info bg-info-soft text-info-soft-foreground hover:bg-info-soft"
+        pressed
+          ? "border-info bg-info-soft text-info-soft-foreground hover:bg-info-soft disabled:opacity-100"
           : "text-muted-foreground",
       )}
       data-testid={testId}
-      data-on={on}
+      data-on={pressed}
+      data-always={always}
     >
-      {on ? <CheckIcon aria-hidden /> : <Icon aria-hidden />}
+      {/* Lock = set for good on the customer; check = set for this day. */}
+      {always ? (
+        <LockIcon aria-hidden />
+      ) : pressed ? (
+        <CheckIcon aria-hidden />
+      ) : (
+        <Icon aria-hidden />
+      )}
       {label}
     </Button>
   );

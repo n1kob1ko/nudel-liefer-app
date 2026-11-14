@@ -96,6 +96,8 @@ const EXTRA: Row = {
   weightKg: 3,
   invoice: false,
   fridge: false,
+  invoiceAlways: false,
+  fridgeAlways: false,
   extra: { moved: false, slot: 1 },
   stop: null,
   location: { lat: 48.22, lng: 16.42 },
@@ -134,6 +136,8 @@ function plan(overrides: Partial<DayPlan> = {}, routeOverrides: Partial<Route> =
             weightKg: 6,
             invoice: false,
             fridge: false,
+            invoiceAlways: false,
+            fridgeAlways: false,
             extra: null,
             stop: null,
             location: { lat: 48.2, lng: 16.4 },
@@ -152,6 +156,8 @@ function plan(overrides: Partial<DayPlan> = {}, routeOverrides: Partial<Route> =
             weightKg: 0,
             invoice: false,
             fridge: false,
+            invoiceAlways: false,
+            fridgeAlways: false,
             extra: null,
             stop: null,
             location: { lat: 48.21, lng: 16.41 },
@@ -190,6 +196,8 @@ function plan(overrides: Partial<DayPlan> = {}, routeOverrides: Partial<Route> =
         weightKg: 0,
         invoice: false,
         fridge: false,
+        invoiceAlways: false,
+        fridgeAlways: false,
         extra: null,
         stop: null,
         location: null,
@@ -336,12 +344,13 @@ describe("StandingPlan (NUD-194)", () => {
     });
     renderPlan();
 
-    // c2 ordered nothing: no delivery, so no invoice to hand over; the fridge is a customer setting.
+    // c2 ordered nothing: no delivery, so nothing to mark for this day.
     expect(screen.getByTestId("invoice-c2")).toBeDisabled();
+    expect(screen.getByTestId("fridge-c2")).toBeDisabled();
     fireEvent.click(screen.getByTestId("invoice-c1"));
-    fireEvent.click(screen.getByTestId("fridge-c2"));
+    fireEvent.click(screen.getByTestId("fridge-c1"));
     expect(screen.getByTestId("invoice-c1")).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByTestId("planning-dirty")).toHaveTextContent("2");
+    expect(screen.getByTestId("planning-dirty")).toHaveTextContent("1");
     fireEvent.click(screen.getByTestId("planning-save"));
 
     await waitFor(() => expect(saveStandingDayAction).toHaveBeenCalled());
@@ -349,9 +358,22 @@ describe("StandingPlan (NUD-194)", () => {
       rows: Array<{ customerId: string; invoice: boolean; fridge: boolean }>;
     };
     expect(input.rows.map((r) => [r.customerId, r.invoice, r.fridge])).toEqual([
-      ["c1", true, false],
-      ["c2", false, true],
+      ["c1", true, true],
+      ["c2", false, false],
     ]);
+  });
+
+  it("shows a mark set 'always' on the customer as pressed and locked", () => {
+    const always = plan();
+    const route = always.routes[0]!;
+    route.rows[0] = { ...route.rows[0]!, fridgeAlways: true };
+    renderPlan(always);
+
+    const fridge = screen.getByTestId("fridge-c1");
+    expect(fridge).toHaveAttribute("aria-pressed", "true");
+    expect(fridge).toBeDisabled();
+    expect(fridge).toHaveAttribute("title", "Immer (beim Kunden eingestellt)");
+    expect(screen.getByTestId("invoice-c1")).toHaveAttribute("aria-pressed", "false");
   });
 
   it("is read-only for a past day, without a send button", () => {

@@ -462,7 +462,8 @@
       },
       "marks": {
         "invoice": "Rechnung",
-        "fridge": "Kühlschrank"
+        "fridge": "Kühlschrank",
+        "always": "Immer (beim Kunden eingestellt)"
       },
       "tabs": {
         "label": "Routen",
@@ -683,8 +684,10 @@
         "abbreviationHeading": "Abkürzung",
         "abbreviationHint": "Optional. Alter interner Code aus dem bisherigen System, frei wählbarer Text mit Sonderzeichen, kann mehrfach vorkommen. Fahrer können ihn beim Stopp ebenfalls eintragen oder korrigieren. Wird später entfernt.",
         "abbreviation": "Abkürzung",
-        "fridge": "In den Kühlschrank",
-        "fridgeHint": "Der Fahrer sieht beim Stopp ein Kühlschrank-Symbol."
+        "fridge": "Immer in den Kühlschrank",
+        "fridgeHint": "Der Fahrer sieht bei jedem Stopp ein Kühlschrank-Symbol. Nur für einen Tag: in der Tagesplanung.",
+        "invoice": "Immer Rechnung mitgeben",
+        "invoiceHint": "Der Fahrer sieht bei jedem Stopp ein Rechnungs-Symbol. Nur für einen Tag: in der Tagesplanung."
       },
       "detail": {
         "number": "Kundennummer {number}",
@@ -752,8 +755,9 @@
         "fromRecurring": "aus Dauerbestellung",
         "archivedCancelled": "{count, plural, one {Kunde archiviert. # offene Bestellung storniert.} other {Kunde archiviert. # offene Bestellungen storniert.}}",
         "archiveRules": "{count, plural, one {Seine Dauerbestellung wird pausiert} other {Seine # Dauerbestellungen werden pausiert}}. Beim Wiederherstellen laufen sie weiter.",
-        "fridgeYes": "Ja, Ware in den Kühlschrank",
-        "fridgeNo": "Nein"
+        "fridgeYes": "Ja, immer",
+        "fridgeNo": "Nein",
+        "invoiceYes": "Ja, immer"
       },
       "translations": {
         "tabDetails": "Details",
@@ -1965,8 +1969,7 @@
         "standing_tour_vehicle": "Fahrzeug der Stammtour geändert",
         "standing_tour_activate": "Stammtour aktiviert",
         "standing_tour_deactivate": "Stammtour deaktiviert",
-        "user_delete": "Konto gelöscht",
-        "customer_fridge": "Kühlschrank geändert"
+        "user_delete": "Konto gelöscht"
       },
       "fields": {
         "status": "Status",

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangleIcon, RefrigeratorIcon, SearchIcon } from "lucide-react";
+import { AlertTriangleIcon, ReceiptTextIcon, RefrigeratorIcon, SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type FormEvent, type ReactNode, useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -41,8 +41,10 @@ export type CustomerFormValues = {
   key: KeyValues;
   /** Legacy Abkürzung (NUD-164). */
   abbreviation: string;
-  /** The goods go into the customer's fridge: the driver sees a fridge symbol. */
+  /** Always into the customer's fridge: the driver sees a fridge symbol at every stop. */
   intoFridge: boolean;
+  /** Always hand an invoice: the driver sees an invoice symbol at every stop. */
+  alwaysInvoice: boolean;
 };
 
 export type KeyValues = { hasKey: "unknown" | "yes" | "no"; keyNumber: string };
@@ -138,6 +140,7 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
   const [keyValues, setKeyValues] = useState(initial.key);
   const [abbreviation, setAbbreviation] = useState(initial.abbreviation);
   const [intoFridge, setIntoFridge] = useState(initial.intoFridge);
+  const [alwaysInvoice, setAlwaysInvoice] = useState(initial.alwaysInvoice);
   const [pin, setPin] = useState(initial.pin);
   const [search, setSearch] = useState<Search>({ state: "idle" });
   const [focus, setFocus] = useState<{ point: LatLng; nonce: number } | null>(null);
@@ -167,6 +170,7 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
     key: initial.key,
     abbreviation: initial.abbreviation,
     intoFridge: initial.intoFridge,
+    alwaysInvoice: initial.alwaysInvoice,
     lat: initial.pin?.lat ?? null,
     lng: initial.pin?.lng ?? null,
   };
@@ -184,6 +188,7 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
       key: keyValues,
       abbreviation,
       intoFridge,
+      alwaysInvoice,
       lat: pin?.lat ?? null,
       lng: pin?.lng ?? null,
     }) !== JSON.stringify(initialValues);
@@ -213,6 +218,7 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
     setKeyValues(initial.key);
     setAbbreviation(initial.abbreviation);
     setIntoFridge(initial.intoFridge);
+    setAlwaysInvoice(initial.alwaysInvoice);
     setPin(initial.pin);
     setSearch({ state: "idle" });
     setFocus(null);
@@ -281,6 +287,7 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
       // Same for the Abkürzung (NUD-164).
       ...(abbreviation === initial.abbreviation ? {} : { abbreviation }),
       intoFridge,
+      alwaysInvoice,
     };
     startTransition(async () => {
       let result;
@@ -567,7 +574,24 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
             data-testid="customer-notes"
           />
         </FieldRow>
-        {/* One switch, the label next to it is the whole meaning (the driver sees the symbol). */}
+        {/* Two switches, the label next to each is the whole meaning (the driver sees the symbol).
+            "Always": the day plan can switch either on for a single day as well. */}
+        <label
+          htmlFor="cust-invoice"
+          className="flex min-h-12 max-w-xl cursor-pointer items-center gap-3 rounded-lg border border-border px-3 py-2"
+        >
+          <ReceiptTextIcon className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-base font-medium">{t("invoice")}</span>
+            <span className="block text-sm text-muted-foreground">{t("invoiceHint")}</span>
+          </span>
+          <Switch
+            id="cust-invoice"
+            checked={alwaysInvoice}
+            onCheckedChange={setAlwaysInvoice}
+            data-testid="customer-invoice"
+          />
+        </label>
         <label
           htmlFor="cust-fridge"
           className="flex min-h-12 max-w-xl cursor-pointer items-center gap-3 rounded-lg border border-border px-3 py-2"

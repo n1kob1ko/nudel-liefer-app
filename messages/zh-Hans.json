@@ -462,7 +462,8 @@
       },
       "marks": {
         "invoice": "发票",
-        "fridge": "冰箱"
+        "fridge": "冰箱",
+        "always": "每次（在客户中设置）"
       },
       "tabs": {
         "label": "路线",
@@ -683,8 +684,10 @@
         "abbreviationHeading": "缩写",
         "abbreviationHint": "可选。旧系统的内部代码，可自由填写文字和特殊字符，允许重复。司机也可以在停靠点填写或更正。之后会被移除。",
         "abbreviation": "缩写",
-        "fridge": "放入冰箱",
-        "fridgeHint": "司机在该站点会看到冰箱图标。"
+        "fridge": "每次都放入冰箱",
+        "fridgeHint": "司机在每个站点都会看到冰箱图标。只针对某一天：在每日计划中设置。",
+        "invoice": "每次都给发票",
+        "invoiceHint": "司机在每个站点都会看到发票图标。只针对某一天：在每日计划中设置。"
       },
       "detail": {
         "number": "客户编号 {number}",
@@ -752,8 +755,9 @@
         "fromRecurring": "来自长期订单",
         "archivedCancelled": "{count, plural, other {客户已归档，已取消 # 个未完成订单。}}",
         "archiveRules": "{count, plural, other {其 # 个长期订单将被暂停}}。恢复客户后会继续生效。",
-        "fridgeYes": "是，货物放入冰箱",
-        "fridgeNo": "否"
+        "fridgeYes": "是，每次",
+        "fridgeNo": "否",
+        "invoiceYes": "是，每次"
       },
       "translations": {
         "tabDetails": "详情",
@@ -1965,8 +1969,7 @@
         "standing_tour_vehicle": "已更换固定线路的车辆",
         "standing_tour_activate": "已启用固定线路",
         "standing_tour_deactivate": "已停用固定线路",
-        "user_delete": "已删除账号",
-        "customer_fridge": "冰箱设置已更改"
+        "user_delete": "已删除账号"
       },
       "fields": {
         "status": "状态",

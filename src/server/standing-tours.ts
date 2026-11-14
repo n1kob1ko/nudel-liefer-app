@@ -90,8 +90,9 @@ type RowState = {
   confirmedItems: Array<{ productId: string; quantity: number }>;
   cancelled: boolean;
   suggestedItems: Array<{ productId: string; quantity: number }>;
-  /** One of the CONFIRMED orders of the day carries "Rechnung mitgeben". */
+  /** One of the CONFIRMED orders of the day carries "Rechnung mitgeben" / "Kühlschrank". */
   invoice: boolean;
+  fridge: boolean;
 };
 
 /**
@@ -123,7 +124,14 @@ export async function standingDayQuery(
     db.customer.findMany({
       where: { active: true },
       orderBy: [{ name: "asc" }, { customerNumber: "asc" }],
-      select: { id: true, customerNumber: true, name: true, city: true, intoFridge: true },
+      select: {
+        id: true,
+        customerNumber: true,
+        name: true,
+        city: true,
+        intoFridge: true,
+        alwaysInvoice: true,
+      },
     }),
     db.standingTour.findMany({
       where: { active: true },
@@ -179,6 +187,7 @@ export async function standingDayQuery(
         customerId: true,
         status: true,
         handInvoice: true,
+        intoFridge: true,
         items: { select: { productId: true, quantity: true } },
       },
     }),
@@ -213,6 +222,7 @@ export async function standingDayQuery(
         cancelled: false,
         suggestedItems: [],
         invoice: false,
+        fridge: false,
       };
       states.set(customerId, state);
     }
@@ -225,6 +235,7 @@ export async function standingDayQuery(
       state.orderIds.push(order.id);
       state.confirmedItems.push(...order.items);
       if (order.handInvoice) state.invoice = true;
+      if (order.intoFridge) state.fridge = true;
     }
   }
 
@@ -276,7 +287,9 @@ export async function standingDayQuery(
       nothing: hasOrder && Object.values(quantities).every((q) => q <= 0),
       weightKg: rowWeightKg(quantities, products),
       invoice: state.invoice,
-      fridge: customer.intoFridge,
+      fridge: state.fridge,
+      invoiceAlways: customer.alwaysInvoice,
+      fridgeAlways: customer.intoFridge,
       extra,
       stop,
       location: null,
@@ -414,9 +427,11 @@ export const dayRowSchema = z
       )
       .min(1)
       .max(MAX_ORDER_LINES),
-    /** "Rechnung mitgeben" for this day (owner 2026-11-14); `undefined` leaves it as it is. */
+    /**
+     * "Rechnung mitgeben" / "In den Kühlschrank" for this day only (owner 2026-11-14), stored on the
+     * day's orders; `undefined` leaves it as it is. "Always" is a customer setting (customer form).
+     */
     invoice: z.boolean().optional(),
-    /** "In den Kühlschrank": a customer setting, kept for every later day too. */
     fridge: z.boolean().optional(),
   })
   .strict();
@@ -479,7 +494,7 @@ export async function saveStandingDay(
   const [customers, products] = await Promise.all([
     db.customer.findMany({
       where: { id: { in: customerIds } },
-      select: { id: true, active: true, intoFridge: true },
+      select: { id: true, active: true },
     }),
     db.product.findMany({
       where: { id: { in: productIds } },
@@ -523,27 +538,11 @@ export async function saveStandingDay(
         let created = 0;
         let updated = 0;
         let merged = 0;
-        // Customers whose fridge or invoice mark changed without a quantity change.
+        // Customers whose invoice or fridge mark changed without a quantity change.
         const settingOnly = new Set<string>();
         const changedCustomers = new Set<string>();
 
         for (const row of input.rows) {
-          const fridgeBefore = customers.find((c) => c.id === row.customerId)?.intoFridge ?? false;
-          if (row.fridge !== undefined && row.fridge !== fridgeBefore) {
-            await tx.customer.update({
-              where: { id: row.customerId },
-              data: { intoFridge: row.fridge },
-              select: { id: true },
-            });
-            await recordAudit(tx, {
-              actorId,
-              entity: "Customer",
-              entityId: row.customerId,
-              action: "customer.fridge",
-              diff: { via: "standing_day", intoFridge: { from: fridgeBefore, to: row.fridge } },
-            });
-            settingOnly.add(row.customerId);
-          }
           const after: Quantities = emptyQuantities(productIds);
           for (const line of row.lines) after[line.productId] = line.quantity;
           const existing = await tx.order.findMany({
@@ -552,6 +551,7 @@ export async function saveStandingDay(
             select: {
               id: true,
               handInvoice: true,
+              intoFridge: true,
               items: { select: { productId: true, quantity: true } },
             },
           });
@@ -559,14 +559,26 @@ export async function saveStandingDay(
           const before = quantitiesOf(beforeItems, productIds);
           const invoiceBefore = existing.some((order) => order.handInvoice);
           const invoice = row.invoice ?? invoiceBefore;
+          const fridgeBefore = existing.some((order) => order.intoFridge);
+          const fridge = row.fridge ?? fridgeBefore;
+          const marks = { handInvoice: invoice, intoFridge: fridge };
+          const markDiff = (order: { handInvoice: boolean; intoFridge: boolean }) => ({
+            ...(order.handInvoice !== invoice
+              ? { handInvoice: { from: order.handInvoice, to: invoice } }
+              : {}),
+            ...(order.intoFridge !== fridge
+              ? { intoFridge: { from: order.intoFridge, to: fridge } }
+              : {}),
+          });
           const quantitiesChanged = rowChanged(before, after, productIds);
           if (!quantitiesChanged) {
-            // Only "Rechnung mitgeben" changed (or nothing): no stop changes, the driver app reads
-            // the mark from the order, so the route does not need to be sent again.
-            if (invoice === invoiceBefore || existing.length === 0) continue;
+            // Only a mark changed (or nothing): no stop changes, the driver app reads the marks from
+            // the order, so the route does not need to be sent again.
+            if ((invoice === invoiceBefore && fridge === fridgeBefore) || existing.length === 0)
+              continue;
             await tx.order.updateMany({
               where: { id: { in: existing.map((order) => order.id) } },
-              data: { handInvoice: invoice },
+              data: marks,
             });
             for (const order of existing) {
               await recordAudit(tx, {
@@ -574,11 +586,7 @@ export async function saveStandingDay(
                 entity: "Order",
                 entityId: order.id,
                 action: "order.update",
-                diff: {
-                  via: "standing_day",
-                  deliveryDate: dayText,
-                  handInvoice: { from: order.handInvoice, to: invoice },
-                },
+                diff: { via: "standing_day", deliveryDate: dayText, ...markDiff(order) },
               });
             }
             settingOnly.add(row.customerId);
@@ -601,7 +609,7 @@ export async function saveStandingDay(
                 windowTo: day,
                 status: "CONFIRMED",
                 source: "MANUAL",
-                handInvoice: invoice,
+                ...marks,
                 createdById: actorId,
                 items: { create: lines },
               },
@@ -632,24 +640,18 @@ export async function saveStandingDay(
           // One row per customer: the first order takes the new quantities, the rest are merged into it.
           await tx.order.update({
             where: { id: first.id },
-            data: { items: { deleteMany: {}, create: lines }, handInvoice: invoice },
+            data: { items: { deleteMany: {}, create: lines }, ...marks },
             select: { id: true },
           });
           const changes = diffOrderLines(beforeItems, lines);
-          if (changes.length > 0 || first.handInvoice !== invoice) {
+          const marksChanged = markDiff(first);
+          if (changes.length > 0 || Object.keys(marksChanged).length > 0) {
             await recordAudit(tx, {
               actorId,
               entity: "Order",
               entityId: first.id,
               action: "order.update",
-              diff: {
-                via: "standing_day",
-                deliveryDate: dayText,
-                lines: changes,
-                ...(first.handInvoice !== invoice
-                  ? { handInvoice: { from: first.handInvoice, to: invoice } }
-                  : {}),
-              },
+              diff: { via: "standing_day", deliveryDate: dayText, lines: changes, ...marksChanged },
             });
           }
           for (const order of extra) {

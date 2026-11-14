@@ -36,6 +36,7 @@ async function Guarded({ locale }: { locale: string }) {
           key: EMPTY_KEY_VALUES,
           abbreviation: "",
           intoFridge: false,
+          alwaysInvoice: false,
         }}
       />
     </div>

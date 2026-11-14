@@ -80,6 +80,7 @@ async function Guarded({ locale, id }: { locale: string; id: string }) {
           },
           abbreviation: customer.abbreviation ?? "",
           intoFridge: customer.intoFridge,
+          alwaysInvoice: customer.alwaysInvoice,
         }}
       />
     </div>

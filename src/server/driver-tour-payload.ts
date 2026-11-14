@@ -101,6 +101,7 @@ export async function getDriverTourResponse(
         keyNumber: true,
         abbreviation: true,
         intoFridge: true,
+        alwaysInvoice: true,
       },
     }),
     db.tour.findMany({
@@ -129,7 +130,13 @@ export async function getDriverTourResponse(
         orders: {
           select: {
             order: {
-              select: { status: true, paymentTerm: true, amountCents: true, handInvoice: true },
+              select: {
+                status: true,
+                paymentTerm: true,
+                amountCents: true,
+                handInvoice: true,
+                intoFridge: true,
+              },
             },
           },
         },
@@ -211,10 +218,17 @@ export async function getDriverTourResponse(
             .map((order) => ({ paymentTerm: order.paymentTerm, amountCents: order.amountCents })),
         ),
         collectedCents: paymentById.get(stop.id)?.collectedCents ?? null,
-        intoFridge: customer?.intoFridge ?? false,
-        handInvoice: (paymentById.get(stop.id)?.orders ?? []).some(
-          (link) => link.order.status === "CONFIRMED" && link.order.handInvoice,
-        ),
+        // Marks (owner 2026-11-14): "always" on the customer, or set for this day on an order.
+        intoFridge:
+          (customer?.intoFridge ?? false) ||
+          (paymentById.get(stop.id)?.orders ?? []).some(
+            (link) => link.order.status === "CONFIRMED" && link.order.intoFridge,
+          ),
+        handInvoice:
+          (customer?.alwaysInvoice ?? false) ||
+          (paymentById.get(stop.id)?.orders ?? []).some(
+            (link) => link.order.status === "CONFIRMED" && link.order.handInvoice,
+          ),
         photos: { STORE: photos?.STORE ?? null, PARKING: photos?.PARKING ?? null },
         items: stop.items.map((item) => {
           const name = localizedTextSchema.safeParse(item.name);

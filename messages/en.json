@@ -462,7 +462,8 @@
       },
       "marks": {
         "invoice": "Invoice",
-        "fridge": "Fridge"
+        "fridge": "Fridge",
+        "always": "Always (set on the customer)"
       },
       "tabs": {
         "label": "Routes",
@@ -683,8 +684,10 @@
         "abbreviationHeading": "Abbreviation",
         "abbreviationHint": "Optional. Legacy internal code from the old system: free text with special characters, may occur more than once. Drivers can also enter or correct it at the stop. Will be removed later.",
         "abbreviation": "Abbreviation",
-        "fridge": "Into the fridge",
-        "fridgeHint": "The driver sees a fridge symbol at the stop."
+        "fridge": "Always into the fridge",
+        "fridgeHint": "The driver sees a fridge symbol at every stop. For one day only: in the day plan.",
+        "invoice": "Always hand an invoice",
+        "invoiceHint": "The driver sees an invoice symbol at every stop. For one day only: in the day plan."
       },
       "detail": {
         "number": "Customer number {number}",
@@ -752,8 +755,9 @@
         "fromRecurring": "from standing order",
         "archivedCancelled": "{count, plural, one {Customer archived. # open order cancelled.} other {Customer archived. # open orders cancelled.}}",
         "archiveRules": "{count, plural, one {His standing order will be paused} other {His # standing orders will be paused}}. They continue when he is restored.",
-        "fridgeYes": "Yes, goods into the fridge",
-        "fridgeNo": "No"
+        "fridgeYes": "Yes, always",
+        "fridgeNo": "No",
+        "invoiceYes": "Yes, always"
       },
       "translations": {
         "tabDetails": "Details",
@@ -1965,8 +1969,7 @@
         "standing_tour_vehicle": "Vehicle of the standing tour changed",
         "standing_tour_activate": "Standing tour activated",
         "standing_tour_deactivate": "Standing tour deactivated",
-        "user_delete": "Account deleted",
-        "customer_fridge": "Fridge changed"
+        "user_delete": "Account deleted"
       },
       "fields": {
         "status": "Status",

@@ -197,9 +197,11 @@ model Customer {
   abbreviation            String?
   abbreviationUpdatedById String?
   abbreviationUpdatedAt   DateTime?
-  /// The goods go into the customer's fridge (owner 2026-11-14): the driver sees a fridge symbol at
-  /// the stop. Office only sets it (customer form).
+  /// Always into the customer's fridge (owner 2026-11-14): the driver sees a fridge symbol at every
+  /// stop of this customer. Set in the customer form; the day plan sets it for one day (`Order`).
   intoFridge              Boolean   @default(false)
+  /// Always hand this customer an invoice (owner 2026-11-14), like `intoFridge`.
+  alwaysInvoice           Boolean   @default(false)
   active                  Boolean   @default(true)
   /// Accent-folded number/name/address for search. Maintained by a DB trigger (migration NUD-013); never write it.
   searchText              String    @default("")
@@ -450,8 +452,10 @@ model Order {
   /// NUD-212: standing customers delivered before it on that route (0 = first); `null` = best slot.
   routeSlot           Int?
   /// The driver hands the customer an invoice with this delivery (owner 2026-11-14): set by the
-  /// office in the day plan, shown to the driver as an invoice symbol at the stop.
+  /// office in the day plan for this day only, shown to the driver as an invoice symbol at the stop.
   handInvoice         Boolean     @default(false)
+  /// The goods go into the fridge on this day only (day plan); `Customer.intoFridge` is "always".
+  intoFridge          Boolean     @default(false)
   createdById         String
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
