@@ -14,10 +14,12 @@ import { createTourService } from "./tour-service";
  * driver app and the packing list need no change.
  */
 const {
+  moveExtra,
   saveStandingDay,
   saveStandingTour,
   setStandingTourActive,
   setStandingTourDriver,
+  setStandingTourVehicle,
   standingDayQuery,
 } = await import("./standing-tours");
 
@@ -238,9 +240,9 @@ describe.skipIf(!process.env.DATABASE_URL)("day plan (standing tours)", { timeou
       expect(row.quantities[p1]).toBe(0);
     });
 
-    it("is read-only once a tour of the day is released, and for past days", async () => {
+    it("stays editable once a route of the day is sent, and is read-only for past days (NUD-212)", async () => {
       await reset();
-      await createRoute("Stammtour 1", [c1]);
+      const route = await createRoute("Stammtour 1", [c1]);
       const spot = await db().vehicle.create({
         data: { name: "Auto", capacityKg: 500 },
       });
@@ -249,13 +251,15 @@ describe.skipIf(!process.env.DATABASE_URL)("day plan (standing tours)", { timeou
           date: date(DAY),
           status: "RELEASED",
           vehicleId: spot.id,
+          standingTourId: route,
           depotSnapshot: {},
         },
       });
 
-      const released = await standingDayQuery(db(), DAY, today);
-      expect(released.editable).toBe(false);
-      expect(released.readOnly).toBe("released");
+      const sent = await standingDayQuery(db(), DAY, today);
+      expect(sent.editable).toBe(true);
+      expect(sent.readOnly).toBeNull();
+      expect(sent.routes[0]!.state).toBe("sent");
 
       const past = await standingDayQuery(db(), "2099-06-13", today);
       expect(past.readOnly).toBe("past");
@@ -453,9 +457,13 @@ describe.skipIf(!process.env.DATABASE_URL)("day plan (standing tours)", { timeou
       );
       expect(result).toMatchObject({ ok: true, written: 1, created: 1 });
       expect((await orderOf(c4)).status).toBe("CONFIRMED");
-      // The membership did not change: C4 stays off-route.
+      // The membership did not change: C4 rides along as an extra of the day (NUD-212).
       const plan = await standingDayQuery(db(), DAY, today);
-      expect(plan.offRoute.map((row) => row.customerId)).toContain(c4);
+      expect(plan.offRoute.map((row) => row.customerId)).not.toContain(c4);
+      const extra = plan.routes[0]!.rows.find((row) => row.customerId === c4);
+      expect(extra?.extra).toMatchObject({ moved: false });
+      const members = await db().standingTourCustomer.findMany({ select: { customerId: true } });
+      expect(members.map((m) => m.customerId)).toEqual([c1]);
     });
 
     it("flags the open tour of the day as outdated", async () => {
@@ -478,7 +486,7 @@ describe.skipIf(!process.env.DATABASE_URL)("day plan (standing tours)", { timeou
       expect(after.isOutdated).toBe(true);
     });
 
-    it("refuses a day whose tour is released and a day in the past", async () => {
+    it("saves a day whose route is sent and refuses a day in the past (NUD-212)", async () => {
       await reset();
       await createRoute("Stammtour 1", [c1]);
       await db().tour.create({
@@ -494,7 +502,7 @@ describe.skipIf(!process.env.DATABASE_URL)("day plan (standing tours)", { timeou
         today,
         tours,
       );
-      expect(released).toEqual({ ok: false, error: "tour_released" });
+      expect(released).toMatchObject({ ok: true, written: 1 });
 
       const past = await saveStandingDay(
         db(),
@@ -634,6 +642,80 @@ describe.skipIf(!process.env.DATABASE_URL)("day plan (standing tours)", { timeou
       expect(await setStandingTourDriver(db(), adminId, id, "nope")).toEqual({
         ok: false,
         error: "invalid",
+      });
+    });
+
+    it("sets the vehicle of a standing tour and audits it (NUD-212)", async () => {
+      await reset();
+      const id = await createRoute("Stammtour 1", [c1]);
+      const van = await db().vehicle.create({ data: { name: "Van", capacityKg: 800 } });
+      expect(await setStandingTourVehicle(db(), adminId, id, van.id)).toMatchObject({ ok: true });
+      expect((await db().standingTour.findUniqueOrThrow({ where: { id } })).vehicleId).toBe(van.id);
+      const change = await db().auditLog.findFirstOrThrow({
+        where: { action: "standing_tour.vehicle", entityId: id },
+      });
+      expect(change.diff).toMatchObject({ from: null, to: van.id });
+      const plan = await standingDayQuery(db(), DAY, today);
+      expect(plan.routes[0]).toMatchObject({ vehicleId: van.id, capacityKg: 800 });
+      expect(await setStandingTourVehicle(db(), adminId, id, "nope")).toEqual({
+        ok: false,
+        error: "invalid",
+      });
+    });
+  });
+
+  describe("moveExtra (NUD-212)", () => {
+    it("puts an extra on the chosen route and slot, and back to the suggestion", async () => {
+      await reset();
+      const first = await createRoute("Stammtour 1", [c1]);
+      const second = await createRoute("Stammtour 2", [c2, c3]);
+      await saveStandingDay(
+        db(),
+        adminId,
+        { date: DAY, rows: [{ customerId: c4, lines: [{ productId: p1, quantity: 2 }] }] },
+        today,
+        tours,
+      );
+      const move = (standingTourId: string | null, slot: number | null) =>
+        moveExtra(db(), adminId, { date: DAY, customerId: c4, standingTourId, slot }, today, tours);
+
+      expect(await move(second, 1)).toEqual({ ok: true });
+      let plan = await standingDayQuery(db(), DAY, today);
+      const route2 = plan.routes.find((r) => r.id === second)!;
+      expect(route2.rows.map((r) => r.customerId)).toEqual([c2, c4, c3]);
+      expect(route2.rows[1]!.extra).toEqual({ moved: true, slot: 1 });
+      expect(plan.routes.find((r) => r.id === first)!.rows.map((r) => r.customerId)).toEqual([c1]);
+
+      expect(await move(null, null)).toEqual({ ok: true });
+      plan = await standingDayQuery(db(), DAY, today);
+      const back = plan.routes.flatMap((r) => r.rows).find((r) => r.customerId === c4);
+      expect(back?.extra).toMatchObject({ moved: false });
+    });
+
+    it("refuses a standing customer, an unknown route, a past day and a customer without order", async () => {
+      await reset();
+      const route = await createRoute("Stammtour 1", [c1]);
+      const move = (input: Record<string, unknown>, day = today) =>
+        moveExtra(db(), adminId, { date: DAY, slot: 0, ...input }, day, tours);
+      expect(await move({ customerId: c1, standingTourId: route })).toEqual({
+        ok: false,
+        error: "standing_customer",
+      });
+      expect(await move({ customerId: c4, standingTourId: "nope" })).toEqual({
+        ok: false,
+        error: "not_found",
+      });
+      expect(await move({ customerId: c4, standingTourId: route, slot: -1 })).toEqual({
+        ok: false,
+        error: "invalid",
+      });
+      expect(await move({ customerId: c4, standingTourId: route })).toEqual({
+        ok: false,
+        error: "not_found",
+      });
+      expect(await move({ customerId: c4, standingTourId: route }, date("2099-06-20"))).toEqual({
+        ok: false,
+        error: "date_in_past",
       });
     });
   });

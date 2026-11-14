@@ -36,6 +36,7 @@ const AUDITED = [
   "server/customer-admin.ts",
   "server/work-schedule.ts",
   "server/standing-tours.ts",
+  "server/day-routes.ts",
   "server/stop-payment.ts",
   "server/payments.ts",
   "server/monthly-adjustments.ts",

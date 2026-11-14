@@ -1,14 +1,19 @@
 "use server";
 
 import { requireRole } from "./auth/guards";
+import { type SendDayResult, sendDayWith } from "./day-routes";
 import { getDb } from "./db";
 import { todayIn } from "./orders";
-import { getFactoryTimezone } from "./settings";
+import { getRoutingProvider } from "./routing";
+import { getFactoryTimezone, getSettings, requireDepotConfigured } from "./settings";
 import {
+  moveExtra,
+  type MoveExtraResult,
   saveStandingDay,
   saveStandingTour,
   setStandingTourActive,
   setStandingTourDriver,
+  setStandingTourVehicle,
   type StandingDaySaveResult,
   type StandingTourEditResult,
   type StandingTourSaveResult,
@@ -54,4 +59,37 @@ export async function setStandingTourActiveAction(
 ): Promise<StandingTourEditResult> {
   const actor = await requireRole("ADMIN");
   return setStandingTourActive(getDb(), actor.id, id, active);
+}
+
+/** NUD-212: the vehicle of a standing tour's day routes (`null` clears it). */
+export async function setStandingTourVehicleAction(
+  id: unknown,
+  vehicleId: unknown,
+): Promise<StandingTourEditResult> {
+  const actor = await requireRole("ADMIN");
+  return setStandingTourVehicle(getDb(), actor.id, id, vehicleId);
+}
+
+/** NUD-212: puts a customer of no standing tour on a route and position for one delivery day. */
+export async function moveExtraAction(input: unknown): Promise<MoveExtraResult> {
+  const actor = await requireRole("ADMIN");
+  return moveExtra(getDb(), actor.id, input, todayIn(await getFactoryTimezone()), getTourService());
+}
+
+/**
+ * NUD-212 "An Fahrer senden": every route of the day (standing tour in fixed order plus the
+ * extras) becomes a released tour of its driver, or its changes are sent again.
+ */
+export async function sendDayAction(input: unknown): Promise<SendDayResult> {
+  const actor = await requireRole("ADMIN");
+  return sendDayWith(
+    {
+      db: getDb(),
+      actorId: actor.id,
+      provider: getRoutingProvider(),
+      requireDepot: requireDepotConfigured,
+      loadSettings: getSettings,
+    },
+    input,
+  );
 }

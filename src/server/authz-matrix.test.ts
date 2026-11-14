@@ -382,6 +382,16 @@ const MATRIX: Record<string, Row> = {
     "standing tours",
     async () => (await import("./standing-actions")).setStandingTourDriverAction("x", null),
   ),
+  "src/server/standing-actions.ts#setStandingTourVehicleAction": adminAction(
+    "standing tours",
+    async () => (await import("./standing-actions")).setStandingTourVehicleAction("x", null),
+  ),
+  "src/server/standing-actions.ts#moveExtraAction": adminAction("day plan", async () =>
+    (await import("./standing-actions")).moveExtraAction({}),
+  ),
+  "src/server/standing-actions.ts#sendDayAction": adminAction("day plan", async () =>
+    (await import("./standing-actions")).sendDayAction({}),
+  ),
   "src/server/standing-actions.ts#setStandingTourActiveAction": adminAction(
     "standing tours",
     async () => (await import("./standing-actions")).setStandingTourActiveAction("x", false),

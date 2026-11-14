@@ -512,7 +512,8 @@ async function toViews(db: DbForHistory, rows: Row[]): Promise<AuditEntryView[]>
         ];
       }
       case "photo.add":
-      case "photo.replace": {        const d = photoEntry.safeParse(row.diff);
+      case "photo.replace": {
+        const d = photoEntry.safeParse(row.diff);
         return d.success ? [{ kind: "photo", photoKind: d.data.kind, via: d.data.via }] : [];
       }
       // Parking spot entries belong to the customer; no order or tour history shows them.
@@ -541,6 +542,7 @@ async function toViews(db: DbForHistory, rows: Row[]): Promise<AuditEntryView[]>
       case "standing_tour.create":
       case "standing_tour.update":
       case "standing_tour.driver":
+      case "standing_tour.vehicle":
       case "standing_tour.activate":
       case "standing_tour.deactivate":
       // Monthly bills (NUD-196) have their own page; no order or tour timeline shows them.

@@ -70,6 +70,7 @@ export const AUDIT_ACTIONS = [
   "standing_tour.create",
   "standing_tour.update",
   "standing_tour.driver",
+  "standing_tour.vehicle",
   "standing_tour.activate",
   "standing_tour.deactivate",
   "user.delete",

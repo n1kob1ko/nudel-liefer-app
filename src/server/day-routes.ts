@@ -48,6 +48,10 @@ export type DayRoutes = {
   routes: DayRouteDefinition[];
   /** The place of every extra of the day (customer id -> route and slot). */
   places: Map<string, Place & { moved: boolean }>;
+  /** Customers of the routes (members and extras) without any location: never a stop. */
+  unrouted: Set<string>;
+  /** The delivery point of every customer of the routes (`null` = no location). */
+  points: Map<string, LatLng | null>;
 };
 
 /** The active standing tours in their order; a customer belongs to the first one he is in. */
@@ -139,6 +143,8 @@ export async function loadDayRoutes(db: Db, day: Date, depot: LatLng | null): Pr
   }
   return {
     places,
+    points: pointOf,
+    unrouted: new Set([...pointOf].filter(([, point]) => point === null).map(([id]) => id)),
     routes: routes.map((route) => {
       const extras = extraIds.flatMap((customerId) => {
         const place = places.get(customerId);
