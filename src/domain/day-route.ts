@@ -41,7 +41,9 @@ export function dayRouteOrder(
 /** Best slot of one route for `point` and the detour in metres it costs. */
 function bestSlot(depot: LatLng, route: RoutePath, point: LatLng): { slot: number; cost: number } {
   // The path depot -> located members -> depot; `slot` of a gap = members before its far end.
-  const stops = route.members.flatMap((m, index) => (m.location ? [{ index, at: m.location }] : []));
+  const stops = route.members.flatMap((m, index) =>
+    m.location ? [{ index, at: m.location }] : [],
+  );
   let best = { slot: route.members.length, cost: Number.POSITIVE_INFINITY };
   for (let gap = 0; gap <= stops.length; gap++) {
     const from = gap === 0 ? depot : stops[gap - 1]!.at;

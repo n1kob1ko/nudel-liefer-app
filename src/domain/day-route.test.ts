@@ -90,9 +90,11 @@ describe("resolvePlace (NUD-212)", () => {
   const point = at(48.2099, 16.3914);
 
   it("keeps the office's route and slot", () => {
-    expect(
-      resolvePlace(depot, [north, south], point, { routeId: "north", slot: 1 }),
-    ).toEqual({ routeId: "north", slot: 1, moved: true });
+    expect(resolvePlace(depot, [north, south], point, { routeId: "north", slot: 1 })).toEqual({
+      routeId: "north",
+      slot: 1,
+      moved: true,
+    });
   });
 
   it("clamps the slot and finds the best slot when only the route is given", () => {
@@ -101,9 +103,11 @@ describe("resolvePlace (NUD-212)", () => {
       slot: 3,
       moved: true,
     });
-    expect(
-      resolvePlace(depot, [north, south], point, { routeId: "south", slot: null }),
-    ).toEqual({ routeId: "south", slot: 2, moved: true });
+    expect(resolvePlace(depot, [north, south], point, { routeId: "south", slot: null })).toEqual({
+      routeId: "south",
+      slot: 2,
+      moved: true,
+    });
   });
 
   it("falls back to the suggestion when the route is gone or nothing was chosen", () => {
