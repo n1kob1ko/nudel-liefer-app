@@ -1249,27 +1249,27 @@
       },
       "form": {
         "ai": {
-          "button": "Mit KI auslesen",
+          "button": "Automatisch auslesen",
           "buttonBusy": "Wird ausgelesen …",
           "candidates": "Mögliche Produkte: {names}",
-          "disabledHint": "KI-Auslesen ist nicht konfiguriert.",
+          "disabledHint": "Automatisches Auslesen ist nicht eingerichtet.",
           "errors": {
             "extractionFailed": "Die Nachricht konnte nicht ausgelesen werden. Bitte erneut versuchen oder manuell erfassen.",
             "invalid": "Bitte eine Nachricht einfügen oder einen Screenshot anhängen.",
-            "notConfigured": "KI-Auslesen ist nicht konfiguriert (kein API-Schlüssel). Bitte manuell erfassen.",
+            "notConfigured": "Automatisches Auslesen ist nicht eingerichtet. Bitte manuell erfassen.",
             "screenshotUnavailable": "Der Screenshot konnte nicht gelesen werden. Bitte erneut hochladen."
           },
           "heading": "Aus Kundennachricht übernehmen",
           "label": "Kundennachricht",
           "lineLabelHint": "Erkannt als: {label}",
           "lineLowConfidence": "Unsicher erkannt – bitte Menge prüfen.",
-          "lowConfidence": "Die KI ist unsicher (Gesamtvertrauen {percent} %). Bitte alle Produkte und Mengen prüfen.",
+          "lowConfidence": "Unsicher erkannt (Sicherheit {percent} %). Bitte alle Produkte und Mengen prüfen.",
           "note": "Notiz aus der Nachricht: {note}",
           "placeholder": "z. B. „2 Kiste Nudeln und 1 Sackerl Wantan-Teig für morgen“",
           "quantityUnknown": "Menge unklar",
           "unmatchedHeading": "Nicht zugeordnet – bitte manuell ergänzen:",
           "unmatchedLine": "{label} (Menge: {quantity})",
-          "windowUnclear": "Zeitangabe aus der Nachricht („{text}“) bitte als Lieferzeitraum eintragen – die KI konnte sie nicht in ein Datum umrechnen."
+          "windowUnclear": "Die Zeitangabe „{text}“ ließ sich nicht in ein Datum umrechnen. Bitte als Lieferzeitraum eintragen."
         },
         "customer": "Kunde",
         "customerPlaceholder": "Kunde wählen",
@@ -1352,7 +1352,7 @@
         "optional": "optional",
         "import": {
           "toggle": "Nachricht oder Screenshot",
-          "optional": "Optional: Die KI füllt daraus einen Entwurf."
+          "optional": "Optional: Daraus wird automatisch ein Entwurf."
         },
         "paymentTerm": "Zahlungsart",
         "paymentMonthly": "Monatsrechnung (Sammelrechnung)",

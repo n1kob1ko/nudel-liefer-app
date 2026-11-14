@@ -1249,27 +1249,27 @@
       },
       "form": {
         "ai": {
-          "button": "用 AI 识别",
+          "button": "自动识别",
           "buttonBusy": "正在识别……",
           "candidates": "可能的产品：{names}",
-          "disabledHint": "AI 识别未配置。",
+          "disabledHint": "自动识别尚未设置。",
           "errors": {
             "extractionFailed": "无法识别该消息。请重试或手动录入。",
             "invalid": "请粘贴消息或上传截图。",
-            "notConfigured": "AI 识别未配置（没有 API 密钥）。请手动录入。",
+            "notConfigured": "自动识别尚未设置。请手动录入。",
             "screenshotUnavailable": "无法读取该截图。请重新上传。"
           },
           "heading": "从客户消息导入",
           "label": "客户消息",
           "lineLabelHint": "识别为：{label}",
           "lineLowConfidence": "识别把握较低——请核对数量。",
-          "lowConfidence": "AI 没有把握（总体置信度 {percent} %）。请核对所有产品和数量。",
+          "lowConfidence": "识别结果不确定（把握 {percent} %）。请核对所有产品和数量。",
           "note": "消息中的备注：{note}",
           "placeholder": "例如“明天 2 箱面条和 1 袋云吞皮”",
           "quantityUnknown": "数量不明",
           "unmatchedHeading": "未匹配——请手动补充：",
           "unmatchedLine": "{label}（数量：{quantity}）",
-          "windowUnclear": "消息中的时间说明（“{text}”）无法由 AI 转换为日期，请手动填写送货时间段。"
+          "windowUnclear": "消息中的时间说明（“{text}”）无法自动转换为日期，请手动填写送货时间段。"
         },
         "customer": "客户",
         "customerPlaceholder": "选择客户",
@@ -1352,7 +1352,7 @@
         "optional": "可选",
         "import": {
           "toggle": "消息或截图",
-          "optional": "可选：AI 据此填写草稿。"
+          "optional": "可选：据此自动填写草稿。"
         },
         "paymentTerm": "付款方式",
         "paymentMonthly": "月度账单（累计）",

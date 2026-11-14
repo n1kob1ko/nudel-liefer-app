@@ -112,7 +112,7 @@ marks each returned row `late: true` using `lateOrderIdsForRows`.
 ## AI order draft (NUD-150, D26)
 
 The office may paste the customer's WhatsApp/WeChat message into the order form and/or attach a
-screenshot; "Mit KI auslesen" turns it into a **draft** that the office reviews and confirms -
+screenshot; "Automatisch auslesen" turns it into a **draft** that the office reviews and confirms -
 nothing is saved by the extraction itself.
 
 - `src/domain/order-extraction.ts` (pure): the answer contract

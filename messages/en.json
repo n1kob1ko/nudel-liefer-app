@@ -1249,27 +1249,27 @@
       },
       "form": {
         "ai": {
-          "button": "Read with AI",
+          "button": "Read automatically",
           "buttonBusy": "Reading …",
           "candidates": "Possible products: {names}",
-          "disabledHint": "AI reading is not configured.",
+          "disabledHint": "Automatic reading is not set up.",
           "errors": {
             "extractionFailed": "The message could not be read. Please try again or enter the order manually.",
             "invalid": "Please paste a message or attach a screenshot.",
-            "notConfigured": "AI reading is not configured (no API key). Please enter the order manually.",
+            "notConfigured": "Automatic reading is not set up. Please enter the order manually.",
             "screenshotUnavailable": "The screenshot could not be read. Please upload it again."
           },
           "heading": "Take over from the customer's message",
           "label": "Customer message",
           "lineLabelHint": "Read as: {label}",
           "lineLowConfidence": "Recognised with low confidence – please check the quantity.",
-          "lowConfidence": "The AI is unsure (overall confidence {percent} %). Please check every product and quantity.",
+          "lowConfidence": "Read with low certainty ({percent} %). Please check every product and quantity.",
           "note": "Note from the message: {note}",
           "placeholder": "e.g. \"2 Kiste Nudeln and 1 Sackerl Wantan-Teig for tomorrow\"",
           "quantityUnknown": "Quantity unclear",
           "unmatchedHeading": "Not matched – please add manually:",
           "unmatchedLine": "{label} (quantity: {quantity})",
-          "windowUnclear": "The message names a delivery time (\"{text}\") that the AI could not turn into a date – please set the delivery window."
+          "windowUnclear": "The delivery time \"{text}\" could not be turned into a date. Please set the delivery window."
         },
         "customer": "Customer",
         "customerPlaceholder": "Choose a customer",
@@ -1352,7 +1352,7 @@
         "optional": "optional",
         "import": {
           "toggle": "Message or screenshot",
-          "optional": "Optional: the AI fills a draft from it."
+          "optional": "Optional: a draft is filled in from it automatically."
         },
         "paymentTerm": "Payment term",
         "paymentMonthly": "Monthly bill (accumulated)",
