@@ -309,9 +309,10 @@ function NextStopCard({
   const fmtTime = driverTime(useFormatter(), timezone);
   return (
     <section
-      // The one coloured card of the screen (redesign RD2): pale yolk with a yolk edge all round.
+      // A white card like every other (owner feedback 2026-11-14: "so viel gelb"). Yolk is left to
+      // the one button that matters, "Navigation starten", and to the ring around the stop number.
       className={cn(
-        "relative flex flex-col gap-2 rounded-xl border border-primary bg-primary-soft p-3 text-primary-soft-foreground shadow-xs",
+        "relative flex flex-col gap-2 rounded-xl border border-border bg-card p-3 text-card-foreground shadow-sm",
         entering && "stagger-item",
       )}
       aria-labelledby="next-stop-heading"
@@ -536,7 +537,6 @@ function StopRow({
     <li
       className={cn(
         "border-b border-border last:border-b-0",
-        isNext && "bg-primary-soft text-primary-soft-foreground",
         selected && "bg-muted",
         index !== undefined && "stagger-item",
       )}

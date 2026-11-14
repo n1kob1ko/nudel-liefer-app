@@ -110,7 +110,9 @@ More rules that apply everywhere:
 
 - **One yolk button per screen:** "Navigation starten" while a stop is open, "Weiter zu Stopp n"
   once it is done. The departure checklist and the photo buttons are white.
-- **One coloured card:** the next stop, pale yolk with a yolk edge all round. No side stripes.
+- **No yellow surfaces** (owner feedback of 2026-11-14: too much yellow). The next-stop card is a
+  white card like the others and the next stop's row in the list has no tint. The next stop is
+  marked by the yolk ring around its number. No side stripes.
 - **Green is "Geliefert", red is "Problem"** in the badge, the list row, the ring, the bar and the
   result card. Orange is only for hints: the customer note, offline, "waiting to be sent".
 - **The status buttons stay in the page flow,** after the quantities (`docs/driver-usability.md`):
