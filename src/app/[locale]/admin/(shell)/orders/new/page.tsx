@@ -41,7 +41,10 @@ async function Guarded({
           back={{ href: "/admin/orders/inbox", label: t("form.inbox.back") }}
         />
       ) : (
-        <PageHeader title={t("newTitle")} back={{ href: "/admin/orders", label: t("backToList") }} />
+        <PageHeader
+          title={t("newTitle")}
+          back={{ href: "/admin/orders", label: t("backToList") }}
+        />
       )}
       <OrderForm
         // A new photo is a new form: nothing of the previous photo may stay in the fields.

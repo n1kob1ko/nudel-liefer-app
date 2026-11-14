@@ -44,14 +44,10 @@ export type InboxOpenStatus = (typeof OPEN_STATUSES)[number];
 export type InboxDb = Pick<PrismaClient, "screenshot" | "customer" | "product">;
 
 const idSchema = z.string().trim().min(1).max(64);
-const keysSchema = z
-  .array(z.string().max(200).refine(isScreenshotKey))
-  .min(1)
-  .max(MAX_INBOX_ADD);
+const keysSchema = z.array(z.string().max(200).refine(isScreenshotKey)).min(1).max(MAX_INBOX_ADD);
 
 export type InboxAddResult =
-  | { ok: true; added: number; skipped: number }
-  | { ok: false; error: "invalid" };
+  { ok: true; added: number; skipped: number } | { ok: false; error: "invalid" };
 
 /**
  * Puts uploaded photos into the inbox. Each key must be one the upload endpoint issued, its object
@@ -167,9 +163,14 @@ export async function listInbox(
         url: await storage.getReadUrl(row.storageKey),
         customer: customer ? { id: customer.id, name: customer.name, city: customer.city } : null,
         customerHint: row.customerHint,
-        lines: draft?.lines.map((line) => ({ productId: line.productId, quantity: line.quantity })) ?? [],
+        lines:
+          draft?.lines.map((line) => ({ productId: line.productId, quantity: line.quantity })) ??
+          [],
         unmatched: draft?.unmatched.length ?? 0,
-        error: row.inboxStatus === "FAILED" ? (parseFailure(row.readError) ?? "extraction_failed") : null,
+        error:
+          row.inboxStatus === "FAILED"
+            ? (parseFailure(row.readError) ?? "extraction_failed")
+            : null,
       };
     }),
   );

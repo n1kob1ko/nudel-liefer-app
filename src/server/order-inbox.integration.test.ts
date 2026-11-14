@@ -29,10 +29,11 @@ import { createOrder } from "./orders";
 import { FakeStorage } from "./storage/fake";
 import { createTestDb, type TestDb } from "./test-db";
 
-const key = (n: number) =>
-  `screenshots/00000000-0000-4000-8000-${String(n).padStart(12, "0")}.jpg`;
+const key = (n: number) => `screenshots/00000000-0000-4000-8000-${String(n).padStart(12, "0")}.jpg`;
 const TODAY = "2099-06-14";
-const tours = { markOutdatedForDate: async () => 0 } as unknown as Parameters<typeof createOrder>[5];
+const tours = { markOutdatedForDate: async () => 0 } as unknown as Parameters<
+  typeof createOrder
+>[5];
 const DAY = "2099-06-15";
 
 /** A scripted model: the answer depends on the first byte of the photo. */
@@ -86,7 +87,8 @@ describe.skipIf(!process.env.DATABASE_URL)("order inbox (NUD-210)", { timeout: 6
     now,
   });
 
-  const upload = (n: number, marker = n) => storage.put(key(n), new Uint8Array([marker, 1, 2]), "image/jpeg");
+  const upload = (n: number, marker = n) =>
+    storage.put(key(n), new Uint8Array([marker, 1, 2]), "image/jpeg");
 
   beforeAll(async () => {
     t = await createTestDb();
@@ -148,7 +150,12 @@ describe.skipIf(!process.env.DATABASE_URL)("order inbox (NUD-210)", { timeout: 6
       skipped: 1,
     });
     expect(await countInbox(t.prisma)).toBe(2);
-    for (const bad of [[], ["customers/x.jpg"], "nope", Array.from({ length: 21 }, (_, i) => key(i))]) {
+    for (const bad of [
+      [],
+      ["customers/x.jpg"],
+      "nope",
+      Array.from({ length: 21 }, (_, i) => key(i)),
+    ]) {
       expect(await addInboxPhotos(t.prisma, adminId, bad, storage)).toEqual({
         ok: false,
         error: "invalid",
@@ -168,7 +175,10 @@ describe.skipIf(!process.env.DATABASE_URL)("order inbox (NUD-210)", { timeout: 6
           { label: "Tofu", quantity: 2, confidence: 0.9 },
         ],
       },
-      2: { customer: "Pizzeria Roma", lines: [{ label: "Nudeln Kiste", quantity: 1, confidence: 0.9 }] },
+      2: {
+        customer: "Pizzeria Roma",
+        lines: [{ label: "Nudeln Kiste", quantity: 1, confidence: 0.9 }],
+      },
       3: { customer: null, lines: [] },
       4: "fail",
       5: { customer: "Alter Imbiss" },
@@ -329,7 +339,10 @@ describe.skipIf(!process.env.DATABASE_URL)("order inbox (NUD-210)", { timeout: 6
     for (let n = 1; n <= 3; n++) upload(n);
     await addInboxPhotos(t.prisma, adminId, [1, 2, 3].map(key), storage);
     const extractor = new ScriptedExtractor({
-      1: { customer: "Wok Palace", lines: [{ label: "Nudeln Kiste", quantity: 3, confidence: 0.4 }] },
+      1: {
+        customer: "Wok Palace",
+        lines: [{ label: "Nudeln Kiste", quantity: 3, confidence: 0.4 }],
+      },
       2: "fail",
       3: { customer: null, lines: [{ label: "Nudeln Sackerl", quantity: 5, confidence: 0.9 }] },
     });
@@ -384,7 +397,10 @@ describe.skipIf(!process.env.DATABASE_URL)("order inbox (NUD-210)", { timeout: 6
     upload(1);
     upload(2);
     await addInboxPhotos(t.prisma, adminId, [key(1), key(2)], storage);
-    await drainInbox(t.prisma, deps(new ScriptedExtractor({ 1: { customer: "Wok Palace" }, 2: "fail" })));
+    await drainInbox(
+      t.prisma,
+      deps(new ScriptedExtractor({ 1: { customer: "Wok Palace" }, 2: "fail" })),
+    );
     const [a, b] = await t.prisma.screenshot.findMany({ orderBy: { storageKey: "asc" } });
     const at = new Date("2099-06-14T08:00:00Z");
 
@@ -401,9 +417,15 @@ describe.skipIf(!process.env.DATABASE_URL)("order inbox (NUD-210)", { timeout: 6
 
     await discardInboxPhoto(t.prisma, b!.id, at);
     const early = new Date(at.getTime() + INBOX_DISCARD_GRACE_MS - 1000);
-    expect(await purgeDiscardedInboxPhotos(t.prisma, storage, early)).toEqual({ deleted: 0, failed: 0 });
+    expect(await purgeDiscardedInboxPhotos(t.prisma, storage, early)).toEqual({
+      deleted: 0,
+      failed: 0,
+    });
     const late = new Date(at.getTime() + INBOX_DISCARD_GRACE_MS + 1000);
-    expect(await purgeDiscardedInboxPhotos(t.prisma, storage, late)).toEqual({ deleted: 1, failed: 0 });
+    expect(await purgeDiscardedInboxPhotos(t.prisma, storage, late)).toEqual({
+      deleted: 1,
+      failed: 0,
+    });
     expect(storage.has(key(2))).toBe(false);
     expect(storage.has(key(1))).toBe(true);
     expect(await t.prisma.screenshot.count()).toBe(1);
@@ -425,7 +447,10 @@ describe.skipIf(!process.env.DATABASE_URL)("order inbox (NUD-210)", { timeout: 6
     upload(1);
     await addInboxPhotos(t.prisma, adminId, [key(1)], storage);
     storage.objects.delete(key(1));
-    expect(await drainInbox(t.prisma, deps(new ScriptedExtractor({})))).toEqual({ read: 0, failed: 1 });
+    expect(await drainInbox(t.prisma, deps(new ScriptedExtractor({})))).toEqual({
+      read: 0,
+      failed: 1,
+    });
     expect((await listInbox(t.prisma, storage)).items[0]!.error).toBe("screenshot_unavailable");
   });
 

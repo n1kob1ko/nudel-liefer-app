@@ -228,9 +228,7 @@ export function OrderInbox({ initial, firstId: initialFirstId, aiAvailable, prod
   function lineText(item: InboxItemView): string {
     const parts = item.lines.flatMap((line) => {
       const product = productById.get(line.productId);
-      return product
-        ? [`${line.quantity} ${tc(`units.${product.unit}`)} ${product.name}`]
-        : [];
+      return product ? [`${line.quantity} ${tc(`units.${product.unit}`)} ${product.name}`] : [];
     });
     if (item.unmatched > 0) parts.push(t("row.unmatched", { count: item.unmatched }));
     return parts.length > 0 ? parts.join(" · ") : t("row.noLines");
@@ -385,7 +383,10 @@ export function OrderInbox({ initial, firstId: initialFirstId, aiAvailable, prod
                     </>
                   ) : (
                     <>
-                      <p className="truncate text-base font-medium" data-testid="inbox-row-customer">
+                      <p
+                        className="truncate text-base font-medium"
+                        data-testid="inbox-row-customer"
+                      >
                         {item.customer ? (
                           <>
                             {item.customer.name}

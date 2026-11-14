@@ -181,7 +181,9 @@ export function OrderForm({
   const [windowFrom, setWindowFrom] = useState(
     order?.windowFrom ?? inboxDraft?.window?.from ?? defaultDate,
   );
-  const [windowTo, setWindowTo] = useState(order?.windowTo ?? inboxDraft?.window?.to ?? defaultDate);
+  const [windowTo, setWindowTo] = useState(
+    order?.windowTo ?? inboxDraft?.window?.to ?? defaultDate,
+  );
   const [windowFromTime, setWindowFromTime] = useState(
     order?.windowFromTime ?? inboxDraft?.window?.fromTime ?? "",
   );

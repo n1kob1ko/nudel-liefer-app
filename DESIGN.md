@@ -184,6 +184,9 @@ More rules that apply everywhere:
 - **Ctrl+K / ⌘K opens the command menu** from every office page: every section plus "Neue
   Bestellung" and "Neuer Kunde". It opens without motion because it is used all day.
 - Sticky bars are solid surfaces. No blur.
+- A save bar may stick to the bottom only where the same form is filled many times in a row beside
+  something to compare (the order inbox, from `lg`). On a phone it stays in the flow, after the
+  fields.
 - **A page change is a short cross-fade of the content** (120 ms out, 150 ms in, opacity only,
   `ViewTransition` in `AdminShell`). Menu and top bar do not take part; a new filter or date on
   the same page does not fade. The driver app has no page transition.

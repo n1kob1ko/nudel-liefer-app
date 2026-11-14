@@ -76,7 +76,6 @@ function tourLink(
   };
 }
 
-
 function rowWindow(row: {
   windowFrom: Date;
   windowTo: Date;
@@ -244,7 +243,9 @@ export async function createOrder(
         internalNote: v.internalNote,
         // AI order draft (NUD-150): the pasted message and what the model read, both optional.
         sourceText: v.sourceText,
-        aiExtraction: v.aiExtraction ? (v.aiExtraction as unknown as Prisma.InputJsonValue) : undefined,
+        aiExtraction: v.aiExtraction
+          ? (v.aiExtraction as unknown as Prisma.InputJsonValue)
+          : undefined,
         createdBy: { connect: { id: actorId } },
         items: {
           create: v.lines.map((l) => ({

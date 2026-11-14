@@ -155,10 +155,7 @@ describe("OrderForm inbox mode (NUD-210)", () => {
     expect(screen.queryByTestId("ai-extract")).not.toBeInTheDocument();
     expect(screen.queryByTestId("ai-source-text")).not.toBeInTheDocument();
     expect(screen.getByTestId("order-save")).toHaveTextContent("Bestätigen und weiter");
-    expect(screen.getByTestId("inbox-skip")).toHaveAttribute(
-      "href",
-      "/admin/orders/new?inbox=s-2",
-    );
+    expect(screen.getByTestId("inbox-skip")).toHaveAttribute("href", "/admin/orders/new?inbox=s-2");
   });
 
   it("saves with the inbox photo and goes on to the next one", async () => {

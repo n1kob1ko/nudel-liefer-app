@@ -102,9 +102,7 @@ test("order inbox: upload several photos, check one next to its photo, discard a
     await expect.poll(async () => (await f.own()).length, { timeout: 90_000 }).toBe(2);
     const [first, second] = await f.own();
     const rowOf = (id: string) =>
-      page
-        .getByTestId("inbox-row")
-        .filter({ has: page.locator(`a[href*="inbox=${id}"]`) });
+      page.getByTestId("inbox-row").filter({ has: page.locator(`a[href*="inbox=${id}"]`) });
 
     // Without a model the photos wait unread; the page says so once, and each can be checked.
     await expect(rowOf(first)).toBeVisible({ timeout: 30_000 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { type AppLocale,createLocalizedText } from "@/lib/localized-text";
+import { type AppLocale, createLocalizedText } from "@/lib/localized-text";
 
 import {
   assembleDraft,

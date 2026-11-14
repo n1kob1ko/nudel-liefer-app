@@ -190,7 +190,7 @@ model Customer  { id, customerNumber(unique), name, street, postalCode, city, co
                   active, createdAt, updatedAt, photos Photo[] }
 model Photo     { id, customerId, kind, storageKey, width, height, bytes, uploadedById, isCurrent, createdAt }
 model Product   { id, sku(unique), name Json /*LocalizedText*/, unit, active, sortOrder, createdAt, updatedAt }
-model Screenshot{ id, storageKey, uploadedById, createdAt, extraction Json? /*M3*/ }
+model Screenshot{ id, storageKey, uploadedById, createdAt, extraction Json?, inboxStatus NEW|READING|READY|FAILED|DONE|DISCARDED?, readStartedAt?, readError?, customerHint?, suggestedCustomerId?, discardedAt? /*NUD-210: a photo of the order inbox; inboxStatus null = attached in the order form*/ }
 model Order     { id, customerId, deliveryDate @db.Date, status, source, screenshotId?, internalNote?, createdById, createdAt, updatedAt, items OrderItem[] }
 model OrderItem { id, orderId, productId, quantity Int }
 model Tour      { id, date @db.Date, driverId?, status, isOutdated Boolean, locked Boolean,
@@ -368,6 +368,7 @@ Read rule: `pick(text, locale)` returns the requested locale; if empty, the clos
 | NUD-207 | Order photos and translations are read by the Claude API instead of OpenRouter | M2.8 | 150 | in-progress |
 | NUD-208 | Findings of a simulated three-day run (toasts, cash on the quick "Geliefert", offline chip, release text) | M2.8 | 196 | done |
 | NUD-209 | The owner's three decisions after the simulation: bill without undelivered orders, office settles cash, plan by standing tours | M2.8 | 196, 186, 147 | done |
+| NUD-210 | Order inbox: many photos at once, read in the background, checked one by one | M2.8 | 207, 031, 150 | done |
 | NUD-100 | AI screenshot extraction (review required) | M3 | 031 | superseded → NUD-150 |
 | NUD-101 | Recurring / standing orders | M3 | 032 | superseded → NUD-149 |
 | NUD-102 | Multiple drivers / tours per day | M3 | 043 | superseded → NUD-147 |
@@ -4129,6 +4130,29 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 - [x] The office settles open cash itself: "Erhalten" on a row of "Offene Barzahlungen" opens a small dialog prefilled with what was due; the amount is the stop's total taken. Same columns and audit action as the driver's entry (`stop.payment`, `via: "office"`), only on a delivered stop of a released, running or completed tour. On a phone the open cash rows are blocks with the two actions as buttons.
 - [x] "Touren planen" honours the standing tours: every customer of an active standing tour whose default driver is selected goes to that driver, one vehicle per standing driver (the heaviest group gets the largest vehicle, reload trips if it does not fit). The other customers go to the remaining drivers and vehicles; when none are left, to the standing tour with the nearest customer. More standing drivers than vehicles, or no standing tour for the selected drivers: planned freely as before.
 
+#### NUD-210 · Order inbox: many photos at once, read in the background, checked one by one
+**Status:** done · **depends_on:** 207, 031, 150 · Source: owner 2026-11-13/14 ("es sind auch viele bestellungen am tag also sicher 100", then "ja" to the inbox).
+
+**Goal:** About 100 orders a day arrive as photos of chat messages. Attaching each one in the order form, pressing "Mit KI auslesen" and picking the customer is too slow. The office uploads all photos in one go; the app reads each one and proposes the customer; the office only checks and confirms.
+
+**Acceptance criteria**
+- [x] "Foto-Eingang" (`/admin/orders/inbox`, button with a count on the orders page): many photos are picked, dropped or pasted at once; each becomes a row with its picture. Uploads run three at a time with a progress line; a photo that fails is counted and named, the others go on.
+- [x] The server reads the photos in the background (four at a time, Claude through `OrderExtractor`), the page only asks every 2.5 s while something is uploaded or read. Closing the page does not stop the reading; a reading that died (restart) is taken over after three minutes. A photo is never read twice at the same time and never read again once it is read.
+- [x] The model returns the sender's name as it stands on the photo (`customer`, words, never an id). The app proposes the customer: first the customer an earlier saved order with the same name on its photo was booked on, otherwise the one active customer whose name, company or abbreviation matches. Two candidates or none: no proposal, the row says "Kunde fehlt" or shows the name from the photo.
+- [x] "Prüfen" opens the order form with the photo beside it, the proposed customer and the read lines filled in, uncertain lines marked, unmatched lines and the customer's remark shown. "Bestätigen und weiter" saves the order and opens the next photo; "Überspringen" leaves it in the inbox; "Verwerfen" throws it away. The save buttons stay in reach on a desktop (solid sticky bar), on a phone they stay in the flow.
+- [x] Nothing is an order before the office saves the form. A photo saved by two people at once becomes one order (`screenshot_in_use` for the second).
+- [x] Discarding is immediate and can be taken back from the toast for ten minutes; after that the photo is deleted from the storage and the database.
+- [x] Without `ANTHROPIC_API_KEY` the inbox still works: photos wait as "Nicht gelesen" and are typed next to the picture. A photo the model could not read is "Nicht lesbar" with "Nochmal" and can be typed as well.
+- [x] de, en, zh-Hans; checked at 390 px and 1280 px, light and dark; no row menu, the two row actions are buttons with a word.
+
+**Implementation notes (NUD-210)**
+- An inbox photo is a `Screenshot` row with `inboxStatus` (migration `20261114000000_order_inbox`); no new table. `src/server/order-inbox.ts` (add, list, claim, read, drain, propose, discard, restore, retry, purge), `order-inbox-reader.ts` (one reader per process), `order-inbox-actions.ts` (five ADMIN actions, reading scheduled with `after()`), `order-queries.ts` (`orderInboxQuery`, `inboxPrefillQuery`, `inboxCountQuery`). `createOrder` attaches the inbox row instead of creating a second `Screenshot` and marks it `DONE` in the same transaction.
+- UI: `src/components/admin/order-inbox.tsx`, page `orders/inbox/page.tsx`, `OrderForm` prop `inbox` (page `orders/new?inbox=<id>`, `key={inbox.id}`).
+- `matchCustomer` (pure, `src/domain/order-extraction.ts`): exact name/company/abbreviation wins, then a name contained as whole words; a tie proposes nobody.
+- Tests: `order-inbox.integration.test.ts` (13, scripted extractor), `order-inbox-reader.test.ts`, `order-extraction.test.ts` (`customer`, `matchCustomer`), `order-inbox.test.tsx` (8), `order-form.inbox.test.tsx` (8), `tests/e2e/order-inbox.spec.ts` (desktop + mobile, without a model key), rows in `authz-matrix.test.ts`.
+- Checked locally through the real SDK path against a local stand-in for the Claude API (canned answers): upload, reading, proposal, confirm and next, skip, discard and undo, retry, learned customer. Not checked: a real photo against the real model (no key in the build session; see the open box of NUD-207).
+- Follow-ups, not built: photos arriving by themselves (WhatsApp/e-mail forwarding is ruled out by D26), confirming without a look (the owner's rule: the office always checks), a separate count of unread photos in the navigation.
+
 ## 9. Decision log (append-only, one line per decision taken during implementation)
 
 | Date | Ticket | Decision | Reason |
@@ -4628,6 +4652,11 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 | 2026-11-13 | NUD-209 | An order is off the monthly bill when it was on a problem stop and on no delivered stop | Owner: only what was delivered is billed; an order without a tour stays, the office delivered it otherwise |
 | 2026-11-13 | NUD-209 | The office records received cash on the stop itself (`via: "office"`), no separate ledger | One amount per stop keeps the open cash list, the driver app and the audit trail consistent |
 | 2026-11-13 | NUD-209 | "Touren planen" gives each standing tour to its default driver in a vehicle of its own; the rest is planned freely or joins the nearest standing tour | Owner: the plan put 19 of 20 stops on one driver; the standing tours are how the office splits the day (amends D24/D31) |
+| 2026-11-14 | NUD-210 | An inbox photo is a `Screenshot` row with a status, not a new table | The photo becomes the order's screenshot when it is saved; one row means no copy, the retention of screenshots (NUD-094) and the backup lists stay as they are. |
+| 2026-11-14 | NUD-210 | Photos are read by the server after the response (`after()`), one reader per process, claims in the database; the browser only polls | Server actions of one browser run one after the other, so reading from the page would block checking; with claims a second instance or a restart cannot read a photo twice. No queue service for 100 photos a day. |
+| 2026-11-14 | NUD-210 | The model returns the sender's name as words; the app matches it, and learns from saved orders | The customer list (names, addresses) is not sent to Anthropic, and a chat name ("Luca 🍕") rarely equals the customer's name: the office picks once, the next photo with that name is proposed. |
+| 2026-11-14 | NUD-210 | Nothing is confirmed automatically, however sure the model is | D26: the office always reviews. The inbox saves typing and searching, not the look. |
+| 2026-11-14 | NUD-210 | A discarded photo is kept for ten minutes, then deleted for good | Long enough for "Rückgängig" after a slip, short enough that a wrong upload (a private photo) does not stay. |
 
 ## 10. Open questions for the client (do not block on these – use placeholders)
 

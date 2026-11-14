@@ -1,11 +1,6 @@
 import type { LocalizedText } from "@/lib/localized-text";
 
-import {
-  mergeOrderLines,
-  type OrderLine,
-  parseCalendarDate,
-  parseQuantity,
-} from "./order";
+import { mergeOrderLines, type OrderLine, parseCalendarDate, parseQuantity } from "./order";
 import type { ExtractionAnswer } from "./order-extraction-answer";
 
 export {
@@ -394,7 +389,7 @@ export function buildExtractionPrompt(
     "- `quantity` = whole number only. Never a decimal, never a range; if a range is written, take the lower bound.",
     "- Mention the packaging unit in `label` whenever the message does (Sackerl/Kiste, 袋/箱, kg) - the unit tells the products apart.",
     "- `window`: calendar dates as YYYY-MM-DD plus optional HH:MM times, only if the message asks for a time span. Otherwise null.",
-    "- `window` is an object or null, never a string: convert \"morgen vormittag\" to a date plus 08:00-12:00, and if you cannot, put those words into `note` and set `window` to null.",
+    '- `window` is an object or null, never a string: convert "morgen vormittag" to a date plus 08:00-12:00, and if you cannot, put those words into `note` and set `window` to null.',
     "- Never guess: leave a product out of `lines` when you cannot read it, and put what you understood into `note`.",
     "- `confidence` per line and overall: 0..1, honest.",
     "- `customer`: the sender's name exactly as written on the picture (the chat title at the top of a messenger screenshot, a signature, a letterhead or stamp). Null when no name is visible. Never guess a name and never take one from the catalog.",
