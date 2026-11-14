@@ -2119,62 +2119,45 @@ export const HAND_OFF: HandOffContent = {
     {
       id: "problem-melden",
       area: "fahrer",
-      title: { de: "Problem melden", zh: "报告问题" },
+      title: { de: "Problem: Büro anrufen", zh: "有问题：打电话" },
       summary: {
-        de: "Einen Stopp als Problem markieren, einen Grund wählen und freiwillig etwas dazu schreiben.",
-        zh: "把站点标记为有问题，选择原因并可选填写说明。",
+        de: "Bei einem Problem die Nummer des Büros anrufen. Es wird nichts gemeldet, der Stopp bleibt offen.",
+        zh: "遇到问题时拨打办公室电话。不会提交任何报告，站点保持未完成。",
       },
       path: {
-        de: "Stopp-Details → «Problem melden»",
-        zh: "站点详情 →「报告问题」",
+        de: "Stopp-Details → «Problem» → «Anrufen»",
+        zh: "站点详情 →「有问题」→「拨打电话」",
       },
       search: {
-        de: [
-          "problem melden",
-          "problem",
-          "grund",
-          "geschlossen",
-          "niemand anwesend",
-          "kein parkplatz",
-          "annnahme verweigert",
-          "anmerkung",
-        ],
-        zh: ["报告问题", "问题", "原因", "店铺关门", "无人在场", "拒收", "补充说明"],
+        de: ["problem", "problem melden", "anrufen", "telefonnummer", "geschlossen", "niemand da"],
+        zh: ["有问题", "报告问题", "打电话", "电话号码"],
       },
       steps: [
         {
           text: {
-            de: "In den Stopp-Details «Problem melden» antippen.",
-            zh: "在站点详情中点击「报告问题」。",
+            de: "In den Stopp-Details «Problem» antippen.",
+            zh: "在站点详情中点击「有问题」。",
           },
-          label: "Problem melden",
+          label: "Problem",
         },
         {
           text: {
-            de: "Im Dialog «Was ist das Problem?» einen der sieben Gründe wählen: «Geschlossen», «Niemand anwesend», «Kein Parkplatz», «Falsche Menge», «Annahme verweigert», «Adresse nicht gefunden» oder «Sonstiges».",
-            zh: "在「遇到什么问题？」对话框中选择七个原因之一：「店铺关门」「无人在场」「无处停车」「数量不符」「拒收」「找不到地址」或「其他」。",
+            de: "Im Fenster «Problem? Ruf an» steht die Nummer des Büros. «Anrufen» startet den Anruf.",
+            zh: "在「有问题？请打电话」窗口中显示办公室的号码。点击「拨打电话」即可拨打。",
           },
-          label: "Geschlossen",
+          label: "Anrufen",
         },
         {
           text: {
-            de: "In «Anmerkung (freiwillig)» bei Bedarf einen kurzen Text schreiben, z. B. «Tor war zu».",
-            zh: "需要时在「补充说明（可不填）」中写一句简短说明，例如「大门没开」。",
+            de: "Mit «Schließen» zurück zum Stopp.",
+            zh: "点击「关闭」返回站点。",
           },
-          label: "Anmerkung (freiwillig)",
-        },
-        {
-          text: {
-            de: "Mit «Problem melden» absenden.",
-            zh: "点击「报告问题」提交。",
-          },
-          label: "Problem melden",
-          result: "Problem gemeldet: {name}",
+          label: "Schließen",
         },
       ],
       after: {
-        de: "Die Anmerkung wird auf Deutsch ans Büro übertragen und dort übersetzt; das Büro sieht Original und Übersetzung.",
-        zh: "补充说明会以德语传回办公室并在那里翻译；办公室会看到原文和译文。",
+        de: "Die Nummer stellt das Büro unter Einstellungen → «Problem beim Fahrer» ein.",
+        zh: "办公室在「设置」→「司机遇到问题」中设置这个号码。",
       },
       route: "/de/driver/stops/[stopId]",
     },

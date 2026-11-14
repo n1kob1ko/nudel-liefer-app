@@ -68,6 +68,7 @@ const INITIAL: SettingsFormValues = {
   recurringLeadDays: 14,
   deliveryWeekdays: [1, 2, 3, 4, 5],
   departureChecklist: [],
+  problemPhone: "+43 1 000 00 00",
 };
 
 const TILES = { url: "https://tiles.test/{z}/{x}/{y}.png", attribution: "test" };
@@ -146,6 +147,7 @@ describe("SettingsForm", () => {
         serviceMinutesPerStop: 15,
         defaultLoadingMinutes: 20,
         recurringLeadDays: 14,
+        problemPhone: "+43 1 000 00 00",
         deliveryWeekdays: [1, 2, 3, 4, 5],
         departureChecklist: [],
       }),

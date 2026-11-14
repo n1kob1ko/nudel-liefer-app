@@ -92,6 +92,7 @@ function renderIn(
         tourStops={props.tourStops ?? tourOf("PENDING", "PENDING", "PENDING")}
         tourStatus={tourStatus}
         timezone="Europe/Vienna"
+        problemPhone="+43 660 123 45 67"
         offline={props.offline}
       />
     </NextIntlClientProvider>,
@@ -136,26 +137,16 @@ describe.each(Object.keys(LOCALES))("StopStatusActions in %s", (locale) => {
     await waitFor(() => expect(mocks.push).toHaveBeenLastCalledWith("/driver/stops/s1"));
   });
 
-  it("reports a problem with a reason and a free text", async () => {
+  it("'Problem' only shows the number to call and reports nothing (owner 2026-11-14)", async () => {
     renderIn(locale);
     fireEvent.click(screen.getByTestId("btn-problem"));
-    const submit = await screen.findByTestId("problem-submit");
-    expect(submit).toBeDisabled(); // a reason is required
-    const reasons = within(screen.getByTestId("problem-reasons")).getAllByRole("button");
-    expect(reasons).toHaveLength(7);
-    fireEvent.click(screen.getByTestId("reason-NO_PARKING"));
-    expect(screen.getByTestId("reason-NO_PARKING")).toHaveAttribute("aria-pressed", "true");
-    fireEvent.change(screen.getByTestId("problem-note"), { target: { value: "  Baustelle  " } });
-    fireEvent.click(submit);
-    await waitFor(() => expect(mocks.enqueue).toHaveBeenCalledTimes(1));
-    expect(mocks.enqueue).toHaveBeenCalledWith({
-      type: "problem",
-      stopId: "s1",
-      customerName: "Trattoria Roma",
-      reason: "NO_PARKING",
-      note: "Baustelle",
-    });
-    // NUD-176: reporting a problem stays on the stop as well.
+    const sheet = await screen.findByTestId("problem-sheet");
+    expect(within(sheet).getByTestId("problem-phone")).toHaveTextContent("+43 660 123 45 67");
+    expect(within(sheet).getByTestId("problem-call")).toHaveAttribute("href", "tel:+436601234567");
+    expect(within(sheet).queryByRole("textbox")).toBeNull();
+    fireEvent.click(within(sheet).getByTestId("problem-cancel"));
+    await waitFor(() => expect(screen.queryByTestId("problem-sheet")).toBeNull());
+    expect(mocks.enqueue).not.toHaveBeenCalled();
     expect(mocks.push).not.toHaveBeenCalled();
   });
 

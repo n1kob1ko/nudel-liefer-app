@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { SettingsForm, type SettingsFormValues } from "@/components/admin/settings-form";
 import { LoadingSkeleton } from "@/components/shared/states";
+import { DEFAULT_PROBLEM_PHONE } from "@/domain/problem-phone";
 import { DEFAULT_TIMEZONE } from "@/lib/format";
 import { getMapTileConfig } from "@/lib/map-config";
 import { requirePageActor } from "@/server/auth/page-guards";
@@ -20,6 +21,7 @@ const DEFAULTS: SettingsFormValues = {
   recurringLeadDays: 14,
   deliveryWeekdays: [1, 2, 3, 4, 5],
   departureChecklist: [],
+  problemPhone: DEFAULT_PROBLEM_PHONE,
 };
 
 async function Guarded({ locale }: { locale: string }) {
@@ -42,6 +44,7 @@ async function Guarded({ locale }: { locale: string }) {
           id: item.id,
           text: item.text.de ?? "",
         })),
+        problemPhone: settings.problemPhone,
       }
     : DEFAULTS;
   // Computed on the server so server and client render the same option list.

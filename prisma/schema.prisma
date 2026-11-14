@@ -158,6 +158,8 @@ model Settings {
   /// Loading time assumed when the driver skipped the departure checklist (NUD-152, D28): the
   /// measured working time starts `defaultLoadingMinutes` before `Tour.departedAt`.
   defaultLoadingMinutes Int     @default(20)
+  /// Number the driver calls from "Problem" (owner 2026-11-14: a problem is a phone call, no report).
+  problemPhone          String  @default("+43 1 000 00 00")
 }
 
 model Customer {

@@ -40,7 +40,13 @@ export type DriverDay = { primary: DriverToday | null; others: DriverToday[] };
 export async function getDriverDay(
   db: Db,
   actor: Pick<Actor, "id" | "role" | "locale">,
-  options: { now: Date; timezone: string; serviceMinutesPerStop: number; locale?: AppLocale },
+  options: {
+    now: Date;
+    timezone: string;
+    serviceMinutesPerStop: number;
+    problemPhone?: string;
+    locale?: AppLocale;
+  },
 ): Promise<DriverDay> {
   const response = await getDriverTourResponse(db, actor, options);
   const locale = options.locale ?? (actor.locale as AppLocale);
@@ -54,7 +60,13 @@ export async function getDriverDay(
 export async function getDriverToday(
   db: Db,
   actor: Pick<Actor, "id" | "role" | "locale">,
-  options: { now: Date; timezone: string; serviceMinutesPerStop: number; locale?: AppLocale },
+  options: {
+    now: Date;
+    timezone: string;
+    serviceMinutesPerStop: number;
+    problemPhone?: string;
+    locale?: AppLocale;
+  },
 ): Promise<DriverToday | null> {
   return (await getDriverDay(db, actor, options)).primary;
 }
@@ -67,6 +79,7 @@ export async function driverDayQuery(locale: AppLocale): Promise<DriverDay> {
     now: new Date(),
     timezone: settings?.timezone ?? "Europe/Vienna",
     serviceMinutesPerStop: settings?.serviceMinutesPerStop ?? 10,
+    problemPhone: settings?.problemPhone,
     locale,
   });
 }

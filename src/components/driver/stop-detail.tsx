@@ -305,6 +305,7 @@ export function StopDetail({
           tourStops={tourStops}
           tourStatus={detail.tourStatus}
           timezone={detail.timezone}
+          problemPhone={detail.problemPhone}
           offline={offline}
         />
       </div>

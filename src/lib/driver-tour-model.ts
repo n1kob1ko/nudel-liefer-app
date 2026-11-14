@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { neighbourStops } from "@/domain/driver-stop";
 import type { PhotoKind } from "@/domain/photos";
+import { DEFAULT_PROBLEM_PHONE } from "@/domain/problem-phone";
 import { calendarDayIn } from "@/domain/settings";
 
 import {
@@ -177,6 +178,8 @@ export const driverTourResponseSchema = z.object({
   generatedAt: z.string(),
   timezone: z.string().min(1),
   serviceSecondsPerStop: z.number(),
+  /** Number the driver calls from "Problem" (owner 2026-11-14); older cached copies get the dummy. */
+  problemPhone: z.string().min(1).default(DEFAULT_PROBLEM_PHONE),
   /**
    * The active tour: the newest open tour of the day, or the newest completed one when the day is
    * finished. `null`: no tour released for this driver today.
@@ -307,6 +310,8 @@ export type DriverStopDetail = {
   locale: AppLocale;
   /** Factory time zone (for ETA display). */
   timezone: string;
+  /** Number the driver calls from "Problem" (owner 2026-11-14). */
+  problemPhone: string;
   stop: TodayStop;
   /** 1-based position in the tour and number of stops. */
   position: number;
@@ -476,6 +481,7 @@ export function toDriverStopDetail(
     tourStatus: tour.status,
     locale,
     timezone: response.timezone,
+    problemPhone: response.problemPhone,
     stop: todayStop(stop, locale),
     position: nav.position,
     total: nav.total,

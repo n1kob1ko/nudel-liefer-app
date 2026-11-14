@@ -1295,6 +1295,11 @@
         "remove": "Punkt {n} entfernen",
         "empty": "Keine festen Punkte.",
         "limit": "Höchstens {max} Punkte."
+      },
+      "problem": {
+        "heading": "Problem beim Fahrer",
+        "phone": "Telefonnummer",
+        "phoneHint": "Tippt der Fahrer auf „Problem“, sieht er diese Nummer und kann sie direkt anrufen."
       }
     },
     "orders": {
@@ -2326,7 +2331,7 @@
     "home": {
       "title": "Heute",
       "welcome": "Willkommen, {name}.",
-      "todayCount": "{open} offen · {problems, plural, =0 {keine Probleme} one {# Problem} other {# Probleme}}",
+      "todayCount": "{open} offen{problems, plural, =0 {} one { · # Problem} other { · # Probleme}}",
       "endTime": "Ende ca. {time}",
       "nextStop": "Nächster Stopp",
       "nextStopEta": "Ankunft ca. {time}",
@@ -2378,7 +2383,7 @@
       "updatedDescription": "Das Büro hat die Tour geändert. Bitte die markierten Stopps prüfen. Angezeigt sind immer die aktuellen Mengen.",
       "removedStops": "Entfernte Stopps",
       "updatedConfirm": "Verstanden",
-      "finishedSummary": "{delivered} geliefert · {problems, plural, =0 {kein Problem} one {# Problem} other {# Probleme}}",
+      "finishedSummary": "{delivered} geliefert{problems, plural, =0 {} one { · # Problem} other { · # Probleme}}",
       "openGroup": "Offen ({count})",
       "doneGroup": "Erledigt ({count})",
       "expandDone": "Erledigte Stopps anzeigen",
@@ -2466,16 +2471,13 @@
       "delivered": "Geliefert",
       "problem": "Problem",
       "actionsLabel": "Stopp abschließen",
-      "problemTitle": "Was ist das Problem?",
-      "problemDescription": "Grund auswählen. Ein Text ist freiwillig.",
+      "problemTitle": "Problem? Ruf an",
+      "problemDescription": "Ruf diese Nummer an, dort hilft man dir weiter.",
       "noteLabel": "Anmerkung (freiwillig)",
-      "notePlaceholder": "z. B. Tor war zu",
-      "submit": "Problem melden",
       "cancel": "Abbrechen",
       "undo": "Rückgängig",
       "undone": "Rückgängig gemacht",
       "deliveredToast": "Geliefert: {name}",
-      "problemToast": "Problem gemeldet: {name}",
       "doneDelivered": "Geliefert",
       "doneProblem": "Problem: {reason}",
       "doneAt": "um {time}",
@@ -2495,7 +2497,9 @@
         "changed_by_office": "Das Büro hat diesen Stopp geändert."
       },
       "offlineNotice": "Offline: Ihre Eingabe wird auf dem Handy gespeichert und automatisch gesendet, sobald wieder Internet da ist.",
-      "queuedHint": "Wartet auf Übertragung"
+      "queuedHint": "Wartet auf Übertragung",
+      "call": "Anrufen",
+      "close": "Schließen"
     },
     "install": {
       "title": "App installieren",
@@ -2686,7 +2690,7 @@
       "sheet": {
         "title": "Bar kassieren",
         "body": "{name} zahlt bar: {amount}. Wie viel hast du bekommen?",
-        "nothing": "Ohne kassiertes Geld gilt der Stopp nicht als geliefert. Zahlt der Kunde nicht, „Problem“ melden.",
+        "nothing": "Ohne kassiertes Geld gilt der Stopp nicht als geliefert. Zahlt der Kunde nicht, tipp auf „Problem“ und ruf an.",
         "confirm": "Kassiert und geliefert"
       }
     },

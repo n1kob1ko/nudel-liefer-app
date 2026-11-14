@@ -1295,6 +1295,11 @@
         "remove": "删除事项 {n}",
         "empty": "没有固定事项。",
         "limit": "最多 {max} 项。"
+      },
+      "problem": {
+        "heading": "司机遇到问题",
+        "phone": "电话号码",
+        "phoneHint": "司机点“有问题”时会看到这个号码，并可直接拨打。"
       }
     },
     "orders": {
@@ -2326,7 +2331,7 @@
     "home": {
       "title": "今天",
       "welcome": "你好，{name}。",
-      "todayCount": "{open} 个待送 · {problems, plural, =0 {无问题} other {# 个问题}}",
+      "todayCount": "{open} 个待送{problems, plural, =0 {} other { · # 个问题}}",
       "endTime": "约 {time} 结束",
       "nextStop": "下一站",
       "nextStopEta": "约 {time} 到达",
@@ -2378,7 +2383,7 @@
       "updatedDescription": "办公室更改了线路。请查看标记的站点。显示的始终是最新数量。",
       "removedStops": "已移除的站点",
       "updatedConfirm": "我知道了",
-      "finishedSummary": "{delivered} 站已送达 · {problems, plural, =0 {无问题} other {# 站有问题}}",
+      "finishedSummary": "{delivered} 站已送达{problems, plural, =0 {} other { · # 站有问题}}",
       "openGroup": "待送 ({count})",
       "doneGroup": "已完成 ({count})",
       "expandDone": "显示已完成的站点",
@@ -2466,16 +2471,13 @@
       "delivered": "已送达",
       "problem": "有问题",
       "actionsLabel": "完成此站",
-      "problemTitle": "遇到什么问题？",
-      "problemDescription": "请选择原因，文字说明可以不填。",
+      "problemTitle": "有问题？请打电话",
+      "problemDescription": "拨打这个号码，会有人帮你。",
       "noteLabel": "补充说明（可不填）",
-      "notePlaceholder": "例如：大门没开",
-      "submit": "报告问题",
       "cancel": "取消",
       "undo": "撤销",
       "undone": "已撤销",
       "deliveredToast": "已送达：{name}",
-      "problemToast": "已报告问题：{name}",
       "doneDelivered": "已送达",
       "doneProblem": "问题：{reason}",
       "doneAt": "{time} 完成",
@@ -2495,7 +2497,9 @@
         "changed_by_office": "办公室修改了这个站点。"
       },
       "offlineNotice": "离线：您的操作已保存在手机上，联网后会自动发送。",
-      "queuedHint": "等待发送"
+      "queuedHint": "等待发送",
+      "call": "拨打电话",
+      "close": "关闭"
     },
     "install": {
       "title": "安装应用",
@@ -2686,7 +2690,7 @@
       "sheet": {
         "title": "收取现金",
         "body": "{name} 现金付款：{amount}。你收到了多少？",
-        "nothing": "未收取现金，此站点不算已送达。客户不付款时，请报告问题。",
+        "nothing": "未收取现金，此站点不算已送达。客户不付款时，请点“有问题”并打电话。",
         "confirm": "已收款并送达"
       }
     },

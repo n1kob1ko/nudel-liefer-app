@@ -1295,6 +1295,11 @@
         "remove": "Remove item {n}",
         "empty": "No fixed items.",
         "limit": "At most {max} items."
+      },
+      "problem": {
+        "heading": "Driver problems",
+        "phone": "Phone number",
+        "phoneHint": "When the driver taps “Problem”, they see this number and can call it directly."
       }
     },
     "orders": {
@@ -2326,7 +2331,7 @@
     "home": {
       "title": "Today",
       "welcome": "Welcome, {name}.",
-      "todayCount": "{open} open · {problems, plural, =0 {no problems} one {# problem} other {# problems}}",
+      "todayCount": "{open} open{problems, plural, =0 {} one { · # problem} other { · # problems}}",
       "endTime": "Finish at approx. {time}",
       "nextStop": "Next stop",
       "nextStopEta": "Arrival approx. {time}",
@@ -2378,7 +2383,7 @@
       "updatedDescription": "The office changed the tour. Please check the marked stops. The current quantities are always shown.",
       "removedStops": "Removed stops",
       "updatedConfirm": "Understood",
-      "finishedSummary": "{delivered} delivered · {problems, plural, =0 {no problem} one {# problem} other {# problems}}",
+      "finishedSummary": "{delivered} delivered{problems, plural, =0 {} one { · # problem} other { · # problems}}",
       "openGroup": "Open ({count})",
       "doneGroup": "Done ({count})",
       "expandDone": "Show completed stops",
@@ -2466,16 +2471,13 @@
       "delivered": "Delivered",
       "problem": "Problem",
       "actionsLabel": "Complete stop",
-      "problemTitle": "What is the problem?",
-      "problemDescription": "Choose a reason. A text is optional.",
+      "problemTitle": "Problem? Call",
+      "problemDescription": "Call this number, they will help you.",
       "noteLabel": "Comment (optional)",
-      "notePlaceholder": "e.g. the gate was closed",
-      "submit": "Report problem",
       "cancel": "Cancel",
       "undo": "Undo",
       "undone": "Undone",
       "deliveredToast": "Delivered: {name}",
-      "problemToast": "Problem reported: {name}",
       "doneDelivered": "Delivered",
       "doneProblem": "Problem: {reason}",
       "doneAt": "at {time}",
@@ -2495,7 +2497,9 @@
         "changed_by_office": "The office changed this stop."
       },
       "offlineNotice": "Offline: your entry is saved on the phone and sent automatically as soon as the internet is back.",
-      "queuedHint": "Waiting to be sent"
+      "queuedHint": "Waiting to be sent",
+      "call": "Call",
+      "close": "Close"
     },
     "install": {
       "title": "Install the app",
@@ -2686,7 +2690,7 @@
       "sheet": {
         "title": "Collect cash",
         "body": "{name} pays cash: {amount}. How much did you get?",
-        "nothing": "Without collected cash the stop does not count as delivered. If the customer does not pay, report a problem.",
+        "nothing": "Without collected cash the stop does not count as delivered. If the customer does not pay, tap “Problem” and call.",
         "confirm": "Collected and delivered"
       }
     },
