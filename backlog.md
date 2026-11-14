@@ -365,10 +365,11 @@ Read rule: `pick(text, locale)` returns the requested locale; if empty, the clos
 | NUD-204 | "PIN drucken" printed an empty page | M2.8 | 008 | done |
 | NUD-205 | The driver sees the tours released for the coming days | M2.8 | 051 | done |
 | NUD-206 | Delete a user account for good (not only deactivate) | M2.8 | 008 | done |
-| NUD-207 | Order photos and translations are read by the Claude API instead of OpenRouter | M2.8 | 150 | in-progress |
+| NUD-207 | Order photos and translations are read by the Claude API instead of OpenRouter | M2.8 | 150 | done |
 | NUD-208 | Findings of a simulated three-day run (toasts, cash on the quick "Geliefert", offline chip, release text) | M2.8 | 196 | done |
 | NUD-209 | The owner's three decisions after the simulation: bill without undelivered orders, office settles cash, plan by standing tours | M2.8 | 196, 186, 147 | done |
 | NUD-210 | Order inbox: many photos at once, read in the background, checked one by one | M2.8 | 207, 031, 150 | done |
+| NUD-211 | No "KI" / "AI" in the texts of the app: reading is "automatisch" | M2.8 | 150, 210 | done |
 | NUD-100 | AI screenshot extraction (review required) | M3 | 031 | superseded → NUD-150 |
 | NUD-101 | Recurring / standing orders | M3 | 032 | superseded → NUD-149 |
 | NUD-102 | Multiple drivers / tours per day | M3 | 043 | superseded → NUD-147 |
@@ -4089,7 +4090,7 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 - Tests: `user-delete.test.ts`, `user-delete.integration.test.ts`, `tests/e2e/drivers.spec.ts`.
 
 #### NUD-207 · Order photos and translations are read by the Claude API instead of OpenRouter
-**Status:** in-progress · **depends_on:** 150 · Source: owner 2026-11-13 ("daweil ist die erkennung von bestellungen per foto mit openrouter verbunden aber ich will das ändern auf claude api").
+**Status:** done · **depends_on:** 150 · Source: owner 2026-11-13 ("daweil ist die erkennung von bestellungen per foto mit openrouter verbunden aber ich will das ändern auf claude api").
 
 **Goal:** "Mit KI auslesen" and the translation of notes talk to Anthropic's Claude API directly. OpenRouter is gone from the code and the configuration.
 
@@ -4099,7 +4100,7 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 - [x] A declined or cut-off answer, an answer outside the contract and an image type Claude cannot read never become a draft.
 - [x] The translator's language-model slot (Serbian; every language without a DeepL key) uses the same client.
 - [x] No OpenRouter code, variable or test is left; `.env.example`, `docs/env.md`, `docs/privacy.md`, `docs/orders.md`, `docs/i18n.md`, `docs/deploy-railway.md` describe Claude.
-- [ ] A real photo is read on Railway. Open until the owner has entered the key: the build environment has none, so the request was only checked against the SDK's types and a recorded HTTP exchange.
+- [x] A real photo is read on Railway. Done 2026-11-14: the owner entered `ANTHROPIC_API_KEY` himself and sent a screenshot of the live order form with lines read from a photo ("Erkannt als: Kisten Nudeln", "Erkannt als: Sackerl Nudeln"). Read by the owner in his browser; the build session cannot reach the live app.
 
 **Implementation notes (NUD-207)**
 - `src/server/claude/client.ts` (`ClaudeClient.complete`, error mapping, one log line per failed request without prompt, photo or key), `src/server/order-extractor/claude.ts`, `src/server/translator/claude.ts`. Removed: `src/server/openrouter/`, both `openrouter.ts` providers, the six `OPENROUTER_*` variables.
@@ -4152,6 +4153,17 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 - Tests: `order-inbox.integration.test.ts` (13, scripted extractor), `order-inbox-reader.test.ts`, `order-extraction.test.ts` (`customer`, `matchCustomer`), `order-inbox.test.tsx` (8), `order-form.inbox.test.tsx` (8), `tests/e2e/order-inbox.spec.ts` (desktop + mobile, without a model key), rows in `authz-matrix.test.ts`.
 - Checked locally through the real SDK path against a local stand-in for the Claude API (canned answers): upload, reading, proposal, confirm and next, skip, discard and undo, retry, learned customer. Not checked: a real photo against the real model (no key in the build session; see the open box of NUD-207).
 - Follow-ups, not built: photos arriving by themselves (WhatsApp/e-mail forwarding is ruled out by D26), confirming without a look (the owner's rule: the office always checks), a separate count of unread photos in the navigation.
+
+#### NUD-211 · No "KI" / "AI" in the texts of the app
+**Status:** done · **depends_on:** 150, 210 · Source: owner 2026-11-14 ("es soll stehen automatisch auslesen statt mit KI generell soll nichts mit KI stehen sondern besser automatisch oder so").
+
+**Acceptance criteria**
+- [x] The button is "Automatisch auslesen" (en "Read automatically", zh-Hans "自动识别"). The hint without a key, the two error texts, the low-certainty notice, the unclear delivery time and the line under "Nachricht oder Screenshot" no longer name an AI; they say what happened ("Unsicher erkannt", "ließ sich nicht in ein Datum umrechnen").
+- [x] No message file contains the word "KI" (de), "AI" (en, cs, sr-Latn) or "AI" / "人工智能" (zh-Hans); `src/i18n/no-ai-wording.test.ts` keeps it that way.
+- [x] The missing-key text no longer mentions an API key: that is a matter for whoever runs the server, not for the office.
+
+**Implementation notes (NUD-211)**
+- Texts only (`messages/de.json`, `en.json`, `zh-Hans.json`, six keys each under `admin.orders.form`); keys, test ids and code names (`ai-extract`, `aiAvailable`) stay, they are not shown. The order inbox (NUD-210) never used the word. Docs name the button by its new label.
 
 ## 9. Decision log (append-only, one line per decision taken during implementation)
 
@@ -4657,6 +4669,7 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 | 2026-11-14 | NUD-210 | The model returns the sender's name as words; the app matches it, and learns from saved orders | The customer list (names, addresses) is not sent to Anthropic, and a chat name ("Luca 🍕") rarely equals the customer's name: the office picks once, the next photo with that name is proposed. |
 | 2026-11-14 | NUD-210 | Nothing is confirmed automatically, however sure the model is | D26: the office always reviews. The inbox saves typing and searching, not the look. |
 | 2026-11-14 | NUD-210 | A discarded photo is kept for ten minutes, then deleted for good | Long enough for "Rückgängig" after a slip, short enough that a wrong upload (a private photo) does not stay. |
+| 2026-11-14 | NUD-211 | The app never calls the reading "KI" / "AI"; it is "automatisch" | Owner's word. The office cares that the order is read, not how; "automatisch" also says that a look is still needed. Internal names keep `ai`. |
 
 ## 10. Open questions for the client (do not block on these – use placeholders)
 

@@ -100,7 +100,7 @@ describe("OrderForm AI draft (NUD-150)", () => {
     renderForm(false);
     expect(screen.getByTestId("ai-extract")).toBeDisabled();
     expect(screen.getByTestId("ai-disabled-hint")).toHaveTextContent(
-      "KI-Auslesen ist nicht konfiguriert",
+      "Automatisches Auslesen ist nicht eingerichtet",
     );
   });
 
@@ -172,7 +172,7 @@ describe("OrderForm AI draft (NUD-150)", () => {
     });
     // The window fields stay untouched, the office sets them by hand.
     expect(screen.getByTestId("order-window-from")).toHaveValue("2099-05-04");
-    expect(screen.getByTestId("ai-notice")).toHaveTextContent("Zeitangabe aus der Nachricht");
+    expect(screen.getByTestId("ai-notice")).toHaveTextContent("ließ sich nicht in ein Datum umrechnen");
   });
 
   it("shows the mapped error and keeps everything the office typed", async () => {
@@ -183,7 +183,7 @@ describe("OrderForm AI draft (NUD-150)", () => {
     fireEvent.click(screen.getByTestId("ai-extract"));
 
     expect(await screen.findByTestId("ai-error")).toHaveTextContent(
-      "KI-Auslesen ist nicht konfiguriert",
+      "Automatisches Auslesen ist nicht eingerichtet",
     );
     expect(screen.getByTestId("ai-source-text")).toHaveValue("Hallo");
     expect(screen.getByTestId("order-note")).toHaveValue("Kunde anrufen");

@@ -32,7 +32,7 @@ export function getOrderExtractor(env: Record<string, string | undefined> = proc
   return instance;
 }
 
-/** True when a real model is configured; without it the "Mit KI auslesen" button stays disabled. */
+/** True when a real model is configured; without it the "Automatisch auslesen" button stays disabled. */
 export function isOrderExtractorAvailable(
   env: Record<string, string | undefined> = process.env,
 ): boolean {

@@ -128,7 +128,7 @@ run), optionally `SCREENSHOT_RETENTION_DAYS`, `AUDIT_RETENTION_DAYS`, `DRIVER_TE
   `DEEPL_API_KEY` nothing is sent.
 - **Anthropic (Claude API)** (NUD-150, NUD-207, optional, `ANTHROPIC_API_KEY`): receives the **pasted
   customer message** and, when one is attached, the **order photo** (as an inline image) whenever the
-  office presses "Mit KI auslesen", **every photo uploaded to the order inbox** (NUD-210, read by
+  office presses "Automatisch auslesen", **every photo uploaded to the order inbox** (NUD-210, read by
   itself after the upload; the answer includes the sender's name as it stands on the photo, which is
   stored with the photo to propose the customer; the customer list is not sent), plus the customer note / driver text when a translation is needed
   that DeepL does not do (Serbian; every language when no DeepL key is set). This is raw message
