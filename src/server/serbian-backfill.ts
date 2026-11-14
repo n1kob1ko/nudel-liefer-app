@@ -6,7 +6,7 @@ import type { Translator } from "./translator/types";
 
 /**
  * One-off backfill of the Serbian (Latin) texts (NUD-150, decision log NUD-140): before the
- * OpenRouter translator existed, `completeTranslation` left `sr-Latn` empty **and not pending** -
+ * language-model translator existed, `completeTranslation` left `sr-Latn` empty **and not pending** -
  * deliberately, because a retry job that can never succeed would fill itself. Existing rows are
  * therefore invisible to the retry job and need one pass; everything saved from now on gets its
  * Serbian text immediately (or is queued when the provider is briefly down).

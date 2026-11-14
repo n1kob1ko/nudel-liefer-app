@@ -41,6 +41,11 @@ export const extractionAnswerSchema = z.object({
     )
     .max(MAX_EXTRACTION_LINES),
   window: extractionWindowSchema.nullish(),
+  /**
+   * The sender's name as it stands on the photo (chat title, signature, letterhead), NUD-210. The
+   * words, never an id: `matchCustomer` and the office decide which customer that is.
+   */
+  customer: z.string().trim().max(200).nullish(),
   /** Free text (notes, delivery hints) the office may want; never filled into the order by itself. */
   note: z.string().trim().max(1000).nullish(),
   confidence: z.number().min(0).max(1).default(0.5),

@@ -203,6 +203,7 @@ model Customer {
 
   photos                Photo[]
   orders                Order[]
+  suggestedScreenshots  Screenshot[]     @relation("ScreenshotSuggestedCustomer")
   stops                 Stop[]
   parkingSpots          ParkingSpot[]
   recurringOrders       RecurringOrder[]
@@ -365,16 +366,45 @@ model Product {
   recurringDayItems   RecurringOrderDayItem[]
 }
 
-model Screenshot {
-  id           String   @id @default(cuid())
-  storageKey   String
-  uploadedById String
-  createdAt    DateTime @default(now())
-  /// Filled by AI extraction in M3.
-  extraction   Json?
+/// Where a photo of the order inbox stands (NUD-210). `null` on `Screenshot.inboxStatus` means the
+/// photo was attached in the order form and never went through the inbox.
+enum ScreenshotInboxStatus {
+  /// Uploaded, waiting to be read.
+  NEW
+  /// A reader claimed it (`readStartedAt`); a claim older than a few minutes may be taken over.
+  READING
+  /// Read: `extraction` holds the answer, the office checks it.
+  READY
+  /// Reading failed (`readError`); the office can retry or type the order by hand.
+  FAILED
+  /// An order was saved from it.
+  DONE
+  /// The office threw it away (`discardedAt`); removed for good a little later.
+  DISCARDED
+}
 
-  uploadedBy User    @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
-  orders     Order[]
+model Screenshot {
+  id                  String                 @id @default(cuid())
+  storageKey          String
+  uploadedById        String
+  createdAt           DateTime               @default(now())
+  /// The model's answer for a photo of the order inbox (NUD-210): what it read, never an order.
+  extraction          Json?
+  inboxStatus         ScreenshotInboxStatus?
+  readStartedAt       DateTime?
+  /// Why reading failed: an `OrderDraftFailure` code, never the photo's content.
+  readError           String?
+  /// The sender's name as it stands on the photo (chat title, signature); the words, not an id.
+  customerHint        String?
+  /// The customer the app proposes for this photo; the office decides.
+  suggestedCustomerId String?
+  discardedAt         DateTime?
+
+  uploadedBy        User      @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  suggestedCustomer Customer? @relation("ScreenshotSuggestedCustomer", fields: [suggestedCustomerId], references: [id], onDelete: SetNull)
+  orders            Order[]
+
+  @@index([inboxStatus, createdAt])
 }
 
 model Order {

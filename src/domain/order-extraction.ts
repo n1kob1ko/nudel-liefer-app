@@ -1,11 +1,6 @@
 import type { LocalizedText } from "@/lib/localized-text";
 
-import {
-  mergeOrderLines,
-  type OrderLine,
-  parseCalendarDate,
-  parseQuantity,
-} from "./order";
+import { mergeOrderLines, type OrderLine, parseCalendarDate, parseQuantity } from "./order";
 import type { ExtractionAnswer } from "./order-extraction-answer";
 
 export {
@@ -172,6 +167,67 @@ export function matchProduct(
   };
 }
 
+/** What `matchCustomer` compares the name on the photo with. */
+export type CustomerName = {
+  id: string;
+  name: string;
+  companyName?: string | null;
+  abbreviation?: string | null;
+};
+
+/** Latin names shorter than this only match as the whole name ("Li" is inside too many words). */
+const MIN_CONTAINED_NAME = 4;
+
+/**
+ * The customer a name read from a photo belongs to (NUD-210), or `null`. Like `matchProduct` it
+ * never guesses: the name, the company name or the Abkürzung must be the whole text, or the name
+ * must stand in it as whole words ("Wok Palace Küche"); when two customers fit equally well nobody
+ * is proposed and the office picks. The result is a proposal, the office confirms it.
+ */
+export function matchCustomer(
+  hint: string | null | undefined,
+  customers: readonly CustomerName[],
+): string | null {
+  const normalized = normalizeLabel(hint ?? "");
+  if (normalized === "") return null;
+  let best: { id: string; score: number } | null = null;
+  let tied = false;
+  for (const customer of customers) {
+    const score = customerScore(normalized, customer);
+    if (score === 0) continue;
+    if (!best || score > best.score) {
+      best = { id: customer.id, score };
+      tied = false;
+    } else if (score === best.score) {
+      tied = true;
+    }
+  }
+  return best && !tied ? best.id : null;
+}
+
+function customerScore(normalizedHint: string, customer: CustomerName): number {
+  let best = 0;
+  const names = [customer.name, customer.companyName];
+  for (const value of [...names, customer.abbreviation]) {
+    const name = normalizeLabel(value ?? "");
+    if (name === "") continue;
+    // The whole text is the name: stronger than any name that is merely contained.
+    if (name === normalizedHint) best = Math.max(best, 1000 + name.length);
+  }
+  for (const value of names) {
+    const name = normalizeLabel(value ?? "");
+    if (name === "" || name === normalizedHint) continue;
+    if (containsName(normalizedHint, name)) best = Math.max(best, name.length);
+  }
+  return best;
+}
+
+/** Whole words for Latin names; anywhere for names without Latin letters (Chinese has no spaces). */
+function containsName(normalizedHint: string, name: string): boolean {
+  if (!/[a-z]/.test(name)) return name.length >= 2 && normalizedHint.includes(name);
+  return name.length >= MIN_CONTAINED_NAME && ` ${normalizedHint} `.includes(` ${name} `);
+}
+
 function unitBonus(product: CatalogProduct, hint: ProductUnit | null): number {
   if (!hint) return 0;
   return product.unit === hint ? 2 : -1;
@@ -333,13 +389,14 @@ export function buildExtractionPrompt(
     "- `quantity` = whole number only. Never a decimal, never a range; if a range is written, take the lower bound.",
     "- Mention the packaging unit in `label` whenever the message does (Sackerl/Kiste, 袋/箱, kg) - the unit tells the products apart.",
     "- `window`: calendar dates as YYYY-MM-DD plus optional HH:MM times, only if the message asks for a time span. Otherwise null.",
-    "- `window` is an object or null, never a string: convert \"morgen vormittag\" to a date plus 08:00-12:00, and if you cannot, put those words into `note` and set `window` to null.",
+    '- `window` is an object or null, never a string: convert "morgen vormittag" to a date plus 08:00-12:00, and if you cannot, put those words into `note` and set `window` to null.',
     "- Never guess: leave a product out of `lines` when you cannot read it, and put what you understood into `note`.",
     "- `confidence` per line and overall: 0..1, honest.",
+    "- `customer`: the sender's name exactly as written on the picture (the chat title at the top of a messenger screenshot, a signature, a letterhead or stamp). Null when no name is visible. Never guess a name and never take one from the catalog.",
     "",
     "Answer shape:",
     '{"lines":[{"label":"Nudeln Kiste","quantity":2,"confidence":0.9}],',
     '"window":{"from":"2026-10-29","to":"2026-10-29","fromTime":"08:00","toTime":"12:00","confidence":0.7},',
-    '"note":null,"confidence":0.9}',
+    '"customer":"Wok Palace","note":null,"confidence":0.9}',
   ].join("\n");
 }

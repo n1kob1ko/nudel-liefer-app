@@ -120,10 +120,12 @@ nothing is saved by the extraction itself.
   the label → catalog matcher (`matchProduct`, unit words decide between the two "Nudeln" products),
   `assembleDraft` (catalog ids only, ambiguous/unknown products are reported in `unmatched`, never
   guessed) and the prompt (`buildExtractionPrompt`).
-- `src/server/order-extractor/`: the `OrderExtractor` interface, `OpenRouterOrderExtractor` (vision
-  capable, `OPENROUTER_API_KEY`/`OPENROUTER_MODEL`) and `FakeOrderExtractor` (offline stand-in used by
-  the tests and the evaluation script). A missing key disables the button; the fake never reaches an
-  office user.
+- `src/server/order-extractor/`: the `OrderExtractor` interface, `ClaudeOrderExtractor` (the Claude
+  API through Anthropic's SDK, `ANTHROPIC_API_KEY`/`ANTHROPIC_MODEL`, NUD-207; the photo goes along
+  as a base64 image block, the answer comes back as structured output in the contract's JSON schema)
+  and `FakeOrderExtractor` (offline stand-in used by the tests and the evaluation script). A missing
+  key disables the button; the fake never reaches an office user. Claude reads JPEG, PNG, WebP and
+  GIF; the browser already turns every upload into a JPEG of at most 1600 px.
 - `src/server/order-extraction.ts`: loads the active catalog and the screenshot (signed URL → bytes),
   calls the extractor and returns `{ draft, extraction, model }`. Read-only.
 - `extractOrderDraftAction` (ADMIN) is the only entry point; a draft's raw answer travels back with
@@ -132,7 +134,41 @@ nothing is saved by the extraction itself.
 - Evaluation: `pnpm eval:order-extraction` (`--fake`, `--min 0.8`, `--today YYYY-MM-DD`) runs the 16
   anonymised messages in `tests/fixtures/order-extraction/samples.json` and reports the line accuracy;
   `src/server/order-extractor-eval.test.ts` keeps fixture and matcher in sync.
-- The same OpenRouter client is the Serbian slot of the translation chain (DeepL has no Serbian).
+- The same Claude client (`src/server/claude/`) is the Serbian slot of the translation chain (DeepL
+  has no Serbian).
+
+## Order inbox (NUD-210)
+
+About 100 orders a day arrive as photos. `/admin/orders/inbox` ("Foto-Eingang") takes many photos at
+once; the app reads each one and proposes the customer; the office checks every photo in the order
+form and confirms. **Nothing is an order before the form is saved.**
+
+- **A photo in the inbox is a `Screenshot` row** with `inboxStatus`: `NEW` (uploaded), `READING`
+  (claimed by a reader, `readStartedAt`), `READY` (`extraction` holds the model's answer,
+  `customerHint` the name on the photo, `suggestedCustomerId` the proposal), `FAILED` (`readError`),
+  `DONE` (an order was saved from it), `DISCARDED` (`discardedAt`). `null` is a screenshot attached
+  in the order form as before.
+- **Reading** (`src/server/order-inbox.ts`): `addInboxPhotos` stores the rows, the action schedules
+  `readInbox` with `after()`. `createInboxReader` allows one run per process; `drainInbox` claims
+  photos with a guarded `updateMany` (status and `readStartedAt`), four at a time, and takes over a
+  claim older than three minutes. `readInboxPhoto` writes its result only while the row is still
+  `READING`, so a photo that was saved or discarded meanwhile is left alone. Without
+  `ANTHROPIC_API_KEY` nothing is read: the photos wait and are typed by hand.
+- **Customer proposal** (`suggestCustomer`): the model returns `customer`, the sender's name exactly
+  as written on the picture (never an id; the customer list is not sent). First the customer of an
+  earlier saved order whose photo carried the same name (so a chat name is learned after one pick),
+  then `matchCustomer` over the active customers (exact name, company or abbreviation; otherwise the
+  name as whole words). A tie proposes nobody.
+- **Checking** (`/admin/orders/new?inbox=<id>`, `OrderForm` prop `inbox`): photo left, form right,
+  customer and lines filled in. `createOrder` connects the existing row and marks it `DONE` in the
+  transaction of the order; a second save of the same photo fails with `screenshot_in_use`. After a
+  save the form goes to `nextInboxPhoto` (read ones first, then failed ones, oldest first).
+- **Discard**: soft (`DISCARDED`), `restoreInboxPhoto` brings it back; `purgeDiscardedInboxPhotos`
+  deletes object and row ten minutes later (run with `after()` on the next inbox action).
+- Actions in `order-inbox-actions.ts` (all `requireRole("ADMIN")`): `addInboxPhotosAction`,
+  `inboxAction` (the list; the page polls it while something is uploaded or read),
+  `discardInboxPhotoAction`, `restoreInboxPhotoAction`, `retryInboxPhotoAction`.
+- Limits: 20 keys per add call (the page sends one per photo), 300 rows in the list.
 
 ## Late orders
 

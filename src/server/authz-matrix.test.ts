@@ -327,6 +327,23 @@ const MATRIX: Record<string, Row> = {
   "src/server/order-actions.ts#extractOrderDraftAction": adminAction("orders", async () =>
     (await import("./order-actions")).extractOrderDraftAction({ text: "2 Kiste Nudeln" }),
   ),
+  "src/server/order-inbox-actions.ts#addInboxPhotosAction": adminAction("orders", async () =>
+    (await import("./order-inbox-actions")).addInboxPhotosAction([
+      "screenshots/00000000-0000-4000-8000-000000000001.jpg",
+    ]),
+  ),
+  "src/server/order-inbox-actions.ts#inboxAction": adminAction("orders", async () =>
+    (await import("./order-inbox-actions")).inboxAction(),
+  ),
+  "src/server/order-inbox-actions.ts#discardInboxPhotoAction": adminAction("orders", async () =>
+    (await import("./order-inbox-actions")).discardInboxPhotoAction("x"),
+  ),
+  "src/server/order-inbox-actions.ts#restoreInboxPhotoAction": adminAction("orders", async () =>
+    (await import("./order-inbox-actions")).restoreInboxPhotoAction("x"),
+  ),
+  "src/server/order-inbox-actions.ts#retryInboxPhotoAction": adminAction("orders", async () =>
+    (await import("./order-inbox-actions")).retryInboxPhotoAction("x"),
+  ),
   "src/server/product-actions.ts#createProductAction": adminAction("catalog", async () =>
     (await import("./product-actions")).createProductAction({}),
   ),
