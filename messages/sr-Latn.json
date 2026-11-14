@@ -517,11 +517,17 @@
       "amountLabel": "Naplaćeni iznos",
       "save": "Naplaćeno",
       "saved": "Naplaćeno od {name}",
-      "needDelivery": "Prvo dodirnite „Dostavljeno“, zatim unesite iznos.",
+      "needDelivery": "Kada dodirneš „Isporučeno“, upisuješ iznos.",
       "cancel": "Otkaži",
       "errors": {
         "storage": "Čuvanje na telefonu nije moguće. Pokušajte ponovo.",
         "amount": "Unesite iznos kao 42 ili 42,50."
+      },
+      "sheet": {
+        "title": "Naplati gotovinu",
+        "body": "{name} plaća gotovinom: {amount}. Koliko si dobio?",
+        "nothing": "Bez naplaćenog novca stajalište se ne računa kao isporučeno. Ako kupac ne plati, prijavi problem.",
+        "confirm": "Naplaćeno i isporučeno"
       }
     },
     "upcoming": {
@@ -529,6 +535,10 @@
       "tomorrow": "Sutra · {date}",
       "stops": "{count, plural, one {# stanica} few {# stanice} other {# stanica}}",
       "from": "od {time}"
+    },
+    "marks": {
+      "invoice": "Predaj račun",
+      "fridge": "U frižider"
     }
   },
   "pwa": {

@@ -7,10 +7,11 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { nextPendingAfter } from "@/domain/stop-status";
-import { useRouter } from "@/i18n/navigation";
 import { requestOfflineSync } from "@/lib/offline/browser";
 import { enqueueMutation, undoStopStatus } from "@/lib/offline/outbox-browser";
 import { cn } from "@/lib/utils";
+
+import { CashDeliverSheet } from "./cash-deliver-sheet";
 
 const TOAST_MS = 10_000;
 
@@ -24,9 +25,8 @@ const TOAST_MS = 10_000;
  * The toast offers the undo for 10 s — except after the last stop, because completing the last stop
  * closes the tour and a completed tour cannot be reopened (NUD-053).
  *
- * A stop with cash to collect (D33) opens its stop screen right after the tap: the "Kassiert" card
- * lives there, and without it a quick tap delivered the goods while the amount was never recorded,
- * so the office saw every such stop as open cash (multi-day run 2026-11-16).
+ * A stop with cash to collect (D33) asks for the amount first (owner 2026-11-14): without cash the
+ * tap does not count as delivered, and "delivered" and the amount are queued together.
  */
 export function QuickDeliveredButton({
   stop,
@@ -41,7 +41,8 @@ export function QuickDeliveredButton({
   const t = useTranslations("driver.status");
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
-  const router = useRouter();
+  const [cashOpen, setCashOpen] = useState(false);
+  const cash = stop.cashDueCents ?? 0;
 
   async function undo(stopId: string, name: string) {
     try {
@@ -54,8 +55,24 @@ export function QuickDeliveredButton({
     }
   }
 
+  function announce() {
+    const next = nextPendingAfter(
+      stops.map((s) => (s.id === stop.id ? { ...s, status: "DELIVERED" } : s)),
+      stop.id,
+    );
+    toast(t("deliveredToast", { name: stop.customerName }), {
+      duration: TOAST_MS,
+      style: { fontSize: 16 },
+      action: next
+        ? { label: t("undo"), onClick: () => void undo(stop.id, stop.customerName) }
+        : undefined,
+      actionButtonStyle: { height: 48, minWidth: 48, fontSize: 16, padding: "0 16px" },
+    });
+  }
+
   async function tap() {
     if (busyRef.current) return;
+    if (cash > 0) return setCashOpen(true);
     busyRef.current = true;
     setBusy(true);
     try {
@@ -64,19 +81,7 @@ export function QuickDeliveredButton({
         stopId: stop.id,
         customerName: stop.customerName,
       });
-      const next = nextPendingAfter(
-        stops.map((s) => (s.id === stop.id ? { ...s, status: "DELIVERED" } : s)),
-        stop.id,
-      );
-      toast(t("deliveredToast", { name: stop.customerName }), {
-        duration: TOAST_MS,
-        style: { fontSize: 16 },
-        action: next
-          ? { label: t("undo"), onClick: () => void undo(stop.id, stop.customerName) }
-          : undefined,
-        actionButtonStyle: { height: 48, minWidth: 48, fontSize: 16, padding: "0 16px" },
-      });
-      if ((stop.cashDueCents ?? 0) > 0) router.push(`/driver/stops/${stop.id}`);
+      announce();
     } catch {
       toast.error(t("errors.storage"));
     } finally {
@@ -86,17 +91,26 @@ export function QuickDeliveredButton({
   }
 
   return (
-    <Button
-      type="button"
-      variant="success"
-      size="xl"
-      className={cn("relative z-10 shrink-0 text-lg font-bold whitespace-nowrap", className)}
-      loading={busy}
-      onClick={() => void tap()}
-      data-testid="btn-quick-delivered"
-    >
-      <CheckIcon className="size-6" aria-hidden />
-      {t("delivered")}
-    </Button>
+    <>
+      <Button
+        type="button"
+        variant="success"
+        size="xl"
+        className={cn("relative z-10 shrink-0 text-lg font-bold whitespace-nowrap", className)}
+        loading={busy}
+        onClick={() => void tap()}
+        data-testid="btn-quick-delivered"
+      >
+        <CheckIcon className="size-6" aria-hidden />
+        {t("delivered")}
+      </Button>
+      {cashOpen ? (
+        <CashDeliverSheet
+          stop={{ id: stop.id, customerName: stop.customerName, cashDueCents: cash }}
+          onClose={() => setCashOpen(false)}
+          onDelivered={announce}
+        />
+      ) : null}
+    </>
   );
 }

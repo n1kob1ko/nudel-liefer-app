@@ -11,6 +11,7 @@ import {
   monthlyState,
   monthStart,
   nextMonthStart,
+  openCashByCustomer,
   parseMonthKey,
   signedAdjustmentCents,
 } from "./payment";
@@ -97,5 +98,42 @@ describe("corrections on a monthly bill (NUD-197)", () => {
   it("an order without an amount counts as 0, and a credit larger than the orders goes below 0", () => {
     expect(billTotalCents([null, 3000], [-500])).toBe(2500);
     expect(billTotalCents([1000], [-2500])).toBe(-1500);
+  });
+});
+
+describe("openCashByCustomer", () => {
+  const row = (
+    customerId: string,
+    date: string,
+    dueCents: number,
+    collectedCents: number | null,
+  ) => ({
+    customerId,
+    customerNumber: `K-${customerId}`,
+    customerName: `Kunde ${customerId}`,
+    date,
+    dueCents,
+    collectedCents,
+  });
+
+  it("sums the open money per customer, the biggest debt first", () => {
+    const result = openCashByCustomer([
+      row("a", "2026-11-10", 5000, 3000),
+      row("b", "2026-11-11", 9000, null),
+      row("a", "2026-11-09", 4000, 1000),
+      row("c", "2026-11-12", 2000, 2000),
+    ]);
+    expect(result.map((r) => [r.customerId, r.openCents, r.stopCount, r.oldestDate])).toEqual([
+      ["b", 9000, 1, "2026-11-11"],
+      ["a", 5000, 2, "2026-11-09"],
+    ]);
+  });
+
+  it("puts the older debt first when the sums are equal", () => {
+    const result = openCashByCustomer([
+      row("x", "2026-11-12", 1000, null),
+      row("y", "2026-11-02", 1000, null),
+    ]);
+    expect(result.map((r) => r.customerId)).toEqual(["y", "x"]);
   });
 });

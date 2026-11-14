@@ -75,15 +75,35 @@ describe.each(Object.keys(LOCALES))("QuickDeliveredButton in %s", (locale) => {
     expect(mocks.push).not.toHaveBeenCalled();
   });
 
-  it("opens the stop screen after the tap when cash is to be collected there", async () => {
+  it("asks for the cash first and queues delivered with the amount (owner 2026-11-14)", async () => {
     renderIn(locale, stops("PENDING", "PENDING"), { ...STOP, cashDueCents: 15750 });
     fireEvent.click(screen.getByTestId("btn-quick-delivered"));
-    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/driver/stops/s1"));
-    expect(mocks.enqueue).toHaveBeenCalledWith({
+    // Nothing is delivered by the tap itself: the cash sheet opens with the due amount.
+    const amount = await screen.findByTestId("cash-sheet-amount");
+    expect(mocks.enqueue).not.toHaveBeenCalled();
+    // Nothing collected: refused with a message, still nothing queued.
+    fireEvent.change(amount, { target: { value: "0" } });
+    fireEvent.click(screen.getByTestId("cash-sheet-confirm"));
+    expect(await screen.findByTestId("cash-sheet-nothing")).toBeInTheDocument();
+    expect(mocks.enqueue).not.toHaveBeenCalled();
+    // Part of it: delivered, then the payment, both queued.
+    fireEvent.change(amount, { target: { value: "100" } });
+    expect(screen.getByTestId("cash-sheet-short")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("cash-sheet-confirm"));
+    await waitFor(() => expect(mocks.enqueue).toHaveBeenCalledTimes(2));
+    expect(mocks.enqueue.mock.calls[0]?.[0]).toEqual({
       type: "delivered",
       stopId: "s1",
       customerName: "Trattoria Roma",
     });
+    expect(mocks.enqueue.mock.calls[1]?.[0]).toEqual({
+      type: "payment",
+      stopId: "s1",
+      collectedCents: 10000,
+      customerName: "Trattoria Roma",
+    });
+    await waitFor(() => expect(mocks.toast).toHaveBeenCalled());
+    expect(mocks.push).not.toHaveBeenCalled();
   });
 
   it("marks the stop delivered with one tap and offers undo", async () => {

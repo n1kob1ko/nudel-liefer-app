@@ -243,6 +243,17 @@ export function createOutboxController(deps: OutboxControllerDeps) {
       const plan = planUndo(queued, stopId, state.inFlight);
       if (plan.action === "cancel") {
         await deps.store.removeEntry(plan.clientMutationId);
+        // The cash recorded with that "Geliefert" goes with it (owner 2026-11-14): a payment
+        // entry behind a cancelled completion would only be rejected by the server.
+        for (const entry of queued) {
+          if (
+            entry.stopId === stopId &&
+            entry.type === "payment" &&
+            !state.inFlight.has(entry.clientMutationId)
+          ) {
+            await deps.store.removeEntry(entry.clientMutationId);
+          }
+        }
         await reload();
         return "cancelled";
       }

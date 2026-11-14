@@ -42,6 +42,7 @@ import { planUndo } from "@/lib/offline/outbox";
 import { enqueueMutation, undoStopStatus, useOutbox } from "@/lib/offline/outbox-browser";
 import { cn } from "@/lib/utils";
 
+import { CashDeliverSheet } from "./cash-deliver-sheet";
 import { driverTime } from "./driver-time";
 import { stopText } from "./stop-i18n-fallback";
 
@@ -70,6 +71,8 @@ type StopForStatus = {
   status: "PENDING" | "DELIVERED" | "PROBLEM";
   problemReason: string | null;
   completedAt: string | null;
+  /** Cash to collect (D33): "Geliefert" asks for the amount first (owner 2026-11-14). */
+  cashDueCents?: number;
 };
 
 type TourStopForStatus = { id: string; sequence: number; status: string };
@@ -125,6 +128,7 @@ export function StopStatusActions({
   const [reason, setReason] = useState<ProblemReasonName | null>(null);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [cashOpen, setCashOpen] = useState(false);
   // Read once when the result card mounts; cleared afterwards so a later visit stays still.
   const [celebrate] = useState(() => stop.status === "DELIVERED" && justDelivered.has(stop.id));
   useEffect(() => {
@@ -164,6 +168,11 @@ export function StopStatusActions({
       enqueueMutation({ type, stopId: stop.id, customerName: stop.customerName, ...extra }),
     );
     if (!entry) return;
+    afterComplete(type);
+  }
+
+  /** Toast with undo after a queued completion (also the cash sheet's "Kassiert und geliefert"). */
+  function afterComplete(type: "delivered" | "problem") {
     if (type === "delivered") justDelivered.add(stop.id);
     setSheetOpen(false);
     setReason(null);
@@ -383,7 +392,9 @@ export function StopStatusActions({
           size="xl"
           className="w-full text-lg font-bold"
           loading={busy}
-          onClick={() => void complete("delivered")}
+          onClick={() =>
+            (stop.cashDueCents ?? 0) > 0 ? setCashOpen(true) : void complete("delivered")
+          }
           data-testid="btn-delivered"
         >
           <CheckIcon className="size-7" aria-hidden />
@@ -405,6 +416,18 @@ export function StopStatusActions({
           {t("problem")}
         </Button>
       </div>
+
+      {cashOpen ? (
+        <CashDeliverSheet
+          stop={{
+            id: stop.id,
+            customerName: stop.customerName,
+            cashDueCents: stop.cashDueCents ?? 0,
+          }}
+          onClose={() => setCashOpen(false)}
+          onDelivered={() => afterComplete("delivered")}
+        />
+      ) : null}
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent

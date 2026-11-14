@@ -281,6 +281,26 @@ describe.skipIf(!process.env.DATABASE_URL)("driver stop status", { timeout: 60_0
     expect((await tourRow()).status).toBe("IN_PROGRESS");
   });
 
+  it("undo of a delivery takes the cash recorded with it back (owner 2026-11-14)", async () => {
+    await mutate({ type: "delivered", stopId: stopIds[0] });
+    await t.prisma.stop.update({
+      where: { id: stopIds[0] },
+      data: { collectedCents: 4200, collectedAt: T0, collectedById: driverId },
+    });
+    const res = await mutate({ type: "undo", stopId: stopIds[0] }, actor(), plus(MIN));
+    expect(res).toMatchObject({ ok: true, kind: "UNDO", status: "PENDING" });
+    expect(await stopRow(0)).toMatchObject({
+      collectedCents: null,
+      collectedAt: null,
+      collectedById: null,
+    });
+    const audit = await t.prisma.auditLog.findFirstOrThrow({
+      where: { entity: "Stop", entityId: stopIds[0], action: "stop.undo" },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(audit.diff).toMatchObject({ previousCollectedCents: 4200 });
+  });
+
   it("rejects undo after five minutes (server clock) and when nothing was completed", async () => {
     await mutate({ type: "delivered", stopId: stopIds[0] });
     const late = await mutate({ type: "undo", stopId: stopIds[0] }, actor(), plus(5 * MIN + 1000));

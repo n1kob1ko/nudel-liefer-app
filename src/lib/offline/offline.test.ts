@@ -71,6 +71,8 @@ function response(date: string, photoIds: string[] = ["a", "b"]): DriverTourResp
         abbreviation: null,
         cashDueCents: 0,
         collectedCents: null,
+        intoFridge: false,
+        handInvoice: false,
         photos: { STORE: photo(id), PARKING: null },
         items: [],
       })),

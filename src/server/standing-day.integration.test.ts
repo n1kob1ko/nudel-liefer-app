@@ -591,6 +591,65 @@ describe.skipIf(!process.env.DATABASE_URL)("day plan (standing tours)", { timeou
         ),
       ).toEqual({ ok: false, error: "invalid" });
     });
+
+    it("saves the invoice mark per day and the fridge mark on the customer (owner 2026-11-14)", async () => {
+      await reset();
+      await createRoute("Stammtour 1", [c1, c2]);
+      const line = (quantity: number) => [{ productId: p1, quantity }];
+      // A new order carries the invoice mark; the fridge mark is a customer setting.
+      const first = await saveStandingDay(
+        db(),
+        adminId,
+        {
+          date: DAY,
+          rows: [
+            { customerId: c1, lines: line(2), invoice: true, fridge: true },
+            // Nothing ordered: no order, the invoice mark has nothing to hang on.
+            { customerId: c2, lines: line(0), invoice: true },
+          ],
+        },
+        today,
+        tours,
+      );
+      expect(first).toMatchObject({ ok: true, written: 1, created: 1 });
+      expect((await orderOf(c1)).handInvoice).toBe(true);
+      expect(await db().order.count({ where: { customerId: c2 } })).toBe(0);
+      expect((await db().customer.findUniqueOrThrow({ where: { id: c1 } })).intoFridge).toBe(true);
+
+      let plan = await standingDayQuery(db(), DAY, today);
+      const row = (id: string) => plan.routes[0]!.rows.find((r) => r.customerId === id)!;
+      expect(row(c1)).toMatchObject({ invoice: true, fridge: true });
+      expect(row(c2)).toMatchObject({ invoice: false, fridge: false });
+      // The other day: the fridge stays, the invoice was for that day only.
+      plan = await standingDayQuery(db(), OTHER_DAY, today);
+      expect(row(c1)).toMatchObject({ invoice: false, fridge: true });
+
+      // Only the marks change: written, audited, no route marked as changed.
+      const again = await saveStandingDay(
+        db(),
+        adminId,
+        { date: DAY, rows: [{ customerId: c1, lines: line(2), invoice: false, fridge: false }] },
+        today,
+        tours,
+      );
+      expect(again).toMatchObject({ ok: true, written: 1, created: 0, updated: 0 });
+      expect((await orderOf(c1)).handInvoice).toBe(false);
+      expect((await db().customer.findUniqueOrThrow({ where: { id: c1 } })).intoFridge).toBe(false);
+      expect(
+        await db().auditLog.count({
+          where: { entity: "Customer", entityId: c1, action: "customer.fridge" },
+        }),
+      ).toBe(2);
+      // Unchanged marks: nothing written.
+      const same = await saveStandingDay(
+        db(),
+        adminId,
+        { date: DAY, rows: [{ customerId: c1, lines: line(2), invoice: false, fridge: false }] },
+        today,
+        tours,
+      );
+      expect(same).toMatchObject({ ok: true, written: 0 });
+    });
   });
 
   describe("standing tours", () => {

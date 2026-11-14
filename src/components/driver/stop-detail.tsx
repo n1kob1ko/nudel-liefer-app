@@ -42,6 +42,7 @@ import { driverTime } from "./driver-time";
 import { ParkingSetButton } from "./parking-setter";
 import { RefreshOnFocus } from "./refresh-on-focus";
 import { stopText } from "./stop-i18n-fallback";
+import { StopMarks } from "./stop-marks";
 import { StopPayment } from "./stop-payment";
 import { StopPhotos } from "./stop-photos";
 import { StopStatusActions } from "./stop-status-actions";
@@ -163,6 +164,12 @@ export function StopDetail({
           <div className="flex flex-wrap items-center gap-2">
             <KeyChip stop={stop} interactive />
             <AbbreviationChip stop={stop} interactive />
+          </div>
+        ) : null}
+
+        {stop.intoFridge || stop.handInvoice ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <StopMarks stop={stop} className="py-2 text-lg" />
           </div>
         ) : null}
 

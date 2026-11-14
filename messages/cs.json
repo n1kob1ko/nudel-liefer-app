@@ -517,11 +517,17 @@
       "amountLabel": "Vybraná částka",
       "save": "Vybráno",
       "saved": "Vybráno od {name}",
-      "needDelivery": "Nejprve klepněte na „Dodáno“, poté zadejte částku.",
+      "needDelivery": "Částku zadáš po klepnutí na „Doručeno“.",
       "cancel": "Zrušit",
       "errors": {
         "storage": "Uložení v telefonu není možné. Zkuste to znovu.",
         "amount": "Zadejte částku jako 42 nebo 42,50."
+      },
+      "sheet": {
+        "title": "Vybrat hotovost",
+        "body": "{name} platí hotově: {amount}. Kolik jsi dostal?",
+        "nothing": "Bez vybrané hotovosti se zastávka nepočítá jako doručená. Pokud zákazník nezaplatí, nahlas problém.",
+        "confirm": "Vybráno a doručeno"
       }
     },
     "upcoming": {
@@ -529,6 +535,10 @@
       "tomorrow": "Zítra · {date}",
       "stops": "{count, plural, one {# zastávka} few {# zastávky} many {# zastávky} other {# zastávek}}",
       "from": "od {time}"
+    },
+    "marks": {
+      "invoice": "Předat fakturu",
+      "fridge": "Do lednice"
     }
   },
   "pwa": {

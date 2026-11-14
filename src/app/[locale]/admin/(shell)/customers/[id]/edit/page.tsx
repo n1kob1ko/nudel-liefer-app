@@ -79,6 +79,7 @@ async function Guarded({ locale, id }: { locale: string; id: string }) {
             keyNumber: customer.keyNumber ?? "",
           },
           abbreviation: customer.abbreviation ?? "",
+          intoFridge: customer.intoFridge,
         }}
       />
     </div>

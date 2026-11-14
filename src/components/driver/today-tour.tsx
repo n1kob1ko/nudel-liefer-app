@@ -64,6 +64,7 @@ import { QuickDeliveredButton } from "./quick-delivered";
 import { RefreshOnFocus } from "./refresh-on-focus";
 import { ReloadStop } from "./reload-stop";
 import { useSeenRevision } from "./seen-revision";
+import { StopMarks } from "./stop-marks";
 
 type UnitKey = "KG" | "PACK" | "CRATE" | "PIECE";
 
@@ -378,6 +379,11 @@ function NextStopCard({
           <AbbreviationChip stop={stop} interactive className="relative z-10" />
         </div>
       ) : null}
+      {stop.intoFridge || stop.handInvoice ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <StopMarks stop={stop} />
+        </div>
+      ) : null}
       <ItemSummary items={stop.items} />
       {(stop.cashDueCents ?? 0) > 0 && stop.collectedCents == null ? (
         <CashStrip cents={stop.cashDueCents ?? 0} />
@@ -519,6 +525,7 @@ function StopRow({
           <StatusLabel status={stop.status} />
           <KeyChip stop={stop} />
           <AbbreviationChip stop={stop} />
+          {stop.status === "PENDING" ? <StopMarks stop={stop} /> : null}
         </span>
       </span>
       {/* Reserved right column (80 px): the summary stacks inside it, so it can never spill onto
@@ -624,9 +631,7 @@ function OtherTourSection({ tour }: { tour: DriverToday }) {
     entries.filter((entry) => isStopStatusEntry(entry.type)).map((entry) => entry.stopId),
   );
   const open = stops.filter((s) => s.status === "PENDING");
-  // NUD-180 (QA 2026-10-29 F17): a stop with a reported problem is not a delivery - it gets its own
-  // group instead of sitting under "Erledigt".
-  const delivered = stops.filter((s) => s.status === "DELIVERED");
+  // NUD-180: a stop with a reported problem gets its own group; delivered stops are not listed.
   const problemsList = stops.filter((s) => s.status === "PROBLEM");
   const [doneOpen, setDoneOpen] = useState(false);
   const headingId = `other-tour-${tour.tourId}`;
@@ -666,20 +671,7 @@ function OtherTourSection({ tour }: { tour: DriverToday }) {
             waiting={waitingIds.has(stop.id)}
           />
         ))}
-        {delivered.length > 0 ? (
-          <DoneGroup stops={delivered} open={doneOpen} onToggle={setDoneOpen}>
-            {delivered.map((stop) => (
-              <StopRow
-                key={stop.id}
-                stop={stop}
-                timezone={tour.timezone}
-                isNext={false}
-                unseen={false}
-                waiting={waitingIds.has(stop.id)}
-              />
-            ))}
-          </DoneGroup>
-        ) : null}
+
         {problemsList.length > 0 ? (
           <DoneGroup
             stops={problemsList}
@@ -817,9 +809,7 @@ export function TodayTour({
   const remaining = roundedMinutes(remainingSeconds(stops, today.serviceSecondsPerStop));
   const reloadBefore = reloadBeforeStops(stops);
   const open = stops.filter((s) => s.status === "PENDING");
-  // NUD-180 (QA 2026-10-29 F17): a stop with a reported problem is not a delivery - it gets its own
-  // group instead of sitting under "Erledigt".
-  const delivered = stops.filter((s) => s.status === "DELIVERED");
+  // NUD-180: a stop with a reported problem gets its own group; delivered stops are not listed.
   const problemsList = stops.filter((s) => s.status === "PROBLEM");
   const problems = stops.filter((s) => s.status === "PROBLEM").length;
   const showBanner = today.updated && seen < today.revision;
@@ -911,23 +901,8 @@ export function TodayTour({
             />
           </Fragment>
         ))}
-        {delivered.length > 0 ? (
-          <DoneGroup stops={delivered} open={doneOpen} onToggle={toggleDone}>
-            {delivered.map((stop, index) => (
-              <StopRow
-                key={stop.id}
-                stop={stop}
-                timezone={today.timezone}
-                isNext={false}
-                unseen={unseen(stop)}
-                waiting={waitingIds.has(stop.id)}
-                selected={selectedId === stop.id}
-                onFocus={onFocus}
-                index={index}
-              />
-            ))}
-          </DoneGroup>
-        ) : null}
+        {/* Owner 2026-11-14: a delivered stop disappears for the driver (no history); the office
+            keeps seeing everything. Problems stay listed, the driver may still have to go back. */}
         {problemsList.length > 0 ? (
           <DoneGroup
             stops={problemsList}
@@ -1193,7 +1168,7 @@ export function TodayTour({
         >
           <TourMapLazy
             stops={stops.flatMap((stop) =>
-              stop.lat !== null && stop.lng !== null
+              stop.lat !== null && stop.lng !== null && stop.status !== "DELIVERED"
                 ? [
                     {
                       id: stop.id,

@@ -35,6 +35,7 @@ async function Guarded({ locale }: { locale: string }) {
           office: EMPTY_OFFICE_VALUES,
           key: EMPTY_KEY_VALUES,
           abbreviation: "",
+          intoFridge: false,
         }}
       />
     </div>

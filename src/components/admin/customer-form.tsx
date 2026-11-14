@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangleIcon, SearchIcon } from "lucide-react";
+import { AlertTriangleIcon, RefrigeratorIcon, SearchIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type FormEvent, type ReactNode, useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -11,6 +11,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { ABBREVIATION_MAX } from "@/domain/customer-abbreviation";
 import { KEY_NUMBER_MAX } from "@/domain/customer-key";
 import type { PhotoKind } from "@/domain/photos";
@@ -40,6 +41,8 @@ export type CustomerFormValues = {
   key: KeyValues;
   /** Legacy Abkürzung (NUD-164). */
   abbreviation: string;
+  /** The goods go into the customer's fridge: the driver sees a fridge symbol. */
+  intoFridge: boolean;
 };
 
 export type KeyValues = { hasKey: "unknown" | "yes" | "no"; keyNumber: string };
@@ -134,6 +137,7 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
   const [office, setOffice] = useState(initial.office);
   const [keyValues, setKeyValues] = useState(initial.key);
   const [abbreviation, setAbbreviation] = useState(initial.abbreviation);
+  const [intoFridge, setIntoFridge] = useState(initial.intoFridge);
   const [pin, setPin] = useState(initial.pin);
   const [search, setSearch] = useState<Search>({ state: "idle" });
   const [focus, setFocus] = useState<{ point: LatLng; nonce: number } | null>(null);
@@ -162,6 +166,7 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
     office: initial.office,
     key: initial.key,
     abbreviation: initial.abbreviation,
+    intoFridge: initial.intoFridge,
     lat: initial.pin?.lat ?? null,
     lng: initial.pin?.lng ?? null,
   };
@@ -178,6 +183,7 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
       office,
       key: keyValues,
       abbreviation,
+      intoFridge,
       lat: pin?.lat ?? null,
       lng: pin?.lng ?? null,
     }) !== JSON.stringify(initialValues);
@@ -206,6 +212,7 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
     setOffice(initial.office);
     setKeyValues(initial.key);
     setAbbreviation(initial.abbreviation);
+    setIntoFridge(initial.intoFridge);
     setPin(initial.pin);
     setSearch({ state: "idle" });
     setFocus(null);
@@ -273,6 +280,7 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
           }),
       // Same for the Abkürzung (NUD-164).
       ...(abbreviation === initial.abbreviation ? {} : { abbreviation }),
+      intoFridge,
     };
     startTransition(async () => {
       let result;
@@ -559,6 +567,23 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
             data-testid="customer-notes"
           />
         </FieldRow>
+        {/* One switch, the label next to it is the whole meaning (the driver sees the symbol). */}
+        <label
+          htmlFor="cust-fridge"
+          className="flex min-h-12 max-w-xl cursor-pointer items-center gap-3 rounded-lg border border-border px-3 py-2"
+        >
+          <RefrigeratorIcon className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-base font-medium">{t("fridge")}</span>
+            <span className="block text-sm text-muted-foreground">{t("fridgeHint")}</span>
+          </span>
+          <Switch
+            id="cust-fridge"
+            checked={intoFridge}
+            onCheckedChange={setIntoFridge}
+            data-testid="customer-fridge"
+          />
+        </label>
       </section>
 
       <section

@@ -96,6 +96,7 @@ export async function getDriverTourResponse(
         hasKey: true,
         keyNumber: true,
         abbreviation: true,
+        intoFridge: true,
       },
     }),
     db.tour.findMany({
@@ -123,7 +124,9 @@ export async function getDriverTourResponse(
         collectedCents: true,
         orders: {
           select: {
-            order: { select: { status: true, paymentTerm: true, amountCents: true } },
+            order: {
+              select: { status: true, paymentTerm: true, amountCents: true, handInvoice: true },
+            },
           },
         },
       },
@@ -204,6 +207,10 @@ export async function getDriverTourResponse(
             .map((order) => ({ paymentTerm: order.paymentTerm, amountCents: order.amountCents })),
         ),
         collectedCents: paymentById.get(stop.id)?.collectedCents ?? null,
+        intoFridge: customer?.intoFridge ?? false,
+        handInvoice: (paymentById.get(stop.id)?.orders ?? []).some(
+          (link) => link.order.status === "CONFIRMED" && link.order.handInvoice,
+        ),
         photos: { STORE: photos?.STORE ?? null, PARKING: photos?.PARKING ?? null },
         items: stop.items.map((item) => {
           const name = localizedTextSchema.safeParse(item.name);

@@ -325,7 +325,8 @@
         "weight": "重量",
         "state": "状态",
         "total": "合计",
-        "stop": "站点"
+        "stop": "站点",
+        "marks": "给司机"
       },
       "state": {
         "nothing": "未订货",
@@ -358,9 +359,9 @@
         "title": "不在固定线路中",
         "body": "不属于任何固定线路的客户。“添加”只在当天带上该客户：他会加入合适的线路，固定线路保持不变。",
         "search": "搜索客户（名称、编号、城市）",
-        "onlyWithOrder": "仅显示有订单",
         "empty": "未找到客户。",
-        "add": "添加"
+        "add": "添加",
+        "searchHint": "搜索客户，将其加入当天。"
       },
       "errors": {
         "generic": "出现问题，请重试。",
@@ -413,10 +414,10 @@
       },
       "extra": {
         "label": "临时",
-        "move": "移动"
+        "move": "更改路线"
       },
       "move": {
-        "title": "移动 {name}",
+        "title": "{name}：更改路线",
         "body": "仅适用于本配送日。",
         "route": "线路",
         "position": "顺序",
@@ -458,6 +459,14 @@
           "overloaded": "{route} 超重。",
           "conflict": "刚才有人同时做了更改。请再发送一次。"
         }
+      },
+      "marks": {
+        "invoice": "发票",
+        "fridge": "冰箱"
+      },
+      "tabs": {
+        "label": "路线",
+        "extra": "其他客户"
       }
     },
     "drivers": {
@@ -673,7 +682,9 @@
         "keyNumber": "钥匙编号",
         "abbreviationHeading": "缩写",
         "abbreviationHint": "可选。旧系统的内部代码，可自由填写文字和特殊字符，允许重复。司机也可以在停靠点填写或更正。之后会被移除。",
-        "abbreviation": "缩写"
+        "abbreviation": "缩写",
+        "fridge": "放入冰箱",
+        "fridgeHint": "司机在该站点会看到冰箱图标。"
       },
       "detail": {
         "number": "客户编号 {number}",
@@ -740,7 +751,9 @@
         },
         "fromRecurring": "来自长期订单",
         "archivedCancelled": "{count, plural, other {客户已归档，已取消 # 个未完成订单。}}",
-        "archiveRules": "{count, plural, other {其 # 个长期订单将被暂停}}。恢复客户后会继续生效。"
+        "archiveRules": "{count, plural, other {其 # 个长期订单将被暂停}}。恢复客户后会继续生效。",
+        "fridgeYes": "是，货物放入冰箱",
+        "fridgeNo": "否"
       },
       "translations": {
         "tabDetails": "详情",
@@ -1947,7 +1960,8 @@
         "standing_tour_vehicle": "已更换固定线路的车辆",
         "standing_tour_activate": "已启用固定线路",
         "standing_tour_deactivate": "已停用固定线路",
-        "user_delete": "已删除账号"
+        "user_delete": "已删除账号",
+        "customer_fridge": "冰箱设置已更改"
       },
       "fields": {
         "status": "状态",
@@ -2298,6 +2312,13 @@
           "status": "第 {page} 页，共 {pageCount} 页"
         },
         "deletion": "付款 {days} 天后，记录会与当月订单一并删除。"
+      },
+      "debtors": {
+        "title": "欠款最多的客户",
+        "body": "客户付款少于应付金额的现金配送，按客户汇总。只有办公室能看到。点按可查看该客户的配送。",
+        "meta": "{count, plural, other {# 次配送}} · 自 {date}",
+        "filtered": "仅 {name}",
+        "showAll": "显示全部"
       }
     }
   },
@@ -2656,11 +2677,17 @@
       "amountLabel": "已收金额",
       "save": "已收款",
       "saved": "已向 {name} 收款",
-      "needDelivery": "请先点“已送达”，再填写金额。",
+      "needDelivery": "点按“已送达”时输入金额。",
       "cancel": "取消",
       "errors": {
         "storage": "无法保存到手机，请重试。",
         "amount": "请输入如 42 或 42.50 的金额。"
+      },
+      "sheet": {
+        "title": "收取现金",
+        "body": "{name} 现金付款：{amount}。你收到了多少？",
+        "nothing": "未收取现金，此站点不算已送达。客户不付款时，请报告问题。",
+        "confirm": "已收款并送达"
       }
     },
     "upcoming": {
@@ -2668,6 +2695,10 @@
       "tomorrow": "明天 · {date}",
       "stops": "{count, plural, other {# 个站点}}",
       "from": "{time} 起"
+    },
+    "marks": {
+      "invoice": "交付发票",
+      "fridge": "放入冰箱"
     }
   },
   "pwa": {

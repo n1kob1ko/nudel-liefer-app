@@ -58,6 +58,10 @@ export type DayPlanRow = {
   nothing: boolean;
   /** Weight of `quantities` in kg, two decimals. */
   weightKg: number;
+  /** The driver hands over an invoice with this delivery (owner 2026-11-14). */
+  invoice: boolean;
+  /** The goods go into the customer's fridge, every day (customer setting, owner 2026-11-14). */
+  fridge: boolean;
   /**
    * NUD-212: a customer of no standing tour that rides on this route today ("Zusatz"); `moved` =
    * the office chose the place, otherwise it is where the detour is smallest.

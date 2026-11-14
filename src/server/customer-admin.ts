@@ -85,6 +85,8 @@ export const customerInputSchema = z
      * when the office changed it); blank clears it. Written through `setCustomerAbbreviation`.
      */
     abbreviation: z.string().trim().max(ABBREVIATION_MAX).optional(),
+    /** "In den Kühlschrank" (owner 2026-11-14); `undefined` leaves the stored value alone. */
+    intoFridge: z.boolean().optional(),
   })
   .refine((v) => (v.lat === null) === (v.lng === null), { message: "pin" })
   .refine((v) => `${v.street}, ${v.postalCode} ${v.city}`.length <= MAX_ADDRESS_LENGTH, {
@@ -101,6 +103,7 @@ export function officeFields(v: z.output<typeof customerInputSchema>) {
     billingStreet: v.billingStreet,
     billingPostalCode: v.billingPostalCode,
     billingCity: v.billingCity,
+    ...(v.intoFridge === undefined ? {} : { intoFridge: v.intoFridge }),
   };
 }
 export type CustomerSaveResult =
@@ -378,6 +381,8 @@ export type CustomerDetail = {
   abbreviation: string | null;
   abbreviationUpdatedBy: { name: string; role: "ADMIN" | "DRIVER" } | null;
   abbreviationUpdatedAt: Date | null;
+  /** The goods go into the customer's fridge (the driver sees a symbol). */
+  intoFridge: boolean;
   active: boolean;
   hasStorePhoto: boolean;
   hasParkingPhoto: boolean;
@@ -426,6 +431,7 @@ export async function getCustomerDetail(
       ? { name: row.abbreviationUpdatedBy.displayName, role: row.abbreviationUpdatedBy.role }
       : null,
     abbreviationUpdatedAt: row.abbreviationUpdatedAt,
+    intoFridge: row.intoFridge,
     active: row.active,
     hasStorePhoto: row.photos.some((p) => p.kind === "STORE"),
     hasParkingPhoto: row.photos.some((p) => p.kind === "PARKING"),
