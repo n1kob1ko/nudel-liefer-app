@@ -372,16 +372,16 @@ function NextStopCard({
           {stop.street}, {stop.postalCode} {stop.city}
         </span>
       </p>
-      {/* Key and Abkürzung side by side on one line, under the address they belong to. */}
-      {stop.hasKey !== undefined || stop.abbreviation !== undefined ? (
+      {/* Key, Abkürzung and the fridge / invoice symbols on one line, under the address they
+          belong to. A tap on a symbol says what it means. */}
+      {stop.hasKey !== undefined ||
+      stop.abbreviation !== undefined ||
+      stop.intoFridge ||
+      stop.handInvoice ? (
         <div className="flex flex-wrap items-center gap-2">
           <KeyChip stop={stop} interactive className="relative z-10 shrink-0" />
           <AbbreviationChip stop={stop} interactive className="relative z-10" />
-        </div>
-      ) : null}
-      {stop.intoFridge || stop.handInvoice ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <StopMarks stop={stop} />
+          <StopMarks stop={stop} interactive className="relative z-10 shrink-0" />
         </div>
       ) : null}
       <ItemSummary items={stop.items} />

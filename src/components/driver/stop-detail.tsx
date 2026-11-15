@@ -160,16 +160,14 @@ export function StopDetail({
 
         <CopyAddress address={address} />
 
-        {stop.hasKey !== undefined || stop.abbreviation !== undefined ? (
+        {stop.hasKey !== undefined ||
+        stop.abbreviation !== undefined ||
+        stop.intoFridge ||
+        stop.handInvoice ? (
           <div className="flex flex-wrap items-center gap-2">
             <KeyChip stop={stop} interactive />
             <AbbreviationChip stop={stop} interactive />
-          </div>
-        ) : null}
-
-        {stop.intoFridge || stop.handInvoice ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <StopMarks stop={stop} className="py-2 text-lg" />
+            <StopMarks stop={stop} interactive />
           </div>
         ) : null}
 

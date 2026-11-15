@@ -2705,7 +2705,9 @@
     },
     "marks": {
       "invoice": "Hand over invoice",
-      "fridge": "Into the fridge"
+      "fridge": "Into the fridge",
+      "invoiceInfo": "Give the customer the invoice.",
+      "fridgeInfo": "Put the goods in the customer's fridge."
     }
   },
   "pwa": {

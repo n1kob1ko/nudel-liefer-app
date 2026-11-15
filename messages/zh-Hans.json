@@ -2705,7 +2705,9 @@
     },
     "marks": {
       "invoice": "交付发票",
-      "fridge": "放入冰箱"
+      "fridge": "放入冰箱",
+      "invoiceInfo": "把发票交给客户。",
+      "fridgeInfo": "把货物放进客户的冰箱。"
     }
   },
   "pwa": {

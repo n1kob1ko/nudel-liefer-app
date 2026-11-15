@@ -537,7 +537,9 @@
     },
     "marks": {
       "invoice": "Predaj račun",
-      "fridge": "U frižider"
+      "fridge": "U frižider",
+      "invoiceInfo": "Predati kupcu račun.",
+      "fridgeInfo": "Robu staviti u frižider kod kupca."
     }
   },
   "pwa": {
