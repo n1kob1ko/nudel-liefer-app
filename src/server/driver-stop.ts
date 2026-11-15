@@ -27,6 +27,7 @@ export async function getDriverStopDetail(
     now: Date;
     timezone: string;
     serviceMinutesPerStop: number;
+    problemPhone?: string;
     locale?: AppLocale;
     stopId: string;
   },
@@ -53,6 +54,7 @@ export async function driverStopQuery(
     now: new Date(),
     timezone: settings?.timezone ?? "Europe/Vienna",
     serviceMinutesPerStop: settings?.serviceMinutesPerStop ?? 10,
+    problemPhone: settings?.problemPhone,
     locale,
     stopId,
   });

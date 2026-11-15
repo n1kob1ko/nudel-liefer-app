@@ -194,6 +194,12 @@ export function CustomerDetailView({
                 <Field label={td("notes")} testId="detail-notes">
                   {customer.notes || td("none")}
                 </Field>
+                <Field label={tf("invoice")} testId="detail-invoice">
+                  {customer.alwaysInvoice ? td("invoiceYes") : td("fridgeNo")}
+                </Field>
+                <Field label={tf("fridge")} testId="detail-fridge">
+                  {customer.intoFridge ? td("fridgeYes") : td("fridgeNo")}
+                </Field>
                 <Field label={tf("office.companyName")} testId="detail-company">
                   {customer.companyName ?? td("none")}
                 </Field>

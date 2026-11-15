@@ -30,6 +30,7 @@ export async function driverTourTodayResponse(now: Date = new Date()): Promise<R
     now,
     timezone: settings?.timezone ?? "Europe/Vienna",
     serviceMinutesPerStop: settings?.serviceMinutesPerStop ?? 10,
+    problemPhone: settings?.problemPhone,
     photos: { storage: getStorage() },
   });
   return Response.json(body, { headers: NO_STORE });

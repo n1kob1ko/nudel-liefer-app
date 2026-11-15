@@ -90,17 +90,16 @@ describe("StopPayment behaviour", () => {
     expect(screen.queryByTestId("stop-payment")).toBeNull();
   });
 
-  it("shows the collected amount with the shortfall and lets the office driver change it", () => {
+  it("shows no amounts once the delivered stop has its cash (owner 2026-11-14)", () => {
     renderIn("de", { ...deliveredStop, collectedCents: 4000 });
-    expect(screen.getByTestId("payment-collected")).toHaveTextContent("40,00");
-    expect(screen.getByTestId("payment-edit")).toBeInTheDocument();
-    expect(screen.getByTestId("stop-payment").dataset.state).toBe("short");
+    expect(screen.queryByTestId("stop-payment")).toBeNull();
   });
 
-  it("cannot save before the stop is delivered", () => {
+  it("before the delivery only says what to collect: the amount comes with Geliefert", () => {
     renderIn("de", { ...deliveredStop, status: "PENDING" });
     expect(screen.getByTestId("payment-need-delivery")).toBeInTheDocument();
-    expect(screen.getByTestId("payment-save")).toBeDisabled();
+    expect(screen.getByTestId("payment-due")).toBeInTheDocument();
+    expect(screen.queryByTestId("payment-save")).toBeNull();
   });
 
   it("refuses an amount that is not a plain euro value", () => {

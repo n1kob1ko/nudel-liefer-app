@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { neighbourStops } from "@/domain/driver-stop";
 import type { PhotoKind } from "@/domain/photos";
+import { DEFAULT_PROBLEM_PHONE } from "@/domain/problem-phone";
 import { calendarDayIn } from "@/domain/settings";
 
 import {
@@ -127,6 +128,10 @@ ull. */
   cashDueCents: z.number().int().min(0).default(0),
   /** What the driver recorded as collected (euro cents); `null` = not recorded yet. */
   collectedCents: z.number().int().min(0).nullable().default(null),
+  /** The goods go into the customer's fridge (customer setting, owner 2026-11-14). */
+  intoFridge: z.boolean().default(false),
+  /** The driver hands over an invoice at this stop (day plan, owner 2026-11-14). */
+  handInvoice: z.boolean().default(false),
   photos: z.object({
     STORE: payloadPhotoSchema.nullable(),
     PARKING: payloadPhotoSchema.nullable(),
@@ -173,6 +178,8 @@ export const driverTourResponseSchema = z.object({
   generatedAt: z.string(),
   timezone: z.string().min(1),
   serviceSecondsPerStop: z.number(),
+  /** Number the driver calls from "Problem" (owner 2026-11-14); older cached copies get the dummy. */
+  problemPhone: z.string().min(1).default(DEFAULT_PROBLEM_PHONE),
   /**
    * The active tour: the newest open tour of the day, or the newest completed one when the day is
    * finished. `null`: no tour released for this driver today.
@@ -262,6 +269,9 @@ ull when he wrote none). */
    */
   cashDueCents?: number;
   collectedCents?: number | null;
+  /** Fridge and invoice symbols (owner 2026-11-14); `undefined` (hand-built values) = not shown. */
+  intoFridge?: boolean;
+  handInvoice?: boolean;
   items: TodayItem[];
 };
 
@@ -300,6 +310,8 @@ export type DriverStopDetail = {
   locale: AppLocale;
   /** Factory time zone (for ETA display). */
   timezone: string;
+  /** Number the driver calls from "Problem" (owner 2026-11-14). */
+  problemPhone: string;
   stop: TodayStop;
   /** 1-based position in the tour and number of stops. */
   position: number;
@@ -367,6 +379,8 @@ function todayStop(stop: PayloadStop, locale: AppLocale): TodayStop {
     abbreviation: stop.abbreviation,
     cashDueCents: stop.cashDueCents,
     collectedCents: stop.collectedCents,
+    intoFridge: stop.intoFridge,
+    handInvoice: stop.handInvoice,
     items: stop.items.map((item) => ({
       productId: item.productId,
       name: pickName(item.name, item.sku, locale),
@@ -453,6 +467,12 @@ export function toDriverStopDetail(
   if (!tour || !stop) return null;
   const nav = neighbourStops(tour.stops, stopId);
   if (!nav) return null;
+  // Owner 2026-11-14: a delivered stop is gone for the driver (no history), so the arrows of the
+  // stop screen step over them; the position still counts every stop of the tour.
+  const steps = neighbourStops(
+    tour.stops.filter((s) => s.status !== "DELIVERED" || s.id === stopId),
+    stopId,
+  );
   const notes = stop.notes ? pickWithSource(stop.notes, locale) : null;
   const photo = (p: PayloadPhoto | null): StopPhoto | null =>
     p ? { id: p.id, url: photoUrl(p), width: p.width, height: p.height } : null;
@@ -461,11 +481,12 @@ export function toDriverStopDetail(
     tourStatus: tour.status,
     locale,
     timezone: response.timezone,
+    problemPhone: response.problemPhone,
     stop: todayStop(stop, locale),
     position: nav.position,
     total: nav.total,
-    prevStopId: nav.prev?.id ?? null,
-    nextStopId: nav.next?.id ?? null,
+    prevStopId: steps?.prev?.id ?? null,
+    nextStopId: steps?.next?.id ?? null,
     tourStops: tour.stops.map((s) => ({
       id: s.id,
       sequence: s.sequence,

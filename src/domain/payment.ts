@@ -130,3 +130,58 @@ export function billTotalCents(
 ): number {
   return sumCents(orderAmounts) + adjustmentAmounts.reduce((sum, cents) => sum + cents, 0);
 }
+
+/** One customer's open cash, summed over his deliveries (owner 2026-11-14: "wer viel noch offen hat"). */
+export type OpenCashByCustomer = {
+  customerId: string;
+  customerNumber: string;
+  customerName: string;
+  /** Deliveries with money still open. */
+  stopCount: number;
+  /** Sum of what is still open (euro cents, > 0). */
+  openCents: number;
+  /** `YYYY-MM-DD` of the oldest open delivery. */
+  oldestDate: string;
+};
+
+/**
+ * The open cash rows grouped by customer, the customer who owes the most first (ties: the older
+ * debt first, then the name). Only rows with something open count.
+ */
+export function openCashByCustomer(
+  rows: ReadonlyArray<{
+    customerId: string;
+    customerNumber: string;
+    customerName: string;
+    date: string;
+    dueCents: number;
+    collectedCents: number | null;
+  }>,
+): OpenCashByCustomer[] {
+  const byCustomer = new Map<string, OpenCashByCustomer>();
+  for (const row of rows) {
+    const open = row.dueCents - (row.collectedCents ?? 0);
+    if (open <= 0) continue;
+    const entry = byCustomer.get(row.customerId);
+    if (entry) {
+      entry.stopCount += 1;
+      entry.openCents += open;
+      if (row.date < entry.oldestDate) entry.oldestDate = row.date;
+      continue;
+    }
+    byCustomer.set(row.customerId, {
+      customerId: row.customerId,
+      customerNumber: row.customerNumber,
+      customerName: row.customerName,
+      stopCount: 1,
+      openCents: open,
+      oldestDate: row.date,
+    });
+  }
+  return [...byCustomer.values()].sort(
+    (a, b) =>
+      b.openCents - a.openCents ||
+      a.oldestDate.localeCompare(b.oldestDate) ||
+      a.customerName.localeCompare(b.customerName),
+  );
+}

@@ -158,6 +158,8 @@ model Settings {
   /// Loading time assumed when the driver skipped the departure checklist (NUD-152, D28): the
   /// measured working time starts `defaultLoadingMinutes` before `Tour.departedAt`.
   defaultLoadingMinutes Int     @default(20)
+  /// Number the driver calls from "Problem" (owner 2026-11-14: a problem is a phone call, no report).
+  problemPhone          String  @default("+43 1 000 00 00")
 }
 
 model Customer {
@@ -195,6 +197,11 @@ model Customer {
   abbreviation            String?
   abbreviationUpdatedById String?
   abbreviationUpdatedAt   DateTime?
+  /// Always into the customer's fridge (owner 2026-11-14): the driver sees a fridge symbol at every
+  /// stop of this customer. Set in the customer form; the day plan sets it for one day (`Order`).
+  intoFridge              Boolean   @default(false)
+  /// Always hand this customer an invoice (owner 2026-11-14), like `intoFridge`.
+  alwaysInvoice           Boolean   @default(false)
   active                  Boolean   @default(true)
   /// Accent-folded number/name/address for search. Maintained by a DB trigger (migration NUD-013); never write it.
   searchText              String    @default("")
@@ -444,6 +451,11 @@ model Order {
   routeStandingTourId String?
   /// NUD-212: standing customers delivered before it on that route (0 = first); `null` = best slot.
   routeSlot           Int?
+  /// The driver hands the customer an invoice with this delivery (owner 2026-11-14): set by the
+  /// office in the day plan for this day only, shown to the driver as an invoice symbol at the stop.
+  handInvoice         Boolean     @default(false)
+  /// The goods go into the fridge on this day only (day plan); `Customer.intoFridge` is "always".
+  intoFridge          Boolean     @default(false)
   createdById         String
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt

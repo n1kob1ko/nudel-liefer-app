@@ -166,7 +166,7 @@
     "home": {
       "title": "Dnes",
       "welcome": "Vítejte, {name}.",
-      "todayCount": "{open} otevřeno · {problems, plural, =0 {žádné problémy} one {# problém} few {# problémy} many {# problému} other {# problémů}}",
+      "todayCount": "{open} otevřeno{problems, plural, =0 {} one { · # problém} few { · # problémy} many { · # problému} other { · # problémů}}",
       "endTime": "Konec cca v {time}",
       "nextStop": "Další zastávka",
       "nextStopEta": "Příjezd cca v {time}",
@@ -218,7 +218,7 @@
       "updatedDescription": "Kancelář trasu změnila. Zkontrolujte prosím označené zastávky. Vždy se zobrazují aktuální množství.",
       "removedStops": "Odstraněné zastávky",
       "updatedConfirm": "Rozumím",
-      "finishedSummary": "{delivered} doručeno · {problems, plural, =0 {žádný problém} one {# problém} few {# problémy} many {# problému} other {# problémů}}",
+      "finishedSummary": "{delivered} doručeno{problems, plural, =0 {} one { · # problém} few { · # problémy} many { · # problému} other { · # problémů}}",
       "openGroup": "Otevřené ({count})",
       "doneGroup": "Hotové ({count})",
       "expandDone": "Zobrazit hotové zastávky",
@@ -306,16 +306,13 @@
       "delivered": "Doručeno",
       "problem": "Problém",
       "actionsLabel": "Dokončit zastávku",
-      "problemTitle": "Jaký je problém?",
-      "problemDescription": "Vyberte důvod. Text není povinný.",
+      "problemTitle": "Problém? Zavolej",
+      "problemDescription": "Zavolej na toto číslo, tam ti pomohou.",
       "noteLabel": "Poznámka (nepovinná)",
-      "notePlaceholder": "např. brána byla zavřená",
-      "submit": "Nahlásit problém",
       "cancel": "Zrušit",
       "undo": "Vrátit zpět",
       "undone": "Vráceno zpět",
       "deliveredToast": "Doručeno: {name}",
-      "problemToast": "Problém nahlášen: {name}",
       "doneDelivered": "Doručeno",
       "doneProblem": "Problém: {reason}",
       "doneAt": "v {time}",
@@ -335,7 +332,9 @@
         "changed_by_office": "Kancelář tuto zastávku změnila."
       },
       "offlineNotice": "Offline: váš zápis se uloží v telefonu a automaticky se odešle, jakmile bude opět internet.",
-      "queuedHint": "Čeká na odeslání"
+      "queuedHint": "Čeká na odeslání",
+      "call": "Zavolat",
+      "close": "Zavřít"
     },
     "install": {
       "title": "Nainstalovat aplikaci",
@@ -517,11 +516,17 @@
       "amountLabel": "Vybraná částka",
       "save": "Vybráno",
       "saved": "Vybráno od {name}",
-      "needDelivery": "Nejprve klepněte na „Dodáno“, poté zadejte částku.",
+      "needDelivery": "Částku zadáš po klepnutí na „Doručeno“.",
       "cancel": "Zrušit",
       "errors": {
         "storage": "Uložení v telefonu není možné. Zkuste to znovu.",
         "amount": "Zadejte částku jako 42 nebo 42,50."
+      },
+      "sheet": {
+        "title": "Vybrat hotovost",
+        "body": "{name} platí hotově: {amount}. Kolik jsi dostal?",
+        "nothing": "Bez vybrané hotovosti se zastávka nepočítá jako doručená. Pokud zákazník nezaplatí, klepni na „Problém“ a zavolej.",
+        "confirm": "Vybráno a doručeno"
       }
     },
     "upcoming": {
@@ -529,6 +534,10 @@
       "tomorrow": "Zítra · {date}",
       "stops": "{count, plural, one {# zastávka} few {# zastávky} many {# zastávky} other {# zastávek}}",
       "from": "od {time}"
+    },
+    "marks": {
+      "invoice": "Předat fakturu",
+      "fridge": "Do lednice"
     }
   },
   "pwa": {

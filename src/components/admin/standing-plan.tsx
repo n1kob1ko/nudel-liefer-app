@@ -1,12 +1,16 @@
 "use client";
 
+import type { LucideIcon } from "lucide-react";
 import {
+  ArrowLeftRightIcon,
   CheckIcon,
   CircleSlashIcon,
+  LockIcon,
   MapIcon,
-  MoveVerticalIcon,
   PlusIcon,
   PrinterIcon,
+  ReceiptTextIcon,
+  RefrigeratorIcon,
   SaveIcon,
   SearchIcon,
   SendIcon,
@@ -30,6 +34,7 @@ import {
 } from "@/components/ui/dialog";
 import { InfoTip } from "@/components/ui/info-tip";
 import { Input } from "@/components/ui/input";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import {
   Select,
   SelectContent,
@@ -103,6 +108,28 @@ function rowValues(rows: ReadonlyArray<DayPlanRow>, products: ReadonlyArray<Plan
   return out;
 }
 
+const EXTRA_TAB = "__extra__";
+/** Customers of no standing tour shown for a search (the rest stays behind the search). */
+const SEARCH_LIMIT = 30;
+
+function rowFridges(plan: DayPlan): Record<string, boolean> {
+  return Object.fromEntries(
+    [...plan.routes.flatMap((route) => route.rows), ...plan.offRoute].map((row) => [
+      row.customerId,
+      row.fridge,
+    ]),
+  );
+}
+
+function rowInvoices(plan: DayPlan): Record<string, boolean> {
+  return Object.fromEntries(
+    [...plan.routes.flatMap((route) => route.rows), ...plan.offRoute].map((row) => [
+      row.customerId,
+      row.invoice,
+    ]),
+  );
+}
+
 /** Digits only, at most 5 (whole numbers up to 99999, D23): an empty field is "0". */
 function cleanQuantity(value: string): string {
   return value
@@ -142,9 +169,13 @@ export function StandingPlan({
   const [values, setValues] = useState<Values>(() =>
     rowValues([...plan.routes.flatMap((route) => route.rows), ...plan.offRoute], plan.products),
   );
+  const [invoices, setInvoices] = useState<Record<string, boolean>>(() => rowInvoices(plan));
   const [added, setAdded] = useState<ReadonlyArray<string>>([]);
   const [search, setSearch] = useState("");
-  const [onlyWithOrder, setOnlyWithOrder] = useState(false);
+  // One route at a time (owner 2026-11-14: "ich muss die ganze Zeit scrollen"): a tab per standing
+  // tour plus one for the customers of no standing tour.
+  const [tab, setTab] = useState<string>(plan.routes[0]?.id ?? EXTRA_TAB);
+  const [fridges, setFridges] = useState<Record<string, boolean>>(() => rowFridges(plan));
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [overload, setOverload] = useState<{ route: string; overKg: number } | null>(null);
@@ -158,6 +189,8 @@ export function StandingPlan({
     setValues(
       rowValues([...plan.routes.flatMap((route) => route.rows), ...plan.offRoute], plan.products),
     );
+    setInvoices(rowInvoices(plan));
+    setFridges(rowFridges(plan));
     setAdded([]);
     setError(null);
   }
@@ -188,6 +221,16 @@ export function StandingPlan({
     setError(null);
   }
 
+  function toggleInvoice(customerId: string) {
+    setInvoices((current) => ({ ...current, [customerId]: !current[customerId] }));
+    setError(null);
+  }
+
+  function toggleFridge(customerId: string) {
+    setFridges((current) => ({ ...current, [customerId]: !current[customerId] }));
+    setError(null);
+  }
+
   function addOffRoute(customerId: string) {
     setAdded((current) => (current.includes(customerId) ? current : [...current, customerId]));
   }
@@ -195,15 +238,25 @@ export function StandingPlan({
   const editableOffRoute = plan.offRoute.filter(
     (row) => row.orderId !== null || added.includes(row.customerId),
   );
-  const visibleOffRoute = plan.offRoute.filter((row) => {
-    const term = search.trim().toLowerCase();
-    const matches =
-      term === "" ||
-      row.name.toLowerCase().includes(term) ||
-      row.customerNumber.toLowerCase().includes(term) ||
-      row.city.toLowerCase().includes(term);
-    return matches && (!onlyWithOrder || row.orderId !== null);
-  });
+  // The customers of the day are always listed; everybody else only when searched for, so the tab
+  // is not a list of every customer.
+  const term = search.trim().toLowerCase();
+  const matchesSearch = (row: DayPlanRow) =>
+    row.name.toLowerCase().includes(term) ||
+    row.customerNumber.toLowerCase().includes(term) ||
+    row.city.toLowerCase().includes(term);
+  const visibleOffRoute = [
+    ...editableOffRoute.filter((row) => term === "" || matchesSearch(row)),
+    ...(term === ""
+      ? []
+      : plan.offRoute
+          .filter((row) => !editableOffRoute.includes(row) && matchesSearch(row))
+          .slice(0, SEARCH_LIMIT)),
+  ];
+  const activeTab =
+    tab === EXTRA_TAB || plan.routes.some((route) => route.id === tab)
+      ? tab
+      : (plan.routes[0]?.id ?? EXTRA_TAB);
 
   // Everything the save button writes: the rows of every standing tour and the off-route customers
   // that have (or just got) an order for this day.
@@ -211,6 +264,8 @@ export function StandingPlan({
   const changedCount = savedRows.filter(
     (row) =>
       added.includes(row.customerId) ||
+      (invoices[row.customerId] ?? false) !== row.invoice ||
+      (fridges[row.customerId] ?? false) !== row.fridge ||
       productIds.some(
         (productId) =>
           quantityOf(values[row.customerId]?.[productId]) !== (row.quantities[productId] ?? 0),
@@ -241,6 +296,8 @@ export function StandingPlan({
         productId,
         quantity: quantityOf(values[row.customerId]?.[productId]),
       })),
+      invoice: invoices[row.customerId] ?? false,
+      fridge: fridges[row.customerId] ?? false,
     }));
   }
 
@@ -329,7 +386,44 @@ export function StandingPlan({
         </Card>
       ) : null}
 
+      {plan.routes.length > 0 ? (
+        <SegmentedControl
+          value={activeTab}
+          onValueChange={setTab}
+          ariaLabel={t("tabs.label")}
+          wrapLabels
+          className="w-full sm:w-fit"
+          options={[
+            ...plan.routes.map((route) => ({
+              value: route.id,
+              label: (
+                <span className="flex flex-col items-center sm:flex-row sm:gap-2 sm:whitespace-nowrap">
+                  {route.name}
+                  <span className="text-sm text-muted-foreground tabular-nums">
+                    {route.rows.filter((row) => hasQuantity(row.customerId)).length}
+                  </span>
+                </span>
+              ),
+              testId: `route-tab-${route.id}`,
+            })),
+            {
+              value: EXTRA_TAB,
+              label: (
+                <span className="flex flex-col items-center sm:flex-row sm:gap-2 sm:whitespace-nowrap">
+                  {t("tabs.extra")}
+                  <span className="text-sm text-muted-foreground tabular-nums">
+                    {editableOffRoute.length}
+                  </span>
+                </span>
+              ),
+              testId: "route-tab-extra",
+            },
+          ]}
+        />
+      ) : null}
+
       {plan.routes.map((route) => {
+        if (route.id !== activeTab) return null;
         const rows = route.rows;
         const totals = Object.fromEntries(productIds.map((id) => [id, 0])) as Record<
           string,
@@ -498,7 +592,7 @@ export function StandingPlan({
                         <TableHead className="w-12 text-center">{t("columns.stop")}</TableHead>
                         <TableHead className="min-w-52">{t("columns.customer")}</TableHead>
                         {plan.products.map((product) => (
-                          <TableHead key={product.id} className="w-24 text-right">
+                          <TableHead key={product.id} className="w-20 text-right">
                             <span className="block">{productLabel(product, locale)}</span>
                             <span className="block text-xs font-normal text-muted-foreground">
                               {unitLabels[product.id]}
@@ -506,7 +600,7 @@ export function StandingPlan({
                           </TableHead>
                         ))}
                         <TableHead className="w-20 text-right">{t("columns.weight")}</TableHead>
-                        <TableHead className="w-40">{t("columns.state")}</TableHead>
+                        <TableHead>{t("columns.marks")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -525,8 +619,17 @@ export function StandingPlan({
                           }
                           weight={kgOf(values[row.customerId] ?? {})}
                           onChange={setQuantity}
+                          invoice={invoices[row.customerId] ?? false}
+                          onInvoice={toggleInvoice}
+                          fridge={fridges[row.customerId] ?? false}
+                          onFridge={toggleFridge}
                           onMove={
-                            row.extra && plan.editable && !pending && !row.stop
+                            // Also after sending, while the driver has not been there yet: the
+                            // next "Änderungen senden" moves the stop to the other route.
+                            row.extra &&
+                            plan.editable &&
+                            !pending &&
+                            (row.stop === null || row.stop.status === "PENDING")
                               ? () => setMoving({ row, routeId: route.id })
                               : undefined
                           }
@@ -608,118 +711,118 @@ export function StandingPlan({
         </DialogContent>
       </Dialog>
 
-      <Card data-testid="planning-off-route">
-        <CardHeader>
-          <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-            {t("offRoute.title")}
-            <InfoTip>{t("offRoute.body")}</InfoTip>
-          </h2>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-56 flex-1">
-              <SearchIcon
-                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={t("offRoute.search")}
-                aria-label={t("offRoute.search")}
-                className="pl-9"
-                data-testid="off-route-search"
-              />
+      {activeTab === EXTRA_TAB ? (
+        <Card data-testid="planning-off-route">
+          <CardHeader>
+            <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+              {t("offRoute.title")}
+              <InfoTip>{t("offRoute.body")}</InfoTip>
+            </h2>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative min-w-56 flex-1">
+                <SearchIcon
+                  className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden
+                />
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={t("offRoute.search")}
+                  aria-label={t("offRoute.search")}
+                  className="pl-9"
+                  data-testid="off-route-search"
+                />
+              </div>
             </div>
-            <Button
-              type="button"
-              variant={onlyWithOrder ? "secondary" : "outline"}
-              aria-pressed={onlyWithOrder}
-              onClick={() => setOnlyWithOrder((value) => !value)}
-            >
-              {t("offRoute.onlyWithOrder")}
-            </Button>
-          </div>
-          {visibleOffRoute.length === 0 ? (
-            <p className="text-base text-muted-foreground">{t("offRoute.empty")}</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="max-md:hidden">
-                  <TableRow>
-                    <TableHead className="min-w-52">{t("columns.customer")}</TableHead>
-                    {plan.products.map((product) => (
-                      <TableHead key={product.id} className="w-24 text-right">
-                        <span className="block">{productLabel(product, locale)}</span>
-                        <span className="block text-xs font-normal text-muted-foreground">
-                          {unitLabels[product.id]}
-                        </span>
-                      </TableHead>
-                    ))}
-                    <TableHead className="w-20 text-right">{t("columns.weight")}</TableHead>
-                    <TableHead className="w-40">{t("columns.state")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {visibleOffRoute.map((row) => {
-                    const editable = row.orderId !== null || added.includes(row.customerId);
-                    if (!editable) {
-                      return (
-                        <TableRow
-                          key={row.customerId}
-                          data-testid={`off-route-${row.customerId}`}
-                          className="max-md:flex max-md:h-auto max-md:items-center max-md:gap-3 max-md:py-2"
-                        >
-                          <CustomerCell row={row} />
-                          {plan.products.map((product) => (
-                            <TableCell
-                              key={product.id}
-                              className="text-right text-base tabular-nums text-muted-foreground max-md:hidden"
-                            >
+            {visibleOffRoute.length === 0 ? (
+              <p className="text-base text-muted-foreground">
+                {term === "" ? t("offRoute.searchHint") : t("offRoute.empty")}
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="max-md:hidden">
+                    <TableRow>
+                      <TableHead className="min-w-52">{t("columns.customer")}</TableHead>
+                      {plan.products.map((product) => (
+                        <TableHead key={product.id} className="w-20 text-right">
+                          <span className="block">{productLabel(product, locale)}</span>
+                          <span className="block text-xs font-normal text-muted-foreground">
+                            {unitLabels[product.id]}
+                          </span>
+                        </TableHead>
+                      ))}
+                      <TableHead className="w-20 text-right">{t("columns.weight")}</TableHead>
+                      <TableHead>{t("columns.marks")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {visibleOffRoute.map((row) => {
+                      const editable = row.orderId !== null || added.includes(row.customerId);
+                      if (!editable) {
+                        return (
+                          <TableRow
+                            key={row.customerId}
+                            data-testid={`off-route-${row.customerId}`}
+                            className="max-md:flex max-md:h-auto max-md:items-center max-md:gap-3 max-md:py-2"
+                          >
+                            <CustomerCell row={row} />
+                            {plan.products.map((product) => (
+                              <TableCell
+                                key={product.id}
+                                className="text-right text-base tabular-nums text-muted-foreground max-md:hidden"
+                              >
+                                —
+                              </TableCell>
+                            ))}
+                            <TableCell className="text-right text-base tabular-nums text-muted-foreground max-md:hidden">
                               —
                             </TableCell>
-                          ))}
-                          <TableCell className="text-right text-base tabular-nums text-muted-foreground max-md:hidden">
-                            —
-                          </TableCell>
-                          <TableCell className="max-md:p-0">
-                            {plan.editable ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                disabled={pending}
-                                onClick={() => addOffRoute(row.customerId)}
-                                data-testid={`off-route-add-${row.customerId}`}
-                              >
-                                <PlusIcon aria-hidden />
-                                {t("offRoute.add")}
-                              </Button>
-                            ) : null}
-                          </TableCell>
-                        </TableRow>
+                            <TableCell className="max-md:p-0">
+                              {plan.editable ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={pending}
+                                  onClick={() => addOffRoute(row.customerId)}
+                                  data-testid={`off-route-add-${row.customerId}`}
+                                >
+                                  <PlusIcon aria-hidden />
+                                  {t("offRoute.add")}
+                                </Button>
+                              ) : null}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      }
+                      return (
+                        <PlanRow
+                          key={row.customerId}
+                          row={row}
+                          products={plan.products}
+                          locale={locale}
+                          values={values[row.customerId] ?? {}}
+                          editable={plan.editable}
+                          weight={kgOf(values[row.customerId] ?? {})}
+                          onChange={setQuantity}
+                          invoice={invoices[row.customerId] ?? false}
+                          onInvoice={toggleInvoice}
+                          fridge={fridges[row.customerId] ?? false}
+                          onFridge={toggleFridge}
+                          testId={`off-route-${row.customerId}`}
+                        />
                       );
-                    }
-                    return (
-                      <PlanRow
-                        key={row.customerId}
-                        row={row}
-                        products={plan.products}
-                        locale={locale}
-                        values={values[row.customerId] ?? {}}
-                        editable={plan.editable}
-                        weight={kgOf(values[row.customerId] ?? {})}
-                        onChange={setQuantity}
-                        testId={`off-route-${row.customerId}`}
-                      />
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {plan.editable ? (
         // A solid bar inside the page column. Below 1025 px it stops above the menu bar at the
@@ -839,6 +942,10 @@ function PlanRow({
   editable,
   weight,
   onChange,
+  invoice,
+  onInvoice,
+  fridge,
+  onFridge,
   onMove,
   testId,
 }: {
@@ -853,6 +960,12 @@ function PlanRow({
   editable: boolean;
   weight: number;
   onChange: (customerId: string, productId: string, value: string) => void;
+  /** "Rechnung mitgeben" for this day (saved with the quantities). */
+  invoice: boolean;
+  onInvoice: (customerId: string) => void;
+  /** "In den Kühlschrank": a customer setting, saved with the quantities. */
+  fridge: boolean;
+  onFridge: (customerId: string) => void;
   /** "Verschieben" of an extra; without it the row has no move button. */
   onMove?: () => void;
   testId?: string;
@@ -860,6 +973,7 @@ function PlanRow({
   const t = useTranslations("admin.planning");
   const tc = useTranslations("common");
   const format = useFormatter();
+  const ordered = products.some((p) => quantityOf(values[p.id]) > 0);
   return (
     // Below `md` a row is a wrapped line (like the orders list): number and customer, then the
     // quantity fields with their product names, then the states. No sideways scrolling on a phone.
@@ -915,8 +1029,33 @@ function PlanRow({
         {format.number(weight, { maximumFractionDigits: 1 })}
         <span className="md:hidden"> kg</span>
       </TableCell>
-      <TableCell className="max-md:basis-full max-md:p-0 max-md:empty:hidden">
-        <div className="flex flex-wrap gap-1 max-md:empty:hidden">
+      <TableCell className="max-md:basis-full max-md:p-0">
+        {/* Two toggles with a word each: pressed = the driver sees the symbol at this stop. They
+            count for this day only (owner 2026-11-14); "always" comes from the customer and is
+            shown pressed and locked. Nothing ordered: there is no delivery to mark. */}
+        <div className="flex flex-wrap gap-1.5 md:flex-nowrap">
+          <MarkToggle
+            on={invoice}
+            always={row.invoiceAlways}
+            alwaysLabel={t("marks.always")}
+            icon={ReceiptTextIcon}
+            label={t("marks.invoice")}
+            disabled={!editable || (!invoice && !ordered)}
+            onClick={() => onInvoice(row.customerId)}
+            testId={`invoice-${row.customerId}`}
+          />
+          <MarkToggle
+            on={fridge}
+            always={row.fridgeAlways}
+            alwaysLabel={t("marks.always")}
+            icon={RefrigeratorIcon}
+            label={t("marks.fridge")}
+            disabled={!editable || (!fridge && !ordered)}
+            onClick={() => onFridge(row.customerId)}
+            testId={`fridge-${row.customerId}`}
+          />
+        </div>
+        <div className="mt-1.5 flex flex-wrap gap-1 empty:hidden">
           {noLocation ? (
             <Badge variant="warning" data-testid={`no-location-${row.customerId}`}>
               <TriangleAlertIcon aria-hidden />
@@ -954,32 +1093,33 @@ function CustomerCell({ row, onMove }: { row: DayPlanRow; onMove?: () => void })
   const t = useTranslations("admin.planning");
   return (
     <TableCell className="max-md:min-w-0 max-md:flex-1 max-md:basis-[calc(100%-2.5rem)] max-md:p-0">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <div className="flex flex-col">
-          <span className="flex flex-wrap items-center gap-2 text-base font-medium">
-            {row.name}
-            {row.extra ? (
-              <Badge variant="outline" size="sm" data-testid={`extra-${row.customerId}`}>
-                {t("extra.label")}
-              </Badge>
-            ) : null}
-          </span>
-          <span className="text-sm text-muted-foreground">
-            {row.customerNumber} · {row.city}
-          </span>
-        </div>
-        {onMove ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={onMove}
-            data-testid={`move-${row.customerId}`}
-          >
-            <MoveVerticalIcon aria-hidden />
-            {t("extra.move")}
-          </Button>
-        ) : null}
+      {/* Two lines whatever the row carries: name with "Zusatz" on the first, number and place
+          with "Route ändern" on the second (owner 2026-11-14: less scrolling). */}
+      <div className="flex flex-col">
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-base font-medium">
+          {row.name}
+          {row.extra ? (
+            <Badge variant="outline" size="sm" data-testid={`extra-${row.customerId}`}>
+              {t("extra.label")}
+            </Badge>
+          ) : null}
+        </span>
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+          {row.customerNumber} · {row.city}
+          {onMove ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-sm text-foreground max-md:min-h-11"
+              onClick={onMove}
+              data-testid={`move-${row.customerId}`}
+            >
+              <ArrowLeftRightIcon aria-hidden />
+              {t("extra.move")}
+            </Button>
+          ) : null}
+        </span>
       </div>
     </TableCell>
   );
@@ -1064,5 +1204,62 @@ function RouteSelect({
         </span>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * A small on/off button with a word (the driver's invoice / fridge symbol) for this day. `always`
+ * (customer setting) shows it pressed and locked, with the reason as tooltip and accessible name.
+ */
+function MarkToggle({
+  on,
+  always,
+  alwaysLabel,
+  icon: Icon,
+  label,
+  disabled,
+  onClick,
+  testId,
+}: {
+  on: boolean;
+  always: boolean;
+  alwaysLabel: string;
+  icon: LucideIcon;
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+  testId: string;
+}) {
+  const pressed = on || always;
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      aria-pressed={pressed}
+      disabled={disabled || always}
+      onClick={onClick}
+      title={always ? alwaysLabel : undefined}
+      aria-label={always ? `${label}: ${alwaysLabel}` : undefined}
+      className={cn(
+        "h-8 px-2.5 max-md:min-h-11",
+        pressed
+          ? "border-info bg-info-soft text-info-soft-foreground hover:bg-info-soft disabled:opacity-100"
+          : "text-muted-foreground",
+      )}
+      data-testid={testId}
+      data-on={pressed}
+      data-always={always}
+    >
+      {/* Lock = set for good on the customer; check = set for this day. */}
+      {always ? (
+        <LockIcon aria-hidden />
+      ) : pressed ? (
+        <CheckIcon aria-hidden />
+      ) : (
+        <Icon aria-hidden />
+      )}
+      {label}
+    </Button>
   );
 }

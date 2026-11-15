@@ -38,6 +38,8 @@ export type SettingsFormValues = {
   deliveryWeekdays: number[];
   /** Fixed items of the driver's departure checklist (NUD-151), German source text. */
   departureChecklist: Array<{ id: string; text: string }>;
+  /** Number the driver calls from "Problem" (owner 2026-11-14). */
+  problemPhone: string;
 };
 
 /** One row of the checklist editor; `id` is empty for a row that was just added. */
@@ -76,6 +78,7 @@ export function SettingsForm({
   const [minutes, setMinutes] = useState(String(initial.serviceMinutesPerStop));
   const [loadingMinutes, setLoadingMinutes] = useState(String(initial.defaultLoadingMinutes));
   const [leadDays, setLeadDays] = useState(String(initial.recurringLeadDays));
+  const [phone, setPhone] = useState(initial.problemPhone);
   const [weekdays, setWeekdays] = useState(initial.deliveryWeekdays);
   const toRows = (items: SettingsFormValues["departureChecklist"]): ChecklistRow[] =>
     items.map((item) => ({ key: item.id, id: item.id, text: item.text }));
@@ -106,6 +109,7 @@ export function SettingsForm({
       minutes !== String(initial.serviceMinutesPerStop) ||
       loadingMinutes !== String(initial.defaultLoadingMinutes) ||
       leadDays !== String(initial.recurringLeadDays) ||
+      phone !== initial.problemPhone ||
       !sameDays ||
       JSON.stringify(checklist.map(({ id, text }) => [id, text])) !==
         JSON.stringify(initial.departureChecklist.map(({ id, text }) => [id, text]))
@@ -120,6 +124,7 @@ export function SettingsForm({
     minutes,
     loadingMinutes,
     leadDays,
+    phone,
     weekdays,
     checklist,
     initial,
@@ -128,6 +133,7 @@ export function SettingsForm({
   const sections = [
     { id: "settings-depot", label: t("depot.heading") },
     { id: "settings-planning", label: t("planning.heading") },
+    { id: "settings-problem", label: t("problem.heading") },
     { id: "settings-checklist", label: t("checklist.nav") },
   ];
 
@@ -147,6 +153,7 @@ export function SettingsForm({
     setMinutes(String(initial.serviceMinutesPerStop));
     setLoadingMinutes(String(initial.defaultLoadingMinutes));
     setLeadDays(String(initial.recurringLeadDays));
+    setPhone(initial.problemPhone);
     setWeekdays(initial.deliveryWeekdays);
     setChecklist(toRows(initial.departureChecklist));
     setError(null);
@@ -178,6 +185,7 @@ export function SettingsForm({
       serviceMinutesPerStop: minutes.trim() === "" ? Number.NaN : Number(minutes),
       defaultLoadingMinutes: loadingMinutes.trim() === "" ? Number.NaN : Number(loadingMinutes),
       recurringLeadDays: leadDays.trim() === "" ? Number.NaN : Number(leadDays),
+      problemPhone: phone,
       deliveryWeekdays: weekdays,
       departureChecklist: checklist
         .filter((row) => row.text.trim() !== "")
@@ -452,6 +460,33 @@ export function SettingsForm({
                   ))}
                 </div>
               </fieldset>
+            </CardContent>
+          </Card>
+
+          <Card id="settings-problem" className="scroll-mt-20">
+            <CardHeader>
+              <CardTitle>{t("problem.heading")}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-5">
+              <FormField
+                label={t("problem.phone")}
+                htmlFor="problem-phone"
+                required
+                info={t("problem.phoneHint")}
+              >
+                <Input
+                  id="problem-phone"
+                  type="tel"
+                  className="w-56"
+                  inputMode="tel"
+                  autoComplete="off"
+                  maxLength={40}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  data-testid="problem-phone"
+                  required
+                />
+              </FormField>
             </CardContent>
           </Card>
 

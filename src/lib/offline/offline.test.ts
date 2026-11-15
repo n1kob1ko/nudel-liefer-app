@@ -27,6 +27,7 @@ function response(date: string, photoIds: string[] = ["a", "b"]): DriverTourResp
     generatedAt: `${date}T05:00:00.000Z`,
     timezone: "Europe/Vienna",
     serviceSecondsPerStop: 600,
+    problemPhone: "+43 1 000 00 00",
     tour: {
       id: "t1",
       status: "RELEASED",
@@ -71,6 +72,8 @@ function response(date: string, photoIds: string[] = ["a", "b"]): DriverTourResp
         abbreviation: null,
         cashDueCents: 0,
         collectedCents: null,
+        intoFridge: false,
+        handInvoice: false,
         photos: { STORE: photo(id), PARKING: null },
         items: [],
       })),

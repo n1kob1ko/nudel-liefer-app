@@ -40,6 +40,7 @@ export function SegmentedControl({
   size = "md",
   className,
   id,
+  wrapLabels = false,
 }: {
   value: string;
   onValueChange: (value: string) => void;
@@ -48,6 +49,8 @@ export function SegmentedControl({
   size?: "sm" | "md" | "lg";
   className?: string;
   id?: string;
+  /** Let long labels wrap onto a second line instead of being cut off (the track grows). */
+  wrapLabels?: boolean;
 }) {
   const thumbId = useId();
   const [moved, setMoved] = useState(false);
@@ -70,7 +73,7 @@ export function SegmentedControl({
         data-slot="segmented-control"
         className={cn(
           "inline-flex w-full items-center gap-1 rounded-md bg-muted p-0.5 isolate",
-          listSizes[size],
+          wrapLabels ? "h-auto" : listSizes[size],
           className,
         )}
       >
@@ -95,6 +98,7 @@ export function SegmentedControl({
                   "relative inline-flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 self-stretch rounded-sm px-3 font-medium outline-none transition-colors duration-200 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none data-[state=on]:font-semibold data-[state=on]:text-foreground data-[state=off]:text-muted-foreground data-[state=off]:hover:text-foreground",
                   size === "sm" ? "text-sm" : "text-base",
                   itemSizes[size],
+                  wrapLabels && "py-1",
                 )}
               >
                 {option.value === value ? (
@@ -108,7 +112,9 @@ export function SegmentedControl({
                 {Icon ? (
                   <Icon className={cn(iconSizes[size], "relative shrink-0")} aria-hidden />
                 ) : null}
-                <span className="relative truncate">{option.label}</span>
+                <span className={cn("relative", wrapLabels ? "text-center leading-tight" : "truncate")}>
+                  {option.label}
+                </span>
               </ToggleGroupPrimitive.Item>
             );
           })}

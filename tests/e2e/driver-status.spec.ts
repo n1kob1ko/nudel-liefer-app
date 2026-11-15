@@ -154,7 +154,7 @@ async function expectTouchTarget(page: Page, id: string) {
 test.describe.configure({ mode: "serial" });
 
 for (const locale of LOCALES) {
-  test(`deliver, report a problem, undo and finish the tour at 375 px in ${locale}`, async ({
+  test(`deliver, call on a problem, undo and finish the tour at 375 px in ${locale}`, async ({
     page,
   }, testInfo) => {
     const errors: string[] = [];
@@ -177,30 +177,22 @@ for (const locale of LOCALES) {
     await visible(page, "btn-delivered").scrollIntoViewIfNeeded();
     await page.screenshot({ path: testInfo.outputPath(`status-buttons-${locale}.png`) });
 
-    // Problem sheet: seven reasons with icons, touch targets, optional text.
+    // "Problem" (owner 2026-11-14): only the office's number with a big call button, no form, and
+    // nothing is reported.
     await visible(page, "btn-problem").click();
     const sheet = page.getByTestId("problem-sheet");
     await expect(sheet).toBeVisible();
-    await expect(sheet.getByTestId("problem-reasons").getByRole("button")).toHaveCount(7);
-    await expect(sheet.getByTestId("problem-reasons").locator("button svg")).toHaveCount(7);
-    for (const reason of [
-      "CLOSED",
-      "NOBODY_THERE",
-      "NO_PARKING",
-      "WRONG_QUANTITY",
-      "REFUSED",
-      "ADDRESS_NOT_FOUND",
-      "OTHER",
-    ]) {
-      const box = await sheet.getByTestId(`reason-${reason}`).boundingBox();
-      expect(box!.height, reason).toBeGreaterThanOrEqual(48);
-    }
-    await expect(sheet.getByTestId("problem-submit")).toBeDisabled();
+    await expect(sheet.getByTestId("problem-phone")).not.toBeEmpty();
+    await expect(sheet.getByTestId("problem-call")).toHaveAttribute("href", /^tel:\+?\d{3,}$/);
+    const call = await sheet.getByTestId("problem-call").boundingBox();
+    expect(call!.height).toBeGreaterThanOrEqual(48);
+    await expect(sheet.getByRole("textbox")).toHaveCount(0);
     expect(await noHorizontalScroll(page)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath(`status-sheet-${locale}.png`) });
     await sheet.getByTestId("problem-cancel").click();
     await expect(sheet).toHaveCount(0);
     expect((await stopRow(0)).status).toBe("PENDING");
+    expect(await mutationCount()).toBe(0);
 
     // Double tap on "Delivered": exactly one state change. The screen stays on the stop (NUD-176):
     // its result card offers Undo and the way to the next stop.
@@ -222,32 +214,21 @@ for (const locale of LOCALES) {
     await visible(page, "next-stop-action").click();
     await expect(page).toHaveURL(stopUrl(1));
 
-    // Stop 2: problem with reason and free text, stored in the driver's locale.
-    await visible(page, "btn-problem").click();
-    await page.getByTestId("reason-NO_PARKING").click();
-    await page.getByTestId("problem-note").fill(`Baustelle ${locale}`);
-    await page.getByTestId("problem-submit").click();
-    await expect(visible(page, "stop-result")).toHaveAttribute("data-status", "PROBLEM");
+    // Stop 2: delivered, then undone from the toast: stop 2 is open again and shown.
+    await visible(page, "btn-delivered").click();
+    await expect(visible(page, "stop-result")).toHaveAttribute("data-status", "DELIVERED");
     await expect(visible(page, "next-stop-action")).toHaveAttribute(
       "href",
       new RegExp(`/driver/stops/${stopIds[2]}$`),
     );
     await expect(page).toHaveURL(stopUrl(1));
-    await expect.poll(async () => (await stopRow(1)).status).toBe("PROBLEM");
-    const problem = await stopRow(1);
-    expect(problem.problemReason).toBe("NO_PARKING");
-    expect(problem.problemNote[locale]).toBe(`Baustelle ${locale}`);
-    expect(problem.problemNote.meta.source).toBe(locale);
-    expect(problem.completedAt).not.toBeNull();
-
-    // Undo from the toast: stop 2 is open again and shown.
+    await expect.poll(async () => (await stopRow(1)).status).toBe("DELIVERED");
     const undo = page.locator("[data-sonner-toast]").first().locator("[data-button]");
     await expect(undo).toBeVisible();
     await undo.click();
     await expect(page).toHaveURL(stopUrl(1));
     await expect.poll(async () => (await stopRow(1)).status).toBe("PENDING");
-    expect((await stopRow(1)).problemReason).toBeNull();
-    expect((await stopRow(1)).problemNote).toBeNull();
+    expect((await stopRow(1)).completedAt).toBeNull();
     await expect(visible(page, "btn-delivered")).toBeVisible();
     expect(await tourStatus()).toBe("IN_PROGRESS");
 

@@ -5,16 +5,9 @@ import {
   CheckCircle2Icon,
   CheckIcon,
   ChevronRightIcon,
-  CircleParkingOffIcon,
-  DoorClosedIcon,
-  EllipsisIcon,
-  HandIcon,
-  type LucideIcon,
-  MapPinOffIcon,
-  ScaleIcon,
+  PhoneIcon,
   Undo2Icon,
   UploadCloudIcon,
-  UserXIcon,
   WifiOffIcon,
 } from "lucide-react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
@@ -29,31 +22,17 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  isWithinUndoWindow,
-  nextPendingAfter,
-  PROBLEM_NOTE_MAX,
-  PROBLEM_REASONS,
-  type ProblemReasonName,
-} from "@/domain/stop-status";
+import { telHref } from "@/domain/problem-phone";
+import { isWithinUndoWindow, nextPendingAfter, type ProblemReasonName } from "@/domain/stop-status";
 import { Link, useRouter } from "@/i18n/navigation";
 import { requestOfflineSync } from "@/lib/offline/browser";
 import { planUndo } from "@/lib/offline/outbox";
 import { enqueueMutation, undoStopStatus, useOutbox } from "@/lib/offline/outbox-browser";
 import { cn } from "@/lib/utils";
 
+import { CashDeliverSheet } from "./cash-deliver-sheet";
 import { driverTime } from "./driver-time";
 import { stopText } from "./stop-i18n-fallback";
-
-const REASON_ICONS: Record<ProblemReasonName, LucideIcon> = {
-  CLOSED: DoorClosedIcon,
-  NOBODY_THERE: UserXIcon,
-  NO_PARKING: CircleParkingOffIcon,
-  WRONG_QUANTITY: ScaleIcon,
-  REFUSED: HandIcon,
-  ADDRESS_NOT_FOUND: MapPinOffIcon,
-  OTHER: EllipsisIcon,
-};
 
 const TOAST_MS = 10_000;
 
@@ -70,6 +49,8 @@ type StopForStatus = {
   status: "PENDING" | "DELIVERED" | "PROBLEM";
   problemReason: string | null;
   completedAt: string | null;
+  /** Cash to collect (D33): "Geliefert" asks for the amount first (owner 2026-11-14). */
+  cashDueCents?: number;
 };
 
 type TourStopForStatus = { id: string; sequence: number; status: string };
@@ -85,8 +66,10 @@ function useNow(intervalMs: number): number {
 }
 
 /**
- * The big "Delivered" / "Problem" buttons of the stop screen (NUD-053), the problem sheet, the
- * result card with Undo, and the toast with Undo after a success.
+ * The big "Delivered" / "Problem" buttons of the stop screen (NUD-053), the result card with Undo,
+ * and the toast with Undo after a success. "Problem" only shows the office's number with a big call
+ * button (owner 2026-11-14): no reasons, no note, nothing is reported. A stop marked PROBLEM earlier
+ * still shows its result card.
  *
  * Offline queue (NUD-082): a tap is written to the outbox on the device (IndexedDB) and the screen
  * changes at once (the stop counts as done, the next one opens); the outbox sends it to
@@ -100,6 +83,7 @@ export function StopStatusActions({
   tourStops,
   tourStatus,
   timezone,
+  problemPhone,
   offline = false,
 }: {
   stop: StopForStatus;
@@ -107,6 +91,8 @@ export function StopStatusActions({
   tourStops: readonly TourStopForStatus[];
   tourStatus: string;
   timezone: string;
+  /** Number the driver calls from "Problem" (Einstellungen). */
+  problemPhone: string;
   /** Offline copy (NUD-081): an amber hint says that the tap is kept on the device. */
   offline?: boolean;
 }) {
@@ -122,9 +108,8 @@ export function StopStatusActions({
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [reason, setReason] = useState<ProblemReasonName | null>(null);
-  const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [cashOpen, setCashOpen] = useState(false);
   // Read once when the result card mounts; cleared afterwards so a later visit stays still.
   const [celebrate] = useState(() => stop.status === "DELIVERED" && justDelivered.has(stop.id));
   useEffect(() => {
@@ -156,39 +141,33 @@ export function StopStatusActions({
     router.push(`/driver/stops/${stopId}`);
   }
 
-  async function complete(
-    type: "delivered" | "problem",
-    extra: { reason?: ProblemReasonName; note?: string } = {},
-  ) {
+  async function deliver() {
     const entry = await guarded(() =>
-      enqueueMutation({ type, stopId: stop.id, customerName: stop.customerName, ...extra }),
+      enqueueMutation({ type: "delivered", stopId: stop.id, customerName: stop.customerName }),
     );
     if (!entry) return;
-    if (type === "delivered") justDelivered.add(stop.id);
-    setSheetOpen(false);
-    setReason(null);
-    setNote("");
+    afterDelivered();
+  }
+
+  /** Toast with undo after a queued delivery (also the cash sheet's "Kassiert und geliefert"). */
+  function afterDelivered() {
+    justDelivered.add(stop.id);
     const next = nextPendingAfter(
-      tourStops.map((s) => ({ ...s, status: s.id === stop.id ? type.toUpperCase() : s.status })),
+      tourStops.map((s) => ({ ...s, status: s.id === stop.id ? "DELIVERED" : s.status })),
       stop.id,
     );
-    toast(
-      type === "delivered"
-        ? t("deliveredToast", { name: stop.customerName })
-        : t("problemToast", { name: stop.customerName }),
-      {
-        duration: TOAST_MS,
-        style: { fontSize: 16 },
-        // The last stop closes the tour and a completed tour cannot be reopened (NUD-053).
-        action: next
-          ? {
-              label: t("undo"),
-              onClick: () => void undo(stop.id, stop.customerName),
-            }
-          : undefined,
-        actionButtonStyle: { height: 48, minWidth: 48, fontSize: 16, padding: "0 16px" },
-      },
-    );
+    toast(t("deliveredToast", { name: stop.customerName }), {
+      duration: TOAST_MS,
+      style: { fontSize: 16 },
+      // The last stop closes the tour and a completed tour cannot be reopened (NUD-053).
+      action: next
+        ? {
+            label: t("undo"),
+            onClick: () => void undo(stop.id, stop.customerName),
+          }
+        : undefined,
+      actionButtonStyle: { height: 48, minWidth: 48, fontSize: 16, padding: "0 16px" },
+    });
     // NUD-176 (QA 2026-10-29, F1): NO automatic jump to the next stop. The only durable undo lived
     // in the toast, and the push in the same tick took the screen — and with it the reachable undo —
     // away from the driver. The result card of this stop now offers "Weiter zu Stopp n" and
@@ -362,7 +341,7 @@ export function StopStatusActions({
             {t("offlineNotice")}
           </p>
         ) : null}
-        {error && !sheetOpen ? (
+        {error ? (
           <p
             role="alert"
             className="text-base font-medium text-destructive"
@@ -383,7 +362,7 @@ export function StopStatusActions({
           size="xl"
           className="w-full text-lg font-bold"
           loading={busy}
-          onClick={() => void complete("delivered")}
+          onClick={() => ((stop.cashDueCents ?? 0) > 0 ? setCashOpen(true) : void deliver())}
           data-testid="btn-delivered"
         >
           <CheckIcon className="size-7" aria-hidden />
@@ -406,6 +385,18 @@ export function StopStatusActions({
         </Button>
       </div>
 
+      {cashOpen ? (
+        <CashDeliverSheet
+          stop={{
+            id: stop.id,
+            customerName: stop.customerName,
+            cashDueCents: stop.cashDueCents ?? 0,
+          }}
+          onClose={() => setCashOpen(false)}
+          onDelivered={afterDelivered}
+        />
+      ) : null}
+
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent
           side="bottom"
@@ -414,103 +405,34 @@ export function StopStatusActions({
         >
           <SheetHeader className="shrink-0 pe-14">
             <SheetTitle className="text-2xl">{t("problemTitle")}</SheetTitle>
-            <SheetDescription>{t("problemDescription")}</SheetDescription>
+            <SheetDescription className="text-base">{t("problemDescription")}</SheetDescription>
           </SheetHeader>
-          {/*
-           * The body is the only scrolling region (design review point 6). The sheet's `max-h`
-           * comes from the viewport (`dvh`), so the seven reason chips, the textarea and the actions
-           * below all stay reachable at 375 x 667 — in German as well as in Czech or Chinese.
-           */}
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-1">
-            <div className="space-y-4">
-              <div
-                role="group"
-                aria-label={t("problemTitle")}
-                className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-2"
-                data-testid="problem-reasons"
-              >
-                {PROBLEM_REASONS.map((value) => {
-                  const Icon = REASON_ICONS[value];
-                  const selected = reason === value;
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      aria-pressed={selected}
-                      onClick={() => setReason(value)}
-                      className={cn(
-                        "flex min-h-16 items-center gap-3 rounded-lg border p-3 text-start text-base font-semibold outline-none transition-[background-color,border-color,transform] duration-[140ms] ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card active:scale-[.97]",
-                        value === "OTHER" && "col-span-full",
-                        selected
-                          ? "border-foreground bg-primary text-primary-foreground"
-                          : "border-input/60 bg-card hover:border-input hover:bg-muted/60",
-                      )}
-                      data-testid={`reason-${value}`}
-                    >
-                      <Icon className="size-6 shrink-0" aria-hidden />
-                      {/* No `break-words`: a long German word wraps at its own boundaries and is
-                          hyphenated only when it does not fit (§9.3). 16 px (not 18 px) keeps
-                          "Geschlossen" whole inside the 2-column chip grid at 375 px. */}
-                      <span className="min-w-0 hyphens-auto" lang={locale}>
-                        {tReasons(value)}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <label className="block space-y-1.5">
-                <span className="text-base font-semibold">{t("noteLabel")}</span>
-                <textarea
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  maxLength={PROBLEM_NOTE_MAX}
-                  rows={3}
-                  placeholder={t("notePlaceholder")}
-                  className="field block w-full resize-none rounded-lg border border-input bg-card p-3 text-base outline-none"
-                  data-testid="problem-note"
-                />
-              </label>
-              {error ? (
-                <p
-                  role="alert"
-                  className="text-base font-medium text-destructive"
-                  data-testid="sheet-error"
-                >
-                  {error}
-                </p>
-              ) : null}
-            </div>
-          </div>
-          {/* Fixed at the sheet's bottom edge: the thumb finds the actions without scrolling. */}
-          <div className="grid shrink-0 gap-2 border-t bg-background px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            <Button
-              type="button"
-              size="xl"
-              variant="destructive"
-              // Disabled stays readable (design review point 8): a token-based boundary and icon at
-              // >= 3:1, muted text on the muted fill, no extra opacity on top and no tactile edge.
-              className="text-lg font-bold disabled:border disabled:border-muted-foreground disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none"
-              disabled={busy || reason === null}
-              onClick={() => {
-                if (!reason) return;
-                const text = note.trim();
-                void complete("problem", { reason, ...(text ? { note: text } : {}) });
-              }}
-              data-testid="problem-submit"
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-1 pb-2">
+            <p
+              className="text-3xl font-bold tracking-wide tabular-nums"
+              dir="ltr"
+              data-testid="problem-phone"
             >
-              <AlertTriangleIcon className="size-6" aria-hidden />
-              {t("submit")}
+              {problemPhone}
+            </p>
+          </div>
+          {/* Fixed at the sheet's bottom edge: the thumb finds the call button without scrolling. */}
+          <div className="grid shrink-0 gap-2 border-t bg-background px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <Button asChild size="xl" variant="primary" className="text-lg font-bold">
+              <a href={telHref(problemPhone)} data-testid="problem-call">
+                <PhoneIcon className="size-6" aria-hidden />
+                {t("call")}
+              </a>
             </Button>
             <Button
               type="button"
               variant="outline"
               size="lg"
               className="min-h-14 text-lg"
-              disabled={busy}
               onClick={() => setSheetOpen(false)}
               data-testid="problem-cancel"
             >
-              {t("cancel")}
+              {t("close")}
             </Button>
           </div>
         </SheetContent>

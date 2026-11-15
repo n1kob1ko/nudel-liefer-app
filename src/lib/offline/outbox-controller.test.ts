@@ -109,6 +109,25 @@ describe("enqueue and undo", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
+  it("takes the cash queued with a cancelled delivery away too (owner 2026-11-14)", async () => {
+    const { controller, store, fetchImpl } = setup();
+    await controller.start("u1");
+    await controller.enqueue(tap("s1"));
+    await controller.enqueue({
+      type: "payment",
+      stopId: "s1",
+      collectedCents: 4200,
+      customerName: "Customer s1",
+    });
+    await controller.enqueue(tap("s2"));
+    expect(await controller.undo("s1", "Customer s1")).toBe("cancelled");
+    expect(controller.getState().entries.map((e) => [e.stopId, e.type])).toEqual([
+      ["s2", "delivered"],
+    ]);
+    expect(store.entryRows.size).toBe(1);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
   it("queues a real undo for a completion the server already holds", async () => {
     const { controller, store } = setup();
     await controller.start("u1");

@@ -182,6 +182,7 @@ export async function applyStopMutation(
             adminChangedAt: true,
             customerId: true,
             problemReason: true,
+            collectedCents: true,
             tour: { select: { id: true, status: true, driverId: true } },
           },
         });
@@ -211,6 +212,11 @@ export async function applyStopMutation(
               problemNote: Prisma.DbNull,
               completedAt: null,
               clientMutationId: null,
+              // Owner 2026-11-14: cash is recorded together with "Geliefert"; taking the delivery
+              // back takes the cash back too, the next "Geliefert" asks for it again.
+              collectedCents: null,
+              collectedAt: null,
+              collectedById: null,
             },
           });
           if (reopened.count !== 1) throw new Rejected("not_completed");
@@ -293,7 +299,14 @@ export async function applyStopMutation(
                   ...(input.note?.trim() ? { noteLength: input.note.trim().length } : {}),
                 }
               : {}),
-            ...(input.type === "undo" ? { previousReason: stop.problemReason } : {}),
+            ...(input.type === "undo"
+              ? {
+                  previousReason: stop.problemReason,
+                  ...(stop.collectedCents !== null
+                    ? { previousCollectedCents: stop.collectedCents }
+                    : {}),
+                }
+              : {}),
             ...(newTourStatus !== tourStatus
               ? { tourStatus: { from: tourStatus, to: newTourStatus } }
               : {}),

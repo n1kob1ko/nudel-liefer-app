@@ -1,4 +1,11 @@
-import { ArrowRightIcon, BanknoteIcon, FileSpreadsheetIcon, ReceiptTextIcon } from "lucide-react";
+import {
+  ArrowRightIcon,
+  BanknoteIcon,
+  FileSpreadsheetIcon,
+  ReceiptTextIcon,
+  UsersIcon,
+  XIcon,
+} from "lucide-react";
 import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense } from "react";
 
@@ -20,7 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { parseCalendarDate } from "@/domain/order";
-import { addMonths, monthKey, monthStart } from "@/domain/payment";
+import { addMonths, monthKey, monthStart, openCashByCustomer } from "@/domain/payment";
 import { Link } from "@/i18n/navigation";
 import { createAppFormatters } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -36,7 +43,13 @@ import { getFactoryTimezone } from "@/server/settings";
  * part) and customer-months whose accumulated bill is not marked paid yet. Every row links to the
  * place where it is settled: the tour (cash) or the month page (bill).
  */
-async function Guarded({ locale }: { locale: string }) {
+async function Guarded({
+  locale,
+  customerFilter,
+}: {
+  locale: string;
+  customerFilter: string | null;
+}) {
   await requirePageActor("admin", locale);
   const t = await getTranslations({ locale, namespace: "admin.payments" });
   const formatter = await getFormatter({ locale });
@@ -44,12 +57,22 @@ async function Guarded({ locale }: { locale: string }) {
   const today = todayIn(await getFactoryTimezone());
   const db = getDb();
   const [cash, monthly, paidHistory] = await Promise.all([
-    openCashQuery(db, today),
+    // Up to 500 open deliveries: enough for the per-customer sums; the list shows 100 of them.
+    openCashQuery(db, today, 500),
     monthlyOverviewQuery(db, today),
     // The newest paid notes; the full list is the history page (NUD-199).
     paidHistoryQuery(db, { pageSize: 5 }),
   ]);
   const openMonthly = monthly.filter((row) => row.state === "open");
+  // Who owes the most (owner 2026-11-14). The office only: the driver app never sees this.
+  const debtors = openCashByCustomer(cash);
+  const maxDebt = debtors[0]?.openCents ?? 0;
+  const filtered = customerFilter
+    ? debtors.find((d) => d.customerId === customerFilter)
+    : undefined;
+  const cashRows = (
+    filtered ? cash.filter((row) => row.customerId === filtered.customerId) : cash
+  ).slice(0, 100);
   const cashTotal = cash.reduce((sum, row) => sum + (row.dueCents - (row.collectedCents ?? 0)), 0);
   const monthlyTotal = openMonthly.reduce((sum, row) => sum + row.amountCents, 0);
   // Months offered for the accounting export: the running month and the twelve before it.
@@ -88,13 +111,90 @@ async function Guarded({ locale }: { locale: string }) {
         </div>
       </dl>
 
-      <Card data-testid="cash-open">
+      {debtors.length > 0 ? (
+        <Card data-testid="cash-debtors">
+          <CardHeader>
+            <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+              <UsersIcon className="size-5" aria-hidden />
+              {t("debtors.title")}
+              <InfoTip>{t("debtors.body")}</InfoTip>
+            </h2>
+          </CardHeader>
+          <CardContent>
+            <ol className="flex flex-col">
+              {debtors.slice(0, 10).map((debtor) => {
+                const active = filtered?.customerId === debtor.customerId;
+                return (
+                  <li key={debtor.customerId} className="border-b border-border last:border-b-0">
+                    <Link
+                      href={
+                        active
+                          ? "/admin/payments#cash-open"
+                          : `/admin/payments?kunde=${debtor.customerId}#cash-open`
+                      }
+                      aria-current={active ? "true" : undefined}
+                      className={cn(
+                        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 rounded-md px-2 py-3 transition-colors hover:bg-muted active:bg-muted",
+                        active && "bg-muted",
+                      )}
+                      data-testid={`debtor-${debtor.customerId}`}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium">{debtor.customerName}</span>
+                        <span className="block text-sm text-muted-foreground tabular-nums">
+                          {t("debtors.meta", {
+                            count: debtor.stopCount,
+                            date: fmt.calendarDate(parseCalendarDate(debtor.oldestDate) ?? today),
+                          })}
+                        </span>
+                      </span>
+                      <span
+                        className="text-lg font-semibold tabular-nums"
+                        data-testid={`debtor-open-${debtor.customerId}`}
+                      >
+                        {fmt.amount(debtor.openCents)}
+                      </span>
+                      {/* How big this debt is next to the biggest one, at a glance. */}
+                      <span
+                        className="col-span-2 h-1.5 overflow-hidden rounded-full bg-muted"
+                        aria-hidden
+                      >
+                        <span
+                          className="block h-full rounded-full bg-foreground/70"
+                          style={{
+                            width: `${Math.max(4, Math.round((debtor.openCents / maxDebt) * 100))}%`,
+                          }}
+                        />
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ol>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <Card data-testid="cash-open" id="cash-open" className="scroll-mt-20">
         <CardHeader>
           <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
             <BanknoteIcon className="size-5" aria-hidden />
             {t("cash.title")}
             <InfoTip>{t("cash.body")}</InfoTip>
           </h2>
+          {filtered ? (
+            <p className="flex flex-wrap items-center gap-2 text-base">
+              <span>{t("debtors.filtered", { name: filtered.customerName })}</span>
+              <Link
+                href="/admin/payments#cash-open"
+                className="inline-flex h-11 items-center gap-1 link md:h-9"
+                data-testid="cash-filter-clear"
+              >
+                <XIcon className="size-4" aria-hidden />
+                {t("debtors.showAll")}
+              </Link>
+            </p>
+          ) : null}
         </CardHeader>
         <CardContent>
           {cash.length === 0 ? (
@@ -120,7 +220,7 @@ async function Guarded({ locale }: { locale: string }) {
                 </TableRow>
               </TableHeader>
               <TableBody className={stackedTable.body}>
-                {cash.map((row) => {
+                {cashRows.map((row) => {
                   const dateText = fmt.calendarDate(parseCalendarDate(row.date) ?? today);
                   return (
                     <TableRow
@@ -316,12 +416,17 @@ async function Guarded({ locale }: { locale: string }) {
   );
 }
 
-export default async function Page({ params }: PageProps<"/[locale]/admin/payments">) {
+export default async function Page({
+  params,
+  searchParams,
+}: PageProps<"/[locale]/admin/payments">) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const { kunde } = await searchParams;
+  const customerFilter = (Array.isArray(kunde) ? kunde[0] : kunde)?.slice(0, 64) ?? null;
   return (
     <Suspense fallback={<LoadingSkeleton />}>
-      <Guarded locale={locale} />
+      <Guarded locale={locale} customerFilter={customerFilter} />
     </Suspense>
   );
 }

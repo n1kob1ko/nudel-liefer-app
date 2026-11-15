@@ -17,8 +17,9 @@ import { cn } from "@/lib/utils";
  * button. The tap goes into the offline outbox like every other driver value (NUD-082), so it works
  * in a cellar and cannot be booked twice; the amount shows at once through the overlay.
  *
- * Recording needs the stop to be DELIVERED (money changes hands with the goods): before that the
- * card says so instead of offering the button.
+ * Since 2026-11-14 the amount is entered with "Geliefert" itself (`CashDeliverSheet`): before the
+ * delivery this card only says what to collect. It still offers the field for a delivered stop
+ * without an amount (an older delivery), and shows nothing once the cash is recorded.
  */
 export function StopPayment({
   stop,
@@ -43,6 +44,9 @@ export function StopPayment({
   const [error, setError] = useState<string | null>(null);
 
   if (due <= 0 && collected === null) return null;
+  // Owner 2026-11-14: once the stop is delivered with its cash, the driver sees no amounts any more
+  // (no history); the office has them on the payments page.
+  if (stop.status !== "PENDING" && collected !== null) return null;
 
   const euro = (cents: number | null) =>
     cents === null ? "—" : money.number(cents / 100, { style: "currency", currency: "EUR" });
@@ -95,7 +99,11 @@ export function StopPayment({
         ) : null}
       </div>
 
-      {collected !== null && !editing ? (
+      {stop.status === "PENDING" ? (
+        <p className="text-base text-muted-foreground" data-testid="payment-need-delivery">
+          {t("needDelivery")}
+        </p>
+      ) : collected !== null && !editing ? (
         <div className="flex flex-wrap items-center gap-2">
           <p className="min-w-0 flex-1 text-base">
             <span className="font-semibold" data-testid="payment-collected">

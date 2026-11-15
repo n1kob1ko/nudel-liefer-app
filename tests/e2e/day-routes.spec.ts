@@ -128,6 +128,8 @@ test("day plan: the route with its extra goes to the driver, a change is sent ag
     // No "Touren" tab any more: the day plan is where routes are sent.
     await expect(page.locator('[data-testid="nav-tours"]')).toHaveCount(0);
     await page.goto(`/de/admin/planning?date=${f.day}`);
+    // One tab per route (Kundentreffen 14.11.): open this route's tab.
+    await tid(page, `route-tab-${f.route}`).click();
     const card = tid(page, `standing-route-${f.route}`);
     await expect(card).toBeVisible();
     await expect(tid(page, `route-state-${f.route}`)).toHaveText("Nicht gesendet");
@@ -175,6 +177,8 @@ test("day plan: the driver list opens above an open map", async ({ page }) => {
   try {
     await loginAdmin(page);
     await page.goto(`/de/admin/planning?date=${f.day}`);
+    // One tab per route (Kundentreffen 14.11.): open this route's tab.
+    await tid(page, `route-tab-${f.route}`).click();
     await tid(page, `route-map-${f.route}`).click();
     await expect(page.locator(".leaflet-container").first()).toBeVisible();
     // A real map tile is an opaque picture; stand one in that covers the whole map.
@@ -227,6 +231,8 @@ test("day plan on a phone: no sideways scrolling", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await loginAdmin(page);
     await page.goto(`/de/admin/planning?date=${f.day}`);
+    // One tab per route (Kundentreffen 14.11.): open this route's tab.
+    await tid(page, `route-tab-${f.route}`).click();
     await expect(tid(page, `standing-route-${f.route}`)).toBeVisible();
     await expect(tid(page, "planning-send")).toBeVisible();
     expect(

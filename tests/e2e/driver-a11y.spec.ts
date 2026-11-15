@@ -97,7 +97,7 @@ async function walk(
   await page.getByTestId("btn-problem").scrollIntoViewIfNeeded();
   await page.getByTestId("btn-problem").click();
   await expect(page.getByTestId("problem-sheet")).toBeVisible();
-  await page.getByTestId("reason-CLOSED").click();
+  await expect(page.getByTestId("problem-call")).toBeVisible();
   await page.waitForTimeout(400); // sheet animation
   await check("problem-sheet");
   await page.getByTestId("problem-cancel").click();

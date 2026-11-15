@@ -325,7 +325,8 @@
         "weight": "Gewicht",
         "state": "Status",
         "total": "Gesamt",
-        "stop": "Stopp"
+        "stop": "Stopp",
+        "marks": "Für den Fahrer"
       },
       "state": {
         "nothing": "nichts bestellt",
@@ -358,9 +359,9 @@
         "title": "Nicht in einer Stammtour",
         "body": "Kunden ohne Stammtour. „Hinzufügen“ nimmt einen Kunden nur an diesem Tag mit: Er fährt in der passenden Route mit, die Stammtouren bleiben gleich.",
         "search": "Kunde suchen (Name, Nummer, Ort)",
-        "onlyWithOrder": "Nur mit Bestellung",
         "empty": "Kein Kunde gefunden.",
-        "add": "Hinzufügen"
+        "add": "Hinzufügen",
+        "searchHint": "Kunden suchen, um sie für diesen Tag dazuzunehmen."
       },
       "errors": {
         "generic": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
@@ -413,10 +414,10 @@
       },
       "extra": {
         "label": "Zusatz",
-        "move": "Verschieben"
+        "move": "Route ändern"
       },
       "move": {
-        "title": "{name} verschieben",
+        "title": "{name}: Route ändern",
         "body": "Gilt nur für diesen Liefertag.",
         "route": "Route",
         "position": "Reihenfolge",
@@ -458,6 +459,15 @@
           "overloaded": "{route} ist zu schwer.",
           "conflict": "Gerade hat jemand gleichzeitig geändert. Bitte noch einmal senden."
         }
+      },
+      "marks": {
+        "invoice": "Rechnung",
+        "fridge": "Kühlschrank",
+        "always": "Immer (beim Kunden eingestellt)"
+      },
+      "tabs": {
+        "label": "Routen",
+        "extra": "Weitere Kunden"
       }
     },
     "drivers": {
@@ -673,7 +683,11 @@
         "keyNumber": "Schlüsselnummer",
         "abbreviationHeading": "Abkürzung",
         "abbreviationHint": "Optional. Alter interner Code aus dem bisherigen System, frei wählbarer Text mit Sonderzeichen, kann mehrfach vorkommen. Fahrer können ihn beim Stopp ebenfalls eintragen oder korrigieren. Wird später entfernt.",
-        "abbreviation": "Abkürzung"
+        "abbreviation": "Abkürzung",
+        "fridge": "Immer in den Kühlschrank",
+        "fridgeHint": "Der Fahrer sieht bei jedem Stopp ein Kühlschrank-Symbol. Nur für einen Tag: in der Tagesplanung.",
+        "invoice": "Immer Rechnung mitgeben",
+        "invoiceHint": "Der Fahrer sieht bei jedem Stopp ein Rechnungs-Symbol. Nur für einen Tag: in der Tagesplanung."
       },
       "detail": {
         "number": "Kundennummer {number}",
@@ -740,7 +754,10 @@
         },
         "fromRecurring": "aus Dauerbestellung",
         "archivedCancelled": "{count, plural, one {Kunde archiviert. # offene Bestellung storniert.} other {Kunde archiviert. # offene Bestellungen storniert.}}",
-        "archiveRules": "{count, plural, one {Seine Dauerbestellung wird pausiert} other {Seine # Dauerbestellungen werden pausiert}}. Beim Wiederherstellen laufen sie weiter."
+        "archiveRules": "{count, plural, one {Seine Dauerbestellung wird pausiert} other {Seine # Dauerbestellungen werden pausiert}}. Beim Wiederherstellen laufen sie weiter.",
+        "fridgeYes": "Ja, immer",
+        "fridgeNo": "Nein",
+        "invoiceYes": "Ja, immer"
       },
       "translations": {
         "tabDetails": "Details",
@@ -1282,6 +1299,11 @@
         "remove": "Punkt {n} entfernen",
         "empty": "Keine festen Punkte.",
         "limit": "Höchstens {max} Punkte."
+      },
+      "problem": {
+        "heading": "Problem beim Fahrer",
+        "phone": "Telefonnummer",
+        "phoneHint": "Tippt der Fahrer auf „Problem“, sieht er diese Nummer und kann sie direkt anrufen."
       }
     },
     "orders": {
@@ -2298,6 +2320,13 @@
           "status": "Seite {page} von {pageCount}"
         },
         "deletion": "Ein Vermerk verschwindet {days} Tage nach der Bezahlung, zusammen mit den Bestellungen des Monats."
+      },
+      "debtors": {
+        "title": "Wer am meisten offen hat",
+        "body": "Barzahlungen, bei denen der Kunde weniger als den Betrag gezahlt hat, zusammengezählt pro Kunde. Nur das Büro sieht das. Tippen zeigt die Lieferungen des Kunden.",
+        "meta": "{count, plural, one {# Lieferung} other {# Lieferungen}} · seit {date}",
+        "filtered": "Nur {name}",
+        "showAll": "Alle zeigen"
       }
     }
   },
@@ -2305,7 +2334,7 @@
     "home": {
       "title": "Heute",
       "welcome": "Willkommen, {name}.",
-      "todayCount": "{open} offen · {problems, plural, =0 {keine Probleme} one {# Problem} other {# Probleme}}",
+      "todayCount": "{open} offen{problems, plural, =0 {} one { · # Problem} other { · # Probleme}}",
       "endTime": "Ende ca. {time}",
       "nextStop": "Nächster Stopp",
       "nextStopEta": "Ankunft ca. {time}",
@@ -2357,7 +2386,7 @@
       "updatedDescription": "Das Büro hat die Tour geändert. Bitte die markierten Stopps prüfen. Angezeigt sind immer die aktuellen Mengen.",
       "removedStops": "Entfernte Stopps",
       "updatedConfirm": "Verstanden",
-      "finishedSummary": "{delivered} geliefert · {problems, plural, =0 {kein Problem} one {# Problem} other {# Probleme}}",
+      "finishedSummary": "{delivered} geliefert{problems, plural, =0 {} one { · # Problem} other { · # Probleme}}",
       "openGroup": "Offen ({count})",
       "doneGroup": "Erledigt ({count})",
       "expandDone": "Erledigte Stopps anzeigen",
@@ -2445,16 +2474,13 @@
       "delivered": "Geliefert",
       "problem": "Problem",
       "actionsLabel": "Stopp abschließen",
-      "problemTitle": "Was ist das Problem?",
-      "problemDescription": "Grund auswählen. Ein Text ist freiwillig.",
+      "problemTitle": "Problem? Ruf an",
+      "problemDescription": "Ruf diese Nummer an, dort hilft man dir weiter.",
       "noteLabel": "Anmerkung (freiwillig)",
-      "notePlaceholder": "z. B. Tor war zu",
-      "submit": "Problem melden",
       "cancel": "Abbrechen",
       "undo": "Rückgängig",
       "undone": "Rückgängig gemacht",
       "deliveredToast": "Geliefert: {name}",
-      "problemToast": "Problem gemeldet: {name}",
       "doneDelivered": "Geliefert",
       "doneProblem": "Problem: {reason}",
       "doneAt": "um {time}",
@@ -2474,7 +2500,9 @@
         "changed_by_office": "Das Büro hat diesen Stopp geändert."
       },
       "offlineNotice": "Offline: Ihre Eingabe wird auf dem Handy gespeichert und automatisch gesendet, sobald wieder Internet da ist.",
-      "queuedHint": "Wartet auf Übertragung"
+      "queuedHint": "Wartet auf Übertragung",
+      "call": "Anrufen",
+      "close": "Schließen"
     },
     "install": {
       "title": "App installieren",
@@ -2656,11 +2684,17 @@
       "amountLabel": "Kassierter Betrag",
       "save": "Kassiert",
       "saved": "Kassiert bei {name}",
-      "needDelivery": "Erst „Geliefert“ antippen, dann den Betrag eintragen.",
+      "needDelivery": "Beim Tippen auf „Geliefert“ trägst du den Betrag ein.",
       "cancel": "Abbrechen",
       "errors": {
         "storage": "Speichern auf dem Handy nicht möglich. Bitte erneut versuchen.",
         "amount": "Bitte einen Betrag wie 42 oder 42,50 eingeben."
+      },
+      "sheet": {
+        "title": "Bar kassieren",
+        "body": "{name} zahlt bar: {amount}. Wie viel hast du bekommen?",
+        "nothing": "Ohne kassiertes Geld gilt der Stopp nicht als geliefert. Zahlt der Kunde nicht, tipp auf „Problem“ und ruf an.",
+        "confirm": "Kassiert und geliefert"
       }
     },
     "upcoming": {
@@ -2668,6 +2702,10 @@
       "tomorrow": "Morgen · {date}",
       "stops": "{count, plural, one {# Stopp} other {# Stopps}}",
       "from": "ab {time}"
+    },
+    "marks": {
+      "invoice": "Rechnung mitgeben",
+      "fridge": "In den Kühlschrank"
     }
   },
   "pwa": {

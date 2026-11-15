@@ -94,6 +94,10 @@ const EXTRA: Row = {
   quantities: { "p-pack": 1, "p-crate": 0 },
   nothing: false,
   weightKg: 3,
+  invoice: false,
+  fridge: false,
+  invoiceAlways: false,
+  fridgeAlways: false,
   extra: { moved: false, slot: 1 },
   stop: null,
   location: { lat: 48.22, lng: 16.42 },
@@ -130,6 +134,10 @@ function plan(overrides: Partial<DayPlan> = {}, routeOverrides: Partial<Route> =
             quantities: { "p-pack": 2, "p-crate": 0 },
             nothing: false,
             weightKg: 6,
+            invoice: false,
+            fridge: false,
+            invoiceAlways: false,
+            fridgeAlways: false,
             extra: null,
             stop: null,
             location: { lat: 48.2, lng: 16.4 },
@@ -146,6 +154,10 @@ function plan(overrides: Partial<DayPlan> = {}, routeOverrides: Partial<Route> =
             quantities: { "p-pack": 0, "p-crate": 0 },
             nothing: true,
             weightKg: 0,
+            invoice: false,
+            fridge: false,
+            invoiceAlways: false,
+            fridgeAlways: false,
             extra: null,
             stop: null,
             location: { lat: 48.21, lng: 16.41 },
@@ -182,6 +194,10 @@ function plan(overrides: Partial<DayPlan> = {}, routeOverrides: Partial<Route> =
         quantities: { "p-pack": 0, "p-crate": 0 },
         nothing: false,
         weightKg: 0,
+        invoice: false,
+        fridge: false,
+        invoiceAlways: false,
+        fridgeAlways: false,
         extra: null,
         stop: null,
         location: null,
@@ -231,9 +247,10 @@ describe("StandingPlan (NUD-194)", () => {
   it("renders one table per standing tour with a column per product and the day's quantities", () => {
     renderPlan();
 
-    expect(screen.getByText("Stammtour 1")).toBeInTheDocument();
-    // One product column per table (the standing tour and the off-route list).
-    expect(screen.getAllByRole("columnheader", { name: /Nudeln \(Sackerl\)/ })).toHaveLength(2);
+    // One route at a time (owner 2026-11-14): a tab per standing tour and one for the rest.
+    expect(screen.getByTestId("route-tab-r1")).toHaveTextContent("Stammtour 1");
+    expect(screen.getByTestId("route-tab-extra")).toBeInTheDocument();
+    expect(screen.getAllByRole("columnheader", { name: /Nudeln \(Sackerl\)/ })).toHaveLength(1);
     expect(screen.getByText("Bistro Eins")).toBeInTheDocument();
     expect(screen.getByTestId("qty-c1-p-pack")).toHaveValue("2");
     expect(screen.getByTestId("qty-c1-p-crate")).toHaveValue("0");
@@ -266,6 +283,8 @@ describe("StandingPlan (NUD-194)", () => {
             { productId: "p-pack", quantity: 5 },
             { productId: "p-crate", quantity: 1 },
           ],
+          invoice: false,
+          fridge: false,
         },
         {
           customerId: "c2",
@@ -273,6 +292,8 @@ describe("StandingPlan (NUD-194)", () => {
             { productId: "p-pack", quantity: 0 },
             { productId: "p-crate", quantity: 0 },
           ],
+          invoice: false,
+          fridge: false,
         },
       ],
     });
@@ -288,6 +309,10 @@ describe("StandingPlan (NUD-194)", () => {
     });
     renderPlan();
 
+    // The other customers have their own tab; somebody without an order shows up for a search.
+    fireEvent.click(screen.getByTestId("route-tab-extra"));
+    expect(screen.queryByTestId("off-route-add-c3")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("off-route-search"), { target: { value: "c3" } });
     // Before "Hinzufügen" the row has no fields at all.
     expect(screen.queryByTestId("qty-c3-p-pack")).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId("off-route-add-c3"));
@@ -304,7 +329,51 @@ describe("StandingPlan (NUD-194)", () => {
         { productId: "p-pack", quantity: 3 },
         { productId: "p-crate", quantity: 0 },
       ],
+      invoice: false,
+      fridge: false,
     });
+  });
+
+  it("sends the invoice and fridge marks with the save (owner 2026-11-14)", async () => {
+    vi.mocked(saveStandingDayAction).mockResolvedValue({
+      ok: true,
+      written: 1,
+      created: 0,
+      updated: 0,
+      merged: 0,
+    });
+    renderPlan();
+
+    // c2 ordered nothing: no delivery, so nothing to mark for this day.
+    expect(screen.getByTestId("invoice-c2")).toBeDisabled();
+    expect(screen.getByTestId("fridge-c2")).toBeDisabled();
+    fireEvent.click(screen.getByTestId("invoice-c1"));
+    fireEvent.click(screen.getByTestId("fridge-c1"));
+    expect(screen.getByTestId("invoice-c1")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("planning-dirty")).toHaveTextContent("1");
+    fireEvent.click(screen.getByTestId("planning-save"));
+
+    await waitFor(() => expect(saveStandingDayAction).toHaveBeenCalled());
+    const input = lastInput(vi.mocked(saveStandingDayAction)) as {
+      rows: Array<{ customerId: string; invoice: boolean; fridge: boolean }>;
+    };
+    expect(input.rows.map((r) => [r.customerId, r.invoice, r.fridge])).toEqual([
+      ["c1", true, true],
+      ["c2", false, false],
+    ]);
+  });
+
+  it("shows a mark set 'always' on the customer as pressed and locked", () => {
+    const always = plan();
+    const route = always.routes[0]!;
+    route.rows[0] = { ...route.rows[0]!, fridgeAlways: true };
+    renderPlan(always);
+
+    const fridge = screen.getByTestId("fridge-c1");
+    expect(fridge).toHaveAttribute("aria-pressed", "true");
+    expect(fridge).toBeDisabled();
+    expect(fridge).toHaveAttribute("title", "Immer (beim Kunden eingestellt)");
+    expect(screen.getByTestId("invoice-c1")).toHaveAttribute("aria-pressed", "false");
   });
 
   it("is read-only for a past day, without a send button", () => {
@@ -409,6 +478,7 @@ describe("StandingPlan day routes (NUD-212)", () => {
     // Only a row with a quantity is a stop.
     expect(screen.getByTestId("stop-number-c1")).toHaveTextContent("1");
     expect(screen.queryByTestId("stop-number-c2")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("route-tab-r2"));
     expect(screen.getByTestId("route-head-r2")).toHaveTextContent("Keine Bestellung");
   });
 

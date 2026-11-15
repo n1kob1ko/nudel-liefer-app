@@ -155,7 +155,10 @@ describe.each(Object.keys(LOCALES))("TodayTour in %s", (locale) => {
       "https://www.google.com/maps/dir/?api=1&destination=48.2,16.33&travelmode=driving",
     );
     expect(within(next).getByTestId("details")).toHaveAttribute("href", "/driver/stops/s3");
-    expect(screen.getAllByTestId("stop-row")).toHaveLength(4);
+    // The delivered stop is gone for the driver (owner 2026-11-14); open and problem stops stay.
+    expect(screen.getAllByTestId("stop-row")).toHaveLength(3);
+    expect(screen.queryByText("Trattoria 1")).toBeNull();
+    expect(screen.queryByTestId("done-group")).toBeNull();
     expect(screen.queryByTestId("updated-banner")).toBeNull();
   });
 
@@ -319,9 +322,9 @@ describe.each(Object.keys(LOCALES))("TodayTour in %s", (locale) => {
     const section = screen.getByTestId("other-tour");
     expect(section).toHaveAttribute("data-tour-id", "t0");
     expect(within(section).getByTestId("other-tour-title").textContent).toMatch(/1/);
-    // The pending stop of tour 1 is reachable, the delivered one hides in its done group.
+    // The pending stop of tour 1 is reachable, the delivered one is not listed (owner 2026-11-14).
     const rows = within(section).getAllByTestId("stop-row");
-    expect(rows).toHaveLength(2);
+    expect(rows).toHaveLength(1);
     expect(within(section).getByTestId("other-tour-stops").textContent).not.toBe("");
     expect(within(rows[0] as HTMLElement).getByRole("link")).toHaveAttribute(
       "href",

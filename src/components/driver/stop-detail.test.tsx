@@ -56,6 +56,7 @@ const detail = (extra: Partial<DriverStopDetail> = {}): DriverStopDetail => ({
   tourStatus: "RELEASED",
   locale: "de",
   timezone: "Europe/Vienna",
+  problemPhone: "+43 1 000 00 00",
   position: 2,
   total: 3,
   prevStopId: "s1",

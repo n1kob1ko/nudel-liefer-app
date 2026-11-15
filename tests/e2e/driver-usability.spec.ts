@@ -91,13 +91,12 @@ for (const vp of VIEWPORTS) {
       expectBottom("stop: problem (page end)", await centerY(page.getByTestId("btn-problem")));
       await page.screenshot({ path: info.outputPath(`stop-end-${vp.name}.png`) });
 
-      // Problem sheet: submit and cancel stay at the bottom edge without scrolling the sheet.
+      // Problem sheet: the call button stays at the bottom edge without scrolling the sheet.
       await page.getByTestId("btn-problem").click();
       await expect(page.getByTestId("problem-sheet")).toBeVisible();
-      await page.getByTestId("reason-CLOSED").click();
       await page.waitForTimeout(400);
-      expectBottom("sheet: submit", await centerY(page.getByTestId("problem-submit")));
-      expect.soft(await centerY(page.getByTestId("problem-submit"))).toBeLessThan(vp.height);
+      expectBottom("sheet: call", await centerY(page.getByTestId("problem-call")));
+      expect.soft(await centerY(page.getByTestId("problem-call"))).toBeLessThan(vp.height);
       await page.screenshot({ path: info.outputPath(`sheet-${vp.name}.png`) });
       await page.getByTestId("problem-cancel").click();
 

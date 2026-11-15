@@ -166,7 +166,7 @@
     "home": {
       "title": "Danas",
       "welcome": "Dobro došli, {name}.",
-      "todayCount": "{open} otvoreno · {problems, plural, =0 {nema problema} one {# problem} few {# problema} other {# problema}}",
+      "todayCount": "{open} otvoreno{problems, plural, =0 {} one { · # problem} few { · # problema} other { · # problema}}",
       "endTime": "Kraj oko {time}",
       "nextStop": "Sledeća stanica",
       "nextStopEta": "Dolazak oko {time}",
@@ -218,7 +218,7 @@
       "updatedDescription": "Kancelarija je izmenila turu. Proverite označene stanice. Uvek se prikazuju aktuelne količine.",
       "removedStops": "Uklonjene stanice",
       "updatedConfirm": "Razumem",
-      "finishedSummary": "{delivered} isporučeno · {problems, plural, =0 {nema problema} one {# problem} few {# problema} other {# problema}}",
+      "finishedSummary": "{delivered} isporučeno{problems, plural, =0 {} one { · # problem} few { · # problema} other { · # problema}}",
       "openGroup": "Otvoreno ({count})",
       "doneGroup": "Završeno ({count})",
       "expandDone": "Prikaži završene stanice",
@@ -306,16 +306,13 @@
       "delivered": "Isporučeno",
       "problem": "Problem",
       "actionsLabel": "Završi stanicu",
-      "problemTitle": "Koji je problem?",
-      "problemDescription": "Izaberite razlog. Tekst nije obavezan.",
+      "problemTitle": "Problem? Pozovi",
+      "problemDescription": "Pozovi ovaj broj, tamo će ti pomoći.",
       "noteLabel": "Napomena (nije obavezna)",
-      "notePlaceholder": "npr. kapija je bila zatvorena",
-      "submit": "Prijavi problem",
       "cancel": "Otkaži",
       "undo": "Poništi",
       "undone": "Poništeno",
       "deliveredToast": "Isporučeno: {name}",
-      "problemToast": "Problem prijavljen: {name}",
       "doneDelivered": "Isporučeno",
       "doneProblem": "Problem: {reason}",
       "doneAt": "u {time}",
@@ -335,7 +332,9 @@
         "changed_by_office": "Kancelarija je izmenila ovu stanicu."
       },
       "offlineNotice": "Van mreže: vaš unos se čuva na telefonu i automatski se šalje čim se internet vrati.",
-      "queuedHint": "Čeka slanje"
+      "queuedHint": "Čeka slanje",
+      "call": "Pozovi",
+      "close": "Zatvori"
     },
     "install": {
       "title": "Instaliraj aplikaciju",
@@ -517,11 +516,17 @@
       "amountLabel": "Naplaćeni iznos",
       "save": "Naplaćeno",
       "saved": "Naplaćeno od {name}",
-      "needDelivery": "Prvo dodirnite „Dostavljeno“, zatim unesite iznos.",
+      "needDelivery": "Kada dodirneš „Isporučeno“, upisuješ iznos.",
       "cancel": "Otkaži",
       "errors": {
         "storage": "Čuvanje na telefonu nije moguće. Pokušajte ponovo.",
         "amount": "Unesite iznos kao 42 ili 42,50."
+      },
+      "sheet": {
+        "title": "Naplati gotovinu",
+        "body": "{name} plaća gotovinom: {amount}. Koliko si dobio?",
+        "nothing": "Bez naplaćenog novca stajalište se ne računa kao isporučeno. Ako kupac ne plati, dodirni „Problem“ i pozovi.",
+        "confirm": "Naplaćeno i isporučeno"
       }
     },
     "upcoming": {
@@ -529,6 +534,10 @@
       "tomorrow": "Sutra · {date}",
       "stops": "{count, plural, one {# stanica} few {# stanice} other {# stanica}}",
       "from": "od {time}"
+    },
+    "marks": {
+      "invoice": "Predaj račun",
+      "fridge": "U frižider"
     }
   },
   "pwa": {

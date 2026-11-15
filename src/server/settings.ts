@@ -4,6 +4,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { z } from "zod";
 
 import { CHECKLIST_ITEM_MAX, CHECKLIST_ITEMS_MAX } from "@/domain/departure-checklist";
+import { problemPhoneSchema } from "@/domain/problem-phone";
 import {
   type Depot,
   type DepotSettings,
@@ -36,6 +37,8 @@ export type AppSettings = DepotSettings &
     departureChecklist: ChecklistItem[];
     /** Loading time assumed when the driver skipped the departure checklist (NUD-152). */
     defaultLoadingMinutes: number;
+    /** Number the driver calls from "Problem" (owner 2026-11-14). */
+    problemPhone: string;
   };
 
 const SETTINGS_ID = 1;
@@ -64,6 +67,8 @@ export const settingsInputSchema = z.object({
    * omitted = unchanged.
    */
   defaultLoadingMinutes: z.number().int().min(0).max(MAX_DEFAULT_LOADING_MINUTES).optional(),
+  /** Number the driver calls from "Problem" (owner 2026-11-14); omitted = unchanged. */
+  problemPhone: problemPhoneSchema.optional(),
   /** Days ahead the daily job generates recurring orders (NUD-149); omitted = unchanged. */
   recurringLeadDays: z.number().int().min(1).max(60).optional(),
   deliveryWeekdays: z
@@ -145,6 +150,7 @@ export async function readSettings(db: SettingsDb): Promise<AppSettings | null> 
     deliveryWeekdays: row.deliveryWeekdays,
     departureChecklist: parseDepartureChecklist(row.departureChecklist),
     defaultLoadingMinutes: row.defaultLoadingMinutes,
+    problemPhone: row.problemPhone,
   };
 }
 

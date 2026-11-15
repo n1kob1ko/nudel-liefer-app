@@ -236,13 +236,18 @@ test("a stop the driver completes shows up on the dashboard and the tour page wi
   await expect(markers.nth(1)).toHaveAttribute("data-status", "PENDING");
   await expect(tours.locator(".nudel-stop-badge")).toHaveText(["✓"]);
 
-  // Driver reports a problem on stop 2 and delivers stop 3 straight away: one more wait.
-  await driver.goto(`/de/driver/stops/${stopIds[1]}`);
-  await visible(driver, "btn-problem").click();
-  await driver.getByTestId("reason-NO_PARKING").click();
-  await driver.getByTestId("problem-note").fill("Baustelle vor dem Eingang");
-  await driver.getByTestId("problem-submit").click();
-  await expect.poll(() => stopStatus(1)).toBe("PROBLEM");
+  // Stop 2 carries a problem from before the change of 2026-11-14 (drivers call the office now and
+  // report nothing): the office still shows such a stop. The driver delivers stop 3: one more wait.
+  await db.query(
+    `UPDATE "Stop" SET "status"='PROBLEM', "problemReason"='NO_PARKING', "problemNote"=$2::jsonb, "completedAt"=now() WHERE "id"=$1`,
+    [
+      stopIds[1],
+      JSON.stringify({
+        de: "Baustelle vor dem Eingang",
+        meta: { source: "de", machine: {}, updatedAt: new Date().toISOString() },
+      }),
+    ],
+  );
   await driver.goto(`/de/driver/stops/${stopIds[2]}`);
   await visible(driver, "btn-delivered").click();
   await expect.poll(() => stopStatus(2)).toBe("DELIVERED");

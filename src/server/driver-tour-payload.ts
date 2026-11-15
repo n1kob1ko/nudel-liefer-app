@@ -3,6 +3,7 @@ import { z } from "zod";
 import { activeParkingSpots, routingPoint } from "@/domain/parking";
 import { cashDueCents } from "@/domain/payment";
 import type { PhotoKind } from "@/domain/photos";
+import { DEFAULT_PROBLEM_PHONE } from "@/domain/problem-phone";
 import type { PrismaClient } from "@/generated/prisma/client";
 import {
   dayInTimezone,
@@ -35,6 +36,8 @@ export type DriverTourPayloadOptions = {
   now: Date;
   timezone: string;
   serviceMinutesPerStop: number;
+  /** Number the driver calls from "Problem" (owner 2026-11-14); omitted = the dummy. */
+  problemPhone?: string;
   /**
    * Signed photo URLs are only generated when a storage is given. `onlyStopId` limits them to the
    * customer of that stop (the stop detail page needs no photos of the other stops).
@@ -62,6 +65,7 @@ export async function getDriverTourResponse(
     generatedAt: options.now.toISOString(),
     timezone: options.timezone,
     serviceSecondsPerStop: options.serviceMinutesPerStop * 60,
+    problemPhone: options.problemPhone ?? DEFAULT_PROBLEM_PHONE,
   } as const;
   if (actor.role !== "DRIVER") return { ...base, tour: null, tours: [] };
   const tours = await getDriverTours(db, actor.id, date);
@@ -96,6 +100,8 @@ export async function getDriverTourResponse(
         hasKey: true,
         keyNumber: true,
         abbreviation: true,
+        intoFridge: true,
+        alwaysInvoice: true,
       },
     }),
     db.tour.findMany({
@@ -123,7 +129,15 @@ export async function getDriverTourResponse(
         collectedCents: true,
         orders: {
           select: {
-            order: { select: { status: true, paymentTerm: true, amountCents: true } },
+            order: {
+              select: {
+                status: true,
+                paymentTerm: true,
+                amountCents: true,
+                handInvoice: true,
+                intoFridge: true,
+              },
+            },
           },
         },
       },
@@ -204,6 +218,17 @@ export async function getDriverTourResponse(
             .map((order) => ({ paymentTerm: order.paymentTerm, amountCents: order.amountCents })),
         ),
         collectedCents: paymentById.get(stop.id)?.collectedCents ?? null,
+        // Marks (owner 2026-11-14): "always" on the customer, or set for this day on an order.
+        intoFridge:
+          (customer?.intoFridge ?? false) ||
+          (paymentById.get(stop.id)?.orders ?? []).some(
+            (link) => link.order.status === "CONFIRMED" && link.order.intoFridge,
+          ),
+        handInvoice:
+          (customer?.alwaysInvoice ?? false) ||
+          (paymentById.get(stop.id)?.orders ?? []).some(
+            (link) => link.order.status === "CONFIRMED" && link.order.handInvoice,
+          ),
         photos: { STORE: photos?.STORE ?? null, PARKING: photos?.PARKING ?? null },
         items: stop.items.map((item) => {
           const name = localizedTextSchema.safeParse(item.name);

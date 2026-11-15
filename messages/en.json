@@ -325,7 +325,8 @@
         "weight": "Weight",
         "state": "Status",
         "total": "Total",
-        "stop": "Stop"
+        "stop": "Stop",
+        "marks": "For the driver"
       },
       "state": {
         "nothing": "nothing ordered",
@@ -358,9 +359,9 @@
         "title": "Not in a standing tour",
         "body": "Customers of no standing tour. “Add” takes a customer along on this day only: they ride on the matching route, the standing tours stay the same.",
         "search": "Search customer (name, number, city)",
-        "onlyWithOrder": "Only with order",
         "empty": "No customer found.",
-        "add": "Add"
+        "add": "Add",
+        "searchHint": "Search for customers to add them for this day."
       },
       "errors": {
         "generic": "Something went wrong. Please try again.",
@@ -413,10 +414,10 @@
       },
       "extra": {
         "label": "Extra",
-        "move": "Move"
+        "move": "Change route"
       },
       "move": {
-        "title": "Move {name}",
+        "title": "{name}: change route",
         "body": "Only for this delivery day.",
         "route": "Route",
         "position": "Order",
@@ -458,6 +459,15 @@
           "overloaded": "{route} is too heavy.",
           "conflict": "Someone changed something at the same time. Please send again."
         }
+      },
+      "marks": {
+        "invoice": "Invoice",
+        "fridge": "Fridge",
+        "always": "Always (set on the customer)"
+      },
+      "tabs": {
+        "label": "Routes",
+        "extra": "Other customers"
       }
     },
     "drivers": {
@@ -673,7 +683,11 @@
         "keyNumber": "Key number",
         "abbreviationHeading": "Abbreviation",
         "abbreviationHint": "Optional. Legacy internal code from the old system: free text with special characters, may occur more than once. Drivers can also enter or correct it at the stop. Will be removed later.",
-        "abbreviation": "Abbreviation"
+        "abbreviation": "Abbreviation",
+        "fridge": "Always into the fridge",
+        "fridgeHint": "The driver sees a fridge symbol at every stop. For one day only: in the day plan.",
+        "invoice": "Always hand an invoice",
+        "invoiceHint": "The driver sees an invoice symbol at every stop. For one day only: in the day plan."
       },
       "detail": {
         "number": "Customer number {number}",
@@ -740,7 +754,10 @@
         },
         "fromRecurring": "from standing order",
         "archivedCancelled": "{count, plural, one {Customer archived. # open order cancelled.} other {Customer archived. # open orders cancelled.}}",
-        "archiveRules": "{count, plural, one {His standing order will be paused} other {His # standing orders will be paused}}. They continue when he is restored."
+        "archiveRules": "{count, plural, one {His standing order will be paused} other {His # standing orders will be paused}}. They continue when he is restored.",
+        "fridgeYes": "Yes, always",
+        "fridgeNo": "No",
+        "invoiceYes": "Yes, always"
       },
       "translations": {
         "tabDetails": "Details",
@@ -1282,6 +1299,11 @@
         "remove": "Remove item {n}",
         "empty": "No fixed items.",
         "limit": "At most {max} items."
+      },
+      "problem": {
+        "heading": "Driver problems",
+        "phone": "Phone number",
+        "phoneHint": "When the driver taps “Problem”, they see this number and can call it directly."
       }
     },
     "orders": {
@@ -2298,6 +2320,13 @@
           "status": "Page {page} of {pageCount}"
         },
         "deletion": "An entry disappears {days} days after the payment, together with the orders of the month."
+      },
+      "debtors": {
+        "title": "Who owes the most",
+        "body": "Cash deliveries the customer paid less than the amount for, added up per customer. Only the office sees this. Tap to see the customer’s deliveries.",
+        "meta": "{count, plural, one {# delivery} other {# deliveries}} · since {date}",
+        "filtered": "Only {name}",
+        "showAll": "Show all"
       }
     }
   },
@@ -2305,7 +2334,7 @@
     "home": {
       "title": "Today",
       "welcome": "Welcome, {name}.",
-      "todayCount": "{open} open · {problems, plural, =0 {no problems} one {# problem} other {# problems}}",
+      "todayCount": "{open} open{problems, plural, =0 {} one { · # problem} other { · # problems}}",
       "endTime": "Finish at approx. {time}",
       "nextStop": "Next stop",
       "nextStopEta": "Arrival approx. {time}",
@@ -2357,7 +2386,7 @@
       "updatedDescription": "The office changed the tour. Please check the marked stops. The current quantities are always shown.",
       "removedStops": "Removed stops",
       "updatedConfirm": "Understood",
-      "finishedSummary": "{delivered} delivered · {problems, plural, =0 {no problem} one {# problem} other {# problems}}",
+      "finishedSummary": "{delivered} delivered{problems, plural, =0 {} one { · # problem} other { · # problems}}",
       "openGroup": "Open ({count})",
       "doneGroup": "Done ({count})",
       "expandDone": "Show completed stops",
@@ -2445,16 +2474,13 @@
       "delivered": "Delivered",
       "problem": "Problem",
       "actionsLabel": "Complete stop",
-      "problemTitle": "What is the problem?",
-      "problemDescription": "Choose a reason. A text is optional.",
+      "problemTitle": "Problem? Call",
+      "problemDescription": "Call this number, they will help you.",
       "noteLabel": "Comment (optional)",
-      "notePlaceholder": "e.g. the gate was closed",
-      "submit": "Report problem",
       "cancel": "Cancel",
       "undo": "Undo",
       "undone": "Undone",
       "deliveredToast": "Delivered: {name}",
-      "problemToast": "Problem reported: {name}",
       "doneDelivered": "Delivered",
       "doneProblem": "Problem: {reason}",
       "doneAt": "at {time}",
@@ -2474,7 +2500,9 @@
         "changed_by_office": "The office changed this stop."
       },
       "offlineNotice": "Offline: your entry is saved on the phone and sent automatically as soon as the internet is back.",
-      "queuedHint": "Waiting to be sent"
+      "queuedHint": "Waiting to be sent",
+      "call": "Call",
+      "close": "Close"
     },
     "install": {
       "title": "Install the app",
@@ -2656,11 +2684,17 @@
       "amountLabel": "Amount collected",
       "save": "Collected",
       "saved": "Collected from {name}",
-      "needDelivery": "Tap “Delivered” first, then enter the amount.",
+      "needDelivery": "When you tap “Delivered” you enter the amount.",
       "cancel": "Cancel",
       "errors": {
         "storage": "Cannot save on the phone. Please try again.",
         "amount": "Please enter an amount like 42 or 42.50."
+      },
+      "sheet": {
+        "title": "Collect cash",
+        "body": "{name} pays cash: {amount}. How much did you get?",
+        "nothing": "Without collected cash the stop does not count as delivered. If the customer does not pay, tap “Problem” and call.",
+        "confirm": "Collected and delivered"
       }
     },
     "upcoming": {
@@ -2668,6 +2702,10 @@
       "tomorrow": "Tomorrow · {date}",
       "stops": "{count, plural, one {# stop} other {# stops}}",
       "from": "from {time}"
+    },
+    "marks": {
+      "invoice": "Hand over invoice",
+      "fridge": "Into the fridge"
     }
   },
   "pwa": {
