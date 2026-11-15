@@ -537,7 +537,9 @@
     },
     "marks": {
       "invoice": "Předat fakturu",
-      "fridge": "Do lednice"
+      "fridge": "Do lednice",
+      "invoiceInfo": "Předat zákazníkovi fakturu.",
+      "fridgeInfo": "Zboží dát zákazníkovi do lednice."
     }
   },
   "pwa": {

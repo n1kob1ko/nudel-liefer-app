@@ -2705,7 +2705,9 @@
     },
     "marks": {
       "invoice": "Rechnung mitgeben",
-      "fridge": "In den Kühlschrank"
+      "fridge": "In den Kühlschrank",
+      "invoiceInfo": "Dem Kunden die Rechnung mitgeben.",
+      "fridgeInfo": "Ware beim Kunden in den Kühlschrank stellen."
     }
   },
   "pwa": {
