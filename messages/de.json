@@ -301,6 +301,7 @@
       "title": "Tagesplanung",
       "day": "Liefertag {date}",
       "save": "Mengen speichern",
+      "saveShort": "Speichern",
       "saving": "Speichern …",
       "saved": "{count, plural, one {# Bestellung gespeichert.} other {# Bestellungen gespeichert.}}",
       "savedMerged": "{count, plural, one {# doppelte Bestellung zusammengeführt.} other {# doppelte Bestellungen zusammengeführt.}}",

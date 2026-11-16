@@ -490,7 +490,7 @@ export function StandingPlan({
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="max-md:hidden">
                       <TableRow>
                         <TableHead className="w-12 text-center">{t("columns.stop")}</TableHead>
                         <TableHead className="min-w-52">{t("columns.customer")}</TableHead>
@@ -522,14 +522,14 @@ export function StandingPlan({
                           weight={kgOf(values[row.customerId] ?? {})}
                           onChange={setQuantity}
                           onMove={
-                            row.extra && plan.editable && !pending
+                            row.extra && plan.editable && !pending && !row.stop
                               ? () => setMoving({ row, routeId: route.id })
                               : undefined
                           }
                         />
                       ))}
                     </TableBody>
-                    <TableFooter>
+                    <TableFooter className="max-md:hidden">
                       <TableRow>
                         <TableCell />
                         <TableCell className="font-semibold">{t("columns.total")}</TableCell>
@@ -641,7 +641,7 @@ export function StandingPlan({
           ) : (
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader>
+                <TableHeader className="max-md:hidden">
                   <TableRow>
                     <TableHead className="min-w-52">{t("columns.customer")}</TableHead>
                     {plan.products.map((product) => (
@@ -661,20 +661,24 @@ export function StandingPlan({
                     const editable = row.orderId !== null || added.includes(row.customerId);
                     if (!editable) {
                       return (
-                        <TableRow key={row.customerId} data-testid={`off-route-${row.customerId}`}>
+                        <TableRow
+                          key={row.customerId}
+                          data-testid={`off-route-${row.customerId}`}
+                          className="max-md:flex max-md:h-auto max-md:items-center max-md:gap-3 max-md:py-2"
+                        >
                           <CustomerCell row={row} />
                           {plan.products.map((product) => (
                             <TableCell
                               key={product.id}
-                              className="text-right text-base tabular-nums text-muted-foreground"
+                              className="text-right text-base tabular-nums text-muted-foreground max-md:hidden"
                             >
                               —
                             </TableCell>
                           ))}
-                          <TableCell className="text-right text-base tabular-nums text-muted-foreground">
+                          <TableCell className="text-right text-base tabular-nums text-muted-foreground max-md:hidden">
                             —
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="max-md:p-0">
                             {plan.editable ? (
                               <Button
                                 type="button"
@@ -724,7 +728,8 @@ export function StandingPlan({
           >
             <span className="font-medium text-foreground">{t("dayTotal")}</span>
             {dayTotals.map(({ product, quantity }) => (
-              <span key={product.id}>
+              // On a phone the bar keeps the weight only: the route cards carry the details.
+              <span key={product.id} className="max-md:hidden">
                 {productLabel(product, locale)}{" "}
                 <span className="text-base font-semibold text-foreground tabular-nums">
                   {format.number(quantity, { maximumFractionDigits: 0 })}
@@ -740,7 +745,7 @@ export function StandingPlan({
               })}
             </span>
           </p>
-          <div className="ms-auto flex flex-wrap items-center justify-end gap-3">
+          <div className="ms-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
             {error ? (
               <p className="text-sm text-destructive" role="alert" data-testid="planning-error">
                 {error}
@@ -757,27 +762,37 @@ export function StandingPlan({
                 {t("send.allSent")}
               </p>
             ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={save}
-              disabled={pending}
-              data-testid="planning-save"
-            >
-              <SaveIcon aria-hidden />
-              {pending ? t("saving") : t("save")}
-            </Button>
-            {plan.routes.length > 0 ? (
+            {/* On a phone both buttons share one line (short label, no icons). */}
+            <div className="flex gap-3 max-md:w-full max-md:[&>button]:flex-1 max-md:[&_svg]:hidden">
               <Button
                 type="button"
-                onClick={() => send()}
-                disabled={pending || !toSend}
-                data-testid="planning-send"
+                variant="outline"
+                onClick={save}
+                disabled={pending}
+                data-testid="planning-save"
               >
-                <SendIcon aria-hidden />
-                {anySent ? t("send.changes") : t("send.first")}
+                <SaveIcon aria-hidden />
+                {pending ? (
+                  t("saving")
+                ) : (
+                  <>
+                    <span className="md:hidden">{t("saveShort")}</span>
+                    <span className="max-md:hidden">{t("save")}</span>
+                  </>
+                )}
               </Button>
-            ) : null}
+              {plan.routes.length > 0 ? (
+                <Button
+                  type="button"
+                  onClick={() => send()}
+                  disabled={pending || !toSend}
+                  data-testid="planning-send"
+                >
+                  <SendIcon aria-hidden />
+                  {anySent ? t("send.changes") : t("send.first")}
+                </Button>
+              ) : null}
+            </div>
           </div>
         </div>
       ) : null}
@@ -836,11 +851,17 @@ function PlanRow({
   testId?: string;
 }) {
   const t = useTranslations("admin.planning");
+  const tc = useTranslations("common");
   const format = useFormatter();
   return (
-    <TableRow data-testid={testId ?? `plan-row-${row.customerId}`}>
+    // Below `md` a row is a wrapped line (like the orders list): number and customer, then the
+    // quantity fields with their product names, then the states. No sideways scrolling on a phone.
+    <TableRow
+      data-testid={testId ?? `plan-row-${row.customerId}`}
+      className="max-md:flex max-md:h-auto max-md:flex-wrap max-md:items-center max-md:gap-x-3 max-md:gap-y-2 max-md:py-3"
+    >
       {number !== undefined ? (
-        <TableCell className="text-center">
+        <TableCell className="text-center max-md:w-7 max-md:p-0">
           {number !== null ? (
             <span
               className="inline-flex size-7 items-center justify-center rounded-full border border-border text-sm font-semibold tabular-nums"
@@ -853,7 +874,13 @@ function PlanRow({
       ) : null}
       <CustomerCell row={row} onMove={onMove} />
       {products.map((product) => (
-        <TableCell key={product.id} className="p-1 text-right">
+        <TableCell
+          key={product.id}
+          className="p-1 text-right max-md:flex max-md:flex-col max-md:items-start max-md:p-0"
+        >
+          <span className="text-xs text-muted-foreground md:hidden" aria-hidden>
+            {productLabel(product, locale)} {tc(`units.${product.unit}`)}
+          </span>
           <Input
             value={values[product.id] ?? "0"}
             onChange={(event) => onChange(row.customerId, product.id, event.target.value)}
@@ -867,18 +894,22 @@ function PlanRow({
             // A zero recedes, a quantity stands out: the filled rows of a day read at a glance.
             data-filled={quantityOf(values[product.id]) > 0}
             data-col={product.id}
-            className="h-9 w-20 text-right tabular-nums data-[filled=false]:text-muted-foreground data-[filled=true]:font-semibold"
+            className="h-9 w-20 text-right tabular-nums max-md:w-16 data-[filled=false]:text-muted-foreground data-[filled=true]:font-semibold"
             data-testid={`qty-${row.customerId}-${product.id}`}
           />
         </TableCell>
       ))}
       <TableCell
-        className={cn("text-right text-base tabular-nums", weight === 0 && "text-muted-foreground")}
+        className={cn(
+          "text-right text-base tabular-nums max-md:ms-auto max-md:self-end max-md:p-0 max-md:pb-2",
+          weight === 0 && "text-muted-foreground",
+        )}
       >
         {format.number(weight, { maximumFractionDigits: 1 })}
+        <span className="md:hidden"> kg</span>
       </TableCell>
-      <TableCell>
-        <div className="flex flex-wrap gap-1">
+      <TableCell className="max-md:basis-full max-md:p-0 max-md:empty:hidden">
+        <div className="flex flex-wrap gap-1 max-md:empty:hidden">
           {row.stop?.status === "DELIVERED" ? (
             <Badge variant="success" data-testid={`stop-state-${row.customerId}`}>
               <CheckIcon aria-hidden />
@@ -909,7 +940,7 @@ function PlanRow({
 function CustomerCell({ row, onMove }: { row: DayPlanRow; onMove?: () => void }) {
   const t = useTranslations("admin.planning");
   return (
-    <TableCell>
+    <TableCell className="max-md:min-w-0 max-md:flex-1 max-md:basis-[calc(100%-2.5rem)] max-md:p-0">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <div className="flex flex-col">
           <span className="flex flex-wrap items-center gap-2 text-base font-medium">

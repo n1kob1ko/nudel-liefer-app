@@ -301,6 +301,7 @@
       "title": "每日规划",
       "day": "配送日 {date}",
       "save": "保存数量",
+      "saveShort": "保存",
       "saving": "保存中…",
       "saved": "{count, plural, other {已保存 # 个订单。}}",
       "savedMerged": "{count, plural, other {已合并 # 个重复订单。}}",

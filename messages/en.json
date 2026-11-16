@@ -301,6 +301,7 @@
       "title": "Daily planning",
       "day": "Delivery day {date}",
       "save": "Save quantities",
+      "saveShort": "Save",
       "saving": "Saving …",
       "saved": "{count, plural, one {# order saved.} other {# orders saved.}}",
       "savedMerged": "{count, plural, one {# duplicate order merged.} other {# duplicate orders merged.}}",
