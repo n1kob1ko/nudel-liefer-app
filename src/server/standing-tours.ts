@@ -76,6 +76,7 @@ export type StandingDb = Pick<
   | "auditLog"
   | "settings"
   | "vehicle"
+  | "stop"
   | "$transaction"
 >;
 
@@ -417,7 +418,12 @@ export type StandingDaySaveError =
   | "customer_not_found"
   | "customer_inactive"
   | "product_not_found"
-  | "product_inactive";
+  | "product_inactive"
+  /** NUD-212: the driver already delivered (or reported) this customer's stop of the day. */
+  | "stop_completed";
+
+/** Thrown inside the save transaction so nothing of it is kept. */
+class StopCompletedError extends Error {}
 
 export type StandingDaySaveResult =
   | {
@@ -469,123 +475,146 @@ export async function saveStandingDay(
   if (products.some((product) => !product.active)) return { ok: false, error: "product_inactive" };
 
   const dayText = formatCalendarDate(day);
-  return db.$transaction(
-    async (tx): Promise<StandingDaySaveResult> => {
-      // Same key as "Touren planen": a plan run and a day-plan save of one date never interleave.
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`tour:${dayText}`}))`;
-      // NUD-212: a sent route stays editable; the change waits for "Änderungen senden".
+  try {
+    return await saveRows();
+  } catch (error) {
+    if (error instanceof StopCompletedError) return { ok: false, error: "stop_completed" };
+    throw error;
+  }
 
-      let created = 0;
-      let updated = 0;
-      let merged = 0;
-      const changedCustomers = new Set<string>();
+  function saveRows() {
+    return db.$transaction(
+      async (tx): Promise<StandingDaySaveResult> => {
+        // Same key as "Touren planen": a plan run and a day-plan save of one date never interleave.
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`tour:${dayText}`}))`;
+        // NUD-212: a sent route stays editable; the change waits for "Änderungen senden". A stop the
+        // driver completed is history: its quantities are what the customer got.
+        const completed = new Set(
+          (
+            await tx.stop.findMany({
+              where: {
+                customerId: { in: customerIds },
+                status: { in: ["DELIVERED", "PROBLEM"] },
+                tour: { date: day },
+              },
+              select: { customerId: true },
+            })
+          ).map((stop) => stop.customerId),
+        );
 
-      for (const row of input.rows) {
-        const after: Quantities = emptyQuantities(productIds);
-        for (const line of row.lines) after[line.productId] = line.quantity;
-        const existing = await tx.order.findMany({
-          where: { customerId: row.customerId, deliveryDate: day, status: "CONFIRMED" },
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-          select: { id: true, items: { select: { productId: true, quantity: true } } },
-        });
-        const beforeItems = existing.flatMap((order) => order.items);
-        const before = quantitiesOf(beforeItems, productIds);
-        if (!rowChanged(before, after, productIds)) continue;
+        let created = 0;
+        let updated = 0;
+        let merged = 0;
+        const changedCustomers = new Set<string>();
 
-        const lines = positiveLines(after, productIds);
-        const [first, ...extra] = existing;
-
-        if (!first) {
-          // Nothing ordered and no order yet: nothing to store (an empty row is not an "order").
-          if (lines.length === 0) continue;
-          const order = await tx.order.create({
-            data: {
-              customerId: row.customerId,
-              deliveryDate: day,
-              // The office wanted exactly this day, the whole day (NUD-148).
-              windowFrom: day,
-              windowTo: day,
-              status: "CONFIRMED",
-              source: "MANUAL",
-              createdById: actorId,
-              items: { create: lines },
-            },
-            select: { id: true },
+        for (const row of input.rows) {
+          const after: Quantities = emptyQuantities(productIds);
+          for (const line of row.lines) after[line.productId] = line.quantity;
+          const existing = await tx.order.findMany({
+            where: { customerId: row.customerId, deliveryDate: day, status: "CONFIRMED" },
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            select: { id: true, items: { select: { productId: true, quantity: true } } },
           });
-          await recordAudit(tx, {
-            actorId,
-            entity: "Order",
-            entityId: order.id,
-            action: "order.create",
-            diff: {
-              via: "standing_day",
-              customerId: row.customerId,
-              status: "CONFIRMED",
-              deliveryDate: dayText,
-              lines: lines.map((line): LineChange => ({
-                productId: line.productId,
-                before: null,
-                after: toAuditQuantity(line.quantity),
-              })),
-            },
-          });
-          created += 1;
-          changedCustomers.add(row.customerId);
-          continue;
-        }
+          const beforeItems = existing.flatMap((order) => order.items);
+          const before = quantitiesOf(beforeItems, productIds);
+          if (!rowChanged(before, after, productIds)) continue;
+          if (completed.has(row.customerId)) throw new StopCompletedError();
 
-        // One row per customer: the first order takes the new quantities, the rest are merged into it.
-        await tx.order.update({
-          where: { id: first.id },
-          data: { items: { deleteMany: {}, create: lines } },
-          select: { id: true },
-        });
-        const changes = diffOrderLines(beforeItems, lines);
-        if (changes.length > 0) {
-          await recordAudit(tx, {
-            actorId,
-            entity: "Order",
-            entityId: first.id,
-            action: "order.update",
-            diff: { via: "standing_day", deliveryDate: dayText, lines: changes },
-          });
-        }
-        for (const order of extra) {
+          const lines = positiveLines(after, productIds);
+          const [first, ...extra] = existing;
+
+          if (!first) {
+            // Nothing ordered and no order yet: nothing to store (an empty row is not an "order").
+            if (lines.length === 0) continue;
+            const order = await tx.order.create({
+              data: {
+                customerId: row.customerId,
+                deliveryDate: day,
+                // The office wanted exactly this day, the whole day (NUD-148).
+                windowFrom: day,
+                windowTo: day,
+                status: "CONFIRMED",
+                source: "MANUAL",
+                createdById: actorId,
+                items: { create: lines },
+              },
+              select: { id: true },
+            });
+            await recordAudit(tx, {
+              actorId,
+              entity: "Order",
+              entityId: order.id,
+              action: "order.create",
+              diff: {
+                via: "standing_day",
+                customerId: row.customerId,
+                status: "CONFIRMED",
+                deliveryDate: dayText,
+                lines: lines.map((line): LineChange => ({
+                  productId: line.productId,
+                  before: null,
+                  after: toAuditQuantity(line.quantity),
+                })),
+              },
+            });
+            created += 1;
+            changedCustomers.add(row.customerId);
+            continue;
+          }
+
+          // One row per customer: the first order takes the new quantities, the rest are merged into it.
           await tx.order.update({
-            where: { id: order.id },
-            data: { status: "CANCELLED" },
+            where: { id: first.id },
+            data: { items: { deleteMany: {}, create: lines } },
             select: { id: true },
           });
-          await recordAudit(tx, {
-            actorId,
-            entity: "Order",
-            entityId: order.id,
-            action: "order.cancel",
-            diff: {
-              via: "standing_day",
-              status: { from: "CONFIRMED", to: "CANCELLED" },
-              mergedInto: first.id,
-            },
-          });
-          merged += 1;
+          const changes = diffOrderLines(beforeItems, lines);
+          if (changes.length > 0) {
+            await recordAudit(tx, {
+              actorId,
+              entity: "Order",
+              entityId: first.id,
+              action: "order.update",
+              diff: { via: "standing_day", deliveryDate: dayText, lines: changes },
+            });
+          }
+          for (const order of extra) {
+            await tx.order.update({
+              where: { id: order.id },
+              data: { status: "CANCELLED" },
+              select: { id: true },
+            });
+            await recordAudit(tx, {
+              actorId,
+              entity: "Order",
+              entityId: order.id,
+              action: "order.cancel",
+              diff: {
+                via: "standing_day",
+                status: { from: "CONFIRMED", to: "CANCELLED" },
+                mergedInto: first.id,
+              },
+            });
+            merged += 1;
+          }
+          updated += 1;
+          changedCustomers.add(row.customerId);
         }
-        updated += 1;
-        changedCustomers.add(row.customerId);
-      }
 
-      if (changedCustomers.size > 0) {
-        await tours.markOutdatedForDate(day, tx, { customerIds: [...changedCustomers] });
-      }
-      return {
-        ok: true,
-        written: changedCustomers.size,
-        created,
-        updated,
-        merged,
-      };
-    },
-    { timeout: 30_000, maxWait: 10_000 },
-  );
+        if (changedCustomers.size > 0) {
+          await tours.markOutdatedForDate(day, tx, { customerIds: [...changedCustomers] });
+        }
+        return {
+          ok: true,
+          written: changedCustomers.size,
+          created,
+          updated,
+          merged,
+        };
+      },
+      { timeout: 30_000, maxWait: 10_000 },
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------------------------

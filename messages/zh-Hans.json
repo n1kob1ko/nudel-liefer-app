@@ -366,7 +366,8 @@
         "customer_not_found": "未找到某个客户。请重新加载页面。",
         "customer_inactive": "某个客户已停用。请重新加载页面。",
         "product_not_found": "未找到某个产品。请重新加载页面。",
-        "product_inactive": "某个产品已停用。请重新加载页面。"
+        "product_inactive": "某个产品已停用。请重新加载页面。",
+        "stop_completed": "司机已为该客户送过货。数量保持为已送达的数量。"
       },
       "manage": {
         "open": "编辑固定线路",

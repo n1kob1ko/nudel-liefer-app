@@ -366,7 +366,8 @@
         "customer_not_found": "Ein Kunde wurde nicht gefunden. Bitte die Seite neu laden.",
         "customer_inactive": "Ein Kunde ist inaktiv. Bitte die Seite neu laden.",
         "product_not_found": "Ein Produkt wurde nicht gefunden. Bitte die Seite neu laden.",
-        "product_inactive": "Ein Produkt ist nicht mehr aktiv. Bitte die Seite neu laden."
+        "product_inactive": "Ein Produkt ist nicht mehr aktiv. Bitte die Seite neu laden.",
+        "stop_completed": "Der Fahrer hat diesen Kunden schon beliefert. Die Menge bleibt, wie sie geliefert wurde."
       },
       "manage": {
         "open": "Stammtouren bearbeiten",

@@ -515,7 +515,10 @@ export function StandingPlan({
                           products={plan.products}
                           locale={locale}
                           values={values[row.customerId] ?? {}}
-                          editable={plan.editable}
+                          // A stop the driver completed is history (what the customer got).
+                          editable={
+                            plan.editable && (row.stop === null || row.stop.status === "PENDING")
+                          }
                           weight={kgOf(values[row.customerId] ?? {})}
                           onChange={setQuantity}
                           onMove={

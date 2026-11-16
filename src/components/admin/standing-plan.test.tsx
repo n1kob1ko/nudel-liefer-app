@@ -521,6 +521,9 @@ describe("StandingPlan day routes (NUD-212)", () => {
     expect(header).toHaveTextContent("Unterwegs");
     expect(header).toHaveTextContent("1 von 1 geliefert");
     expect(screen.getByTestId("stop-state-c1")).toHaveTextContent("geliefert");
+    // What the driver delivered is history: no field to change it.
+    expect(screen.getByTestId("qty-c1-p-pack")).toBeDisabled();
+    expect(screen.getByTestId("qty-c2-p-pack")).toBeEnabled();
     expect(screen.getByTestId("load-sheet-r1")).toBeInTheDocument();
     expect(screen.getByTestId("planning-send")).toHaveTextContent("Änderungen senden");
   });

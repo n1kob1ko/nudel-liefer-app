@@ -504,6 +504,37 @@ describe.skipIf(!process.env.DATABASE_URL)("day plan (standing tours)", { timeou
       );
       expect(released).toMatchObject({ ok: true, written: 1 });
 
+      // A customer the driver already delivered (or reported) keeps what he got (simulation 16.11.).
+      const tour = await db().tour.findFirstOrThrow({ where: { date: date(DAY) } });
+      await db().stop.create({
+        data: { tourId: tour.id, customerId: c1, sequence: 1, items: [], status: "DELIVERED" },
+      });
+      const afterDelivery = await saveStandingDay(
+        db(),
+        adminId,
+        {
+          date: DAY,
+          rows: [{ customerId: c1, lines: [{ productId: p1, quantity: 5 }] }],
+        },
+        today,
+        tours,
+      );
+      expect(afterDelivery).toEqual({ ok: false, error: "stop_completed" });
+      expect((await orderOf(c1)).items.map((i) => i.quantity)).toEqual([2]);
+      // Unchanged rows of delivered customers do not block the save of the others.
+      expect(
+        await saveStandingDay(
+          db(),
+          adminId,
+          {
+            date: DAY,
+            rows: [{ customerId: c1, lines: [{ productId: p1, quantity: 2 }] }],
+          },
+          today,
+          tours,
+        ),
+      ).toMatchObject({ ok: true, written: 0 });
+
       const past = await saveStandingDay(
         db(),
         adminId,

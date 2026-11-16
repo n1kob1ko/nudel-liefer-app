@@ -366,7 +366,8 @@
         "customer_not_found": "A customer was not found. Please reload the page.",
         "customer_inactive": "A customer is inactive. Please reload the page.",
         "product_not_found": "A product was not found. Please reload the page.",
-        "product_inactive": "A product is no longer active. Please reload the page."
+        "product_inactive": "A product is no longer active. Please reload the page.",
+        "stop_completed": "The driver has already served this customer. The quantity stays as delivered."
       },
       "manage": {
         "open": "Edit standing tours",
