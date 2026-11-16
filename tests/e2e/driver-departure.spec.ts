@@ -179,7 +179,7 @@ test.describe("driver", () => {
     await expect(card).toBeVisible();
     await card.getByTestId("departure-open").click();
     const sheet = page.getByTestId("departure-sheet");
-    await expect(sheet.getByTestId("departure-key").first()).toBeVisible();
+    await expect(sheet.getByTestId("departure-fixed-item").first()).toBeVisible();
     await sheet.getByRole("checkbox").first().click();
     await sheet.getByTestId("departure-go").click();
     await expect(sheet).toBeHidden();
