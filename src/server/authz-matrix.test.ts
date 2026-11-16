@@ -386,6 +386,9 @@ const MATRIX: Record<string, Row> = {
     "standing tours",
     async () => (await import("./standing-actions")).setStandingTourVehicleAction("x", null),
   ),
+  "src/server/standing-actions.ts#assignStandingAction": adminAction("day plan", async () =>
+    (await import("./standing-actions")).assignStandingAction({}),
+  ),
   "src/server/standing-actions.ts#moveExtraAction": adminAction("day plan", async () =>
     (await import("./standing-actions")).moveExtraAction({}),
   ),

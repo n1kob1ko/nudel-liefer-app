@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { loadOrder, loadSheetTotals } from "@/domain/load-sheet";
+import { deliveryOrder, loadSheetTotals } from "@/domain/load-sheet";
 import { requireDepot } from "@/domain/settings";
 
 import { hashSecret } from "./auth/password";
@@ -169,9 +169,9 @@ describe.skipIf(!process.env.DATABASE_URL)("tour print (load sheet)", { timeout:
       { productId: spag, unit: "PACK", quantity: await sum(spag) },
     ]);
     expect(totals[0]!.quantity).toBe(15 * 3);
-    // load order: the last stop first
-    expect(loadOrder(print.stops).map((s) => s.sequence)).toEqual(
-      Array.from({ length: 30 }, (_, i) => 30 - i),
+    // delivery order: stop 1 first
+    expect(deliveryOrder(print.stops).map((s) => s.sequence)).toEqual(
+      Array.from({ length: 30 }, (_, i) => i + 1),
     );
   });
 

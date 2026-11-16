@@ -414,7 +414,8 @@
       },
       "extra": {
         "label": "临时",
-        "move": "更改路线"
+        "move": "更改路线",
+        "today": "仅今天"
       },
       "move": {
         "title": "{name}：更改路线",
@@ -431,8 +432,14 @@
           "invalid": "输入无效。",
           "date_in_past": "过去的日期不能再更改。",
           "not_found": "未找到线路或订单。请刷新页面。",
-          "standing_customer": "该客户属于固定线路。"
-        }
+          "stop_completed": "此站点已完成，不再移动。",
+          "customer_inactive": "该客户已停用。"
+        },
+        "always": "固定在此路线",
+        "alwaysHint": "修改固定路线，之后每天都适用。",
+        "bodyAlways": "客户将固定加入此路线。",
+        "home": "回到 {route}",
+        "savedAlways": "已加入 {route}。点击“发送更改”后司机即可收到。"
       },
       "send": {
         "first": "发送给司机",
@@ -1796,9 +1803,7 @@
         "totalsHeading": "1. 各产品总数量",
         "product": "产品",
         "quantity": "数量",
-        "stopsHeading": "2. 装车顺序",
-        "stopsHint": "最后一站最先装车，第一站最后装车（放在最上面）。",
-        "loadPosition": "装车",
+        "stopsHeading": "2. 站点",
         "stop": "站点",
         "customer": "客户",
         "items": "产品和数量",
@@ -2127,6 +2132,12 @@
     },
     "payments": {
       "title": "收款",
+      "tabs": {
+        "label": "付款",
+        "debts": "欠款",
+        "monthly": "月结账单",
+        "alert": "有未结欠款"
+      },
       "description": "未收的现金和未结的月度账单。现金由司机在站点收取，月度账单由办公室标记为已付。",
       "summary": "未结金额概览",
       "backToPayments": "返回收款",
@@ -2147,7 +2158,7 @@
       },
       "cash": {
         "title": "未收现金",
-        "body": "标记为“货到付款”但司机尚未收到或未收足的站点。",
+        "body": "标记为“货到付款”但司机尚未收到或未收足的站点。司机多收的金额会自动抵扣该客户最早的未结款项。",
         "openTotal": "现金未结（{count}）",
         "emptyTitle": "没有未收现金",
         "emptyBody": "所有现金订单都已收齐，或尚未送货。",
@@ -2168,7 +2179,8 @@
             "not_completed": "该站点尚未送达。",
             "tour_not_active": "该路线尚未发布。"
           }
-        }
+        },
+        "credited": "已抵扣 {amount}"
       },
       "monthly": {
         "title": "未结月度账单",
@@ -2402,9 +2414,9 @@
       "mapSheetCount": "{count} 个待送站点",
       "focusOnMap": "在地图上显示",
       "reloadTitle": "返回仓库补货",
-      "reloadHint": "返回仓库，装载第 {trip} 趟的货物：",
+      "reloadHint": "返回仓库，装载第 {trip} 趟的货物。",
       "switchTitle": "换车",
-      "switchHint": "返回仓库，换乘 {vehicle}。第 {trip} 趟已装载：",
+      "switchHint": "返回仓库，换乘 {vehicle}，继续第 {trip} 趟。",
       "problemGroup": "{count} 个问题"
     },
     "units": {
@@ -2441,7 +2453,6 @@
       "photoNotSaved": "照片无法保存在本设备上，请重试。",
       "backToTour": "返回线路",
       "photos": "照片",
-      "summaryTotal": "合计",
       "statusDeliveredAt": "{time} 已送达",
       "statusProblem": "有问题：{reason}",
       "navigateStarting": "正在打开导航 …",
@@ -2454,7 +2465,6 @@
       "viewerPrev": "上一张照片",
       "viewerNext": "下一张照片",
       "viewerClose": "关闭",
-      "summaryTotalMixed": "各单位合计",
       "weekdayMo": "周一",
       "weekdayTu": "周二",
       "weekdayWe": "周三",
@@ -2661,7 +2671,6 @@
       "sheetTitle": "准备出发",
       "sheetTitleTrip": "准备第 {trip} 趟",
       "sheetDescription": "完成一项就点一下该行。",
-      "productsHeading": "装货",
       "keysHeading": "带上钥匙",
       "fixedHeading": "其他",
       "keyNoNumber": "无编号",
@@ -2696,12 +2705,6 @@
         "nothing": "未收取现金，此站点不算已送达。客户不付款时，请点“有问题”并打电话。",
         "confirm": "已收款并送达"
       }
-    },
-    "upcoming": {
-      "title": "接下来的线路",
-      "tomorrow": "明天 · {date}",
-      "stops": "{count, plural, other {# 个站点}}",
-      "from": "{time} 起"
     },
     "marks": {
       "invoice": "交付发票",

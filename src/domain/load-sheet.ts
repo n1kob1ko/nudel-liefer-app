@@ -59,13 +59,11 @@ export function loadSheetTotals(
 }
 
 /**
- * Section 2: the stops in LOAD order, i.e. reverse delivery order (the last stop is loaded first,
- * so the first stop is reachable last). `loadPosition` counts from 1.
+ * Section 2: the stops in delivery order, stop 1 first (owner 2026-11-16: "von 1 bis x"; until then
+ * the sheet listed them in reverse load order).
  */
-export function loadOrder<T extends Pick<LoadSheetStopInput, "sequence">>(
+export function deliveryOrder<T extends Pick<LoadSheetStopInput, "sequence">>(
   stops: readonly T[],
-): Array<T & { loadPosition: number }> {
-  return [...stops]
-    .sort((a, b) => b.sequence - a.sequence)
-    .map((stop, index) => ({ ...stop, loadPosition: index + 1 }));
+): T[] {
+  return [...stops].sort((a, b) => a.sequence - b.sequence);
 }

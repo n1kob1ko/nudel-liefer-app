@@ -414,7 +414,8 @@
       },
       "extra": {
         "label": "Zusatz",
-        "move": "Route ändern"
+        "move": "Route ändern",
+        "today": "Nur heute"
       },
       "move": {
         "title": "{name}: Route ändern",
@@ -431,8 +432,14 @@
           "invalid": "Ungültige Eingabe.",
           "date_in_past": "Vergangene Tage können nicht mehr geändert werden.",
           "not_found": "Route oder Bestellung nicht gefunden. Bitte die Seite neu laden.",
-          "standing_customer": "Dieser Kunde gehört zu einer Stammtour."
-        }
+          "stop_completed": "Dieser Stopp ist schon erledigt und bleibt, wo er ist.",
+          "customer_inactive": "Der Kunde ist inaktiv."
+        },
+        "always": "Immer auf dieser Route",
+        "alwaysHint": "Ändert die Stammroute, gilt für alle weiteren Tage.",
+        "bodyAlways": "Der Kunde kommt fest in diese Stammroute.",
+        "home": "Zurück auf {route}",
+        "savedAlways": "In {route} aufgenommen. Mit „Änderungen senden“ bekommt es der Fahrer."
       },
       "send": {
         "first": "An Fahrer senden",
@@ -1802,9 +1809,7 @@
         "totalsHeading": "1. Gesamtmenge pro Produkt",
         "product": "Produkt",
         "quantity": "Menge",
-        "stopsHeading": "2. Beladereihenfolge",
-        "stopsHint": "Der letzte Stopp wird zuerst eingeladen, der erste Stopp zuletzt (liegt dann oben).",
-        "loadPosition": "Laden",
+        "stopsHeading": "2. Stopps",
         "stop": "Stopp",
         "customer": "Kunde",
         "items": "Produkte und Mengen",
@@ -2127,6 +2132,12 @@
     },
     "payments": {
       "title": "Zahlungen",
+      "tabs": {
+        "label": "Zahlungen",
+        "debts": "Schulden",
+        "monthly": "Monatsrechnungen",
+        "alert": "Es gibt offene Schulden"
+      },
       "description": "Offene Bareinnahmen und offene Monatsrechnungen. Bar kassiert der Fahrer am Stopp, Monatsrechnungen markiert das Büro als bezahlt.",
       "summary": "Übersicht offener Beträge",
       "backToPayments": "Zurück zu den Zahlungen",
@@ -2147,7 +2158,7 @@
       },
       "cash": {
         "title": "Offene Barzahlungen",
-        "body": "Stopps mit „Bar bei Lieferung“, bei denen noch nichts oder weniger als der Betrag vermerkt ist. Hat der Fahrer das Geld abgegeben, hier „Erhalten“ tippen.",
+        "body": "Stopps mit „Bar bei Lieferung“, bei denen noch nichts oder weniger als der Betrag vermerkt ist. Hat der Fahrer das Geld abgegeben, hier „Erhalten“ tippen. Kassiert der Fahrer mehr als fällig, wird der Rest automatisch mit den ältesten offenen Beträgen desselben Kunden verrechnet.",
         "openTotal": "Offen in bar ({count})",
         "emptyTitle": "Keine offenen Barzahlungen",
         "emptyBody": "Alle Bar-Bestellungen sind kassiert oder noch nicht geliefert.",
@@ -2168,7 +2179,8 @@
             "not_completed": "Der Stopp ist noch nicht geliefert.",
             "tour_not_active": "Die Tour ist noch nicht freigegeben."
           }
-        }
+        },
+        "credited": "{amount} verrechnet"
       },
       "monthly": {
         "title": "Offene Monatsrechnungen",
@@ -2402,9 +2414,9 @@
       "mapSheetCount": "{count, plural, one {# offener Stopp} other {# offene Stopps}}",
       "focusOnMap": "Auf der Karte zeigen",
       "reloadTitle": "Nachladen im Depot",
-      "reloadHint": "Zurück ins Depot und für Fahrt {trip} aufladen:",
+      "reloadHint": "Zurück ins Depot und für Fahrt {trip} aufladen.",
       "switchTitle": "Fahrzeug wechseln",
-      "switchHint": "Zurück ins Depot und in {vehicle} umsteigen. Für Fahrt {trip} ist geladen:",
+      "switchHint": "Zurück ins Depot und in {vehicle} umsteigen. Weiter mit Fahrt {trip}.",
       "problemGroup": "{count, plural, one {Probleme (#)} other {Probleme (#)}}"
     },
     "units": {
@@ -2441,7 +2453,6 @@
       "photoNotSaved": "Das Foto konnte auf dem Gerät nicht gespeichert werden. Bitte erneut versuchen.",
       "backToTour": "Zurück zur Tour",
       "photos": "Fotos",
-      "summaryTotal": "Gesamt",
       "statusDeliveredAt": "Geliefert {time}",
       "statusProblem": "Problem: {reason}",
       "navigateStarting": "Navigation wird geöffnet …",
@@ -2454,7 +2465,6 @@
       "viewerPrev": "Vorheriges Foto",
       "viewerNext": "Nächstes Foto",
       "viewerClose": "Schließen",
-      "summaryTotalMixed": "Gesamt je Einheit",
       "weekdayMo": "Mo",
       "weekdayTu": "Di",
       "weekdayWe": "Mi",
@@ -2661,7 +2671,6 @@
       "sheetTitle": "Abfahrt vorbereiten",
       "sheetTitleTrip": "Fahrt {trip} vorbereiten",
       "sheetDescription": "Tippe jede Zeile an, wenn sie erledigt ist.",
-      "productsHeading": "Laden",
       "keysHeading": "Schlüssel mitnehmen",
       "fixedHeading": "Sonstiges",
       "keyNoNumber": "ohne Nummer",
@@ -2696,12 +2705,6 @@
         "nothing": "Ohne kassiertes Geld gilt der Stopp nicht als geliefert. Zahlt der Kunde nicht, tipp auf „Problem“ und ruf an.",
         "confirm": "Kassiert und geliefert"
       }
-    },
-    "upcoming": {
-      "title": "Kommende Touren",
-      "tomorrow": "Morgen · {date}",
-      "stops": "{count, plural, one {# Stopp} other {# Stopps}}",
-      "from": "ab {time}"
     },
     "marks": {
       "invoice": "Rechnung mitgeben",

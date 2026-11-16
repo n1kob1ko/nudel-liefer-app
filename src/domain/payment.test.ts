@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   addMonths,
+  applyCashCredit,
   billTotalCents,
   cashDueCents,
   cashOrders,
@@ -135,5 +136,62 @@ describe("openCashByCustomer", () => {
       row("y", "2026-11-02", 1000, null),
     ]);
     expect(result.map((r) => r.customerId)).toEqual(["y", "x"]);
+  });
+});
+
+describe("applyCashCredit (owner 2026-11-16)", () => {
+  const stop = (
+    stopId: string,
+    customerId: string,
+    date: string,
+    dueCents: number,
+    collectedCents: number | null,
+  ) => ({ stopId, customerId, date, dueCents, collectedCents });
+
+  it("lets an overpayment pay the customer's oldest open deliveries first", () => {
+    const { owed, leftCents } = applyCashCredit([
+      stop("s3", "a", "2026-11-16", 5000, 8000), // 30 EUR too much today
+      stop("s2", "a", "2026-11-12", 4000, null), // open 40 EUR
+      stop("s1", "a", "2026-11-10", 2000, 500), // short 15 EUR
+    ]);
+    expect(owed.map((r) => [r.stopId, r.creditedCents, r.openCents])).toEqual([
+      ["s2", 1500, 2500],
+      ["s1", 1500, 0],
+    ]);
+    expect(leftCents.size).toBe(0);
+  });
+
+  it("never moves money between customers and keeps a credit that is left over", () => {
+    const { owed, leftCents } = applyCashCredit([
+      stop("a1", "a", "2026-11-10", 1000, null),
+      stop("b1", "b", "2026-11-11", 1000, 4000),
+      stop("b2", "b", "2026-11-09", 1000, 0),
+    ]);
+    expect(owed.map((r) => [r.stopId, r.creditedCents, r.openCents])).toEqual([
+      ["a1", 0, 1000],
+      ["b2", 1000, 0],
+    ]);
+    expect(leftCents.get("b")).toBe(2000);
+    expect(leftCents.has("a")).toBe(false);
+  });
+
+  it("ignores stops without cash and exact payments", () => {
+    const { owed, leftCents } = applyCashCredit([
+      stop("x", "a", "2026-11-10", 0, 500),
+      stop("y", "a", "2026-11-11", 1000, 1000),
+    ]);
+    expect(owed).toEqual([]);
+    expect(leftCents.size).toBe(0);
+  });
+
+  it("feeds openCashByCustomer: a fully credited delivery is no debt any more", () => {
+    const { owed } = applyCashCredit([
+      stop("s1", "a", "2026-11-10", 2000, null),
+      stop("s2", "a", "2026-11-11", 1000, 3000),
+    ]);
+    const debtors = openCashByCustomer(
+      owed.map((r) => ({ ...r, customerNumber: "K-a", customerName: "Kunde a" })),
+    );
+    expect(debtors).toEqual([]);
   });
 });

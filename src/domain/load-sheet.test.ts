@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { loadOrder, type LoadSheetProduct, loadSheetTotals } from "./load-sheet";
+import { deliveryOrder, type LoadSheetProduct, loadSheetTotals } from "./load-sheet";
 import { sumQuantities } from "./order-overview";
 
 const products: LoadSheetProduct[] = [
@@ -104,19 +104,15 @@ describe("loadSheetTotals", () => {
   });
 });
 
-describe("loadOrder", () => {
-  it("lists the last stop first and numbers the load positions from 1", () => {
-    const ordered = loadOrder([{ sequence: 2 }, { sequence: 1 }, { sequence: 3 }]);
-    expect(ordered).toEqual([
-      { sequence: 3, loadPosition: 1 },
-      { sequence: 2, loadPosition: 2 },
-      { sequence: 1, loadPosition: 3 },
-    ]);
+describe("deliveryOrder", () => {
+  it("lists the stops from stop 1 to the last one", () => {
+    const ordered = deliveryOrder([{ sequence: 2 }, { sequence: 1 }, { sequence: 3 }]);
+    expect(ordered).toEqual([{ sequence: 1 }, { sequence: 2 }, { sequence: 3 }]);
   });
 
   it("does not change the input", () => {
-    const input = [{ sequence: 1 }, { sequence: 2 }];
-    loadOrder(input);
-    expect(input).toEqual([{ sequence: 1 }, { sequence: 2 }]);
+    const input = [{ sequence: 2 }, { sequence: 1 }];
+    deliveryOrder(input);
+    expect(input).toEqual([{ sequence: 2 }, { sequence: 1 }]);
   });
 });

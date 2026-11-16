@@ -14,7 +14,6 @@ const TEXTS = {
   photos: { de: "Fotos", "zh-Hans": "照片" },
   photoStore: { de: "Eingang", "zh-Hans": "入口" },
   photoParking: { de: "Parken", "zh-Hans": "停车" },
-  summaryTotal: { de: "Gesamt", "zh-Hans": "合计" },
   statusDeliveredAt: {
     de: "Geliefert {time}",
     "zh-Hans": "{time} 已送达",

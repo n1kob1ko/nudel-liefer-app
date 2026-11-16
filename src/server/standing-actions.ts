@@ -7,6 +7,8 @@ import { todayIn } from "./orders";
 import { getRoutingProvider } from "./routing";
 import { getFactoryTimezone, getSettings, requireDepotConfigured } from "./settings";
 import {
+  type AssignStandingResult,
+  assignStandingTour,
   moveExtra,
   type MoveExtraResult,
   saveStandingDay,
@@ -70,10 +72,22 @@ export async function setStandingTourVehicleAction(
   return setStandingTourVehicle(getDb(), actor.id, id, vehicleId);
 }
 
-/** NUD-212: puts a customer of no standing tour on a route and position for one delivery day. */
+/** NUD-212: puts a customer on a route and position for one delivery day. */
 export async function moveExtraAction(input: unknown): Promise<MoveExtraResult> {
   const actor = await requireRole("ADMIN");
   return moveExtra(getDb(), actor.id, input, todayIn(await getFactoryTimezone()), getTourService());
+}
+
+/** Owner 2026-11-16: puts a customer into a standing tour for good, from the day plan. */
+export async function assignStandingAction(input: unknown): Promise<AssignStandingResult> {
+  const actor = await requireRole("ADMIN");
+  return assignStandingTour(
+    getDb(),
+    actor.id,
+    input,
+    todayIn(await getFactoryTimezone()),
+    getTourService(),
+  );
 }
 
 /**

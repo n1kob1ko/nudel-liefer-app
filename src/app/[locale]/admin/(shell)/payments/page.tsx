@@ -12,6 +12,7 @@ import { Suspense } from "react";
 import { MonthExportForm } from "@/components/admin/bill-export";
 import { CashReceiveButton } from "@/components/admin/cash-receive";
 import { PageHeader } from "@/components/admin/page-header";
+import { type PaymentsTab, PaymentsTabs } from "@/components/admin/payments-tabs";
 import { EmptyState, LoadingSkeleton } from "@/components/shared/states";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -46,9 +47,11 @@ import { getFactoryTimezone } from "@/server/settings";
 async function Guarded({
   locale,
   customerFilter,
+  tab,
 }: {
   locale: string;
   customerFilter: string | null;
+  tab: PaymentsTab;
 }) {
   await requirePageActor("admin", locale);
   const t = await getTranslations({ locale, namespace: "admin.payments" });
@@ -73,7 +76,7 @@ async function Guarded({
   const cashRows = (
     filtered ? cash.filter((row) => row.customerId === filtered.customerId) : cash
   ).slice(0, 100);
-  const cashTotal = cash.reduce((sum, row) => sum + (row.dueCents - (row.collectedCents ?? 0)), 0);
+  const cashTotal = cash.reduce((sum, row) => sum + row.openCents, 0);
   const monthlyTotal = openMonthly.reduce((sum, row) => sum + row.amountCents, 0);
   // Months offered for the accounting export: the running month and the twelve before it.
   const exportMonths = Array.from({ length: 13 }, (_, index) => {
@@ -111,307 +114,342 @@ async function Guarded({
         </div>
       </dl>
 
-      {debtors.length > 0 ? (
-        <Card data-testid="cash-debtors">
-          <CardHeader>
-            <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-              <UsersIcon className="size-5" aria-hidden />
-              {t("debtors.title")}
-              <InfoTip>{t("debtors.body")}</InfoTip>
-            </h2>
-          </CardHeader>
-          <CardContent>
-            <ol className="flex flex-col">
-              {debtors.slice(0, 10).map((debtor) => {
-                const active = filtered?.customerId === debtor.customerId;
-                return (
-                  <li key={debtor.customerId} className="border-b border-border last:border-b-0">
-                    <Link
-                      href={
-                        active
-                          ? "/admin/payments#cash-open"
-                          : `/admin/payments?kunde=${debtor.customerId}#cash-open`
-                      }
-                      aria-current={active ? "true" : undefined}
-                      className={cn(
-                        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 rounded-md px-2 py-3 transition-colors hover:bg-muted active:bg-muted",
-                        active && "bg-muted",
-                      )}
-                      data-testid={`debtor-${debtor.customerId}`}
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium">{debtor.customerName}</span>
-                        <span className="block text-sm text-muted-foreground tabular-nums">
-                          {t("debtors.meta", {
-                            count: debtor.stopCount,
-                            date: fmt.calendarDate(parseCalendarDate(debtor.oldestDate) ?? today),
-                          })}
-                        </span>
-                      </span>
-                      <span
-                        className="text-lg font-semibold tabular-nums"
-                        data-testid={`debtor-open-${debtor.customerId}`}
-                      >
-                        {fmt.amount(debtor.openCents)}
-                      </span>
-                      {/* How big this debt is next to the biggest one, at a glance. */}
-                      <span
-                        className="col-span-2 h-1.5 overflow-hidden rounded-full bg-muted"
-                        aria-hidden
-                      >
-                        <span
-                          className="block h-full rounded-full bg-foreground/70"
-                          style={{
-                            width: `${Math.max(4, Math.round((debtor.openCents / maxDebt) * 100))}%`,
-                          }}
-                        />
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ol>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <Card data-testid="cash-open" id="cash-open" className="scroll-mt-20">
-        <CardHeader>
-          <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-            <BanknoteIcon className="size-5" aria-hidden />
-            {t("cash.title")}
-            <InfoTip>{t("cash.body")}</InfoTip>
-          </h2>
-          {filtered ? (
-            <p className="flex flex-wrap items-center gap-2 text-base">
-              <span>{t("debtors.filtered", { name: filtered.customerName })}</span>
-              <Link
-                href="/admin/payments#cash-open"
-                className="inline-flex h-11 items-center gap-1 link md:h-9"
-                data-testid="cash-filter-clear"
-              >
-                <XIcon className="size-4" aria-hidden />
-                {t("debtors.showAll")}
-              </Link>
-            </p>
-          ) : null}
-        </CardHeader>
-        <CardContent>
-          {cash.length === 0 ? (
-            <EmptyState
-              icon={BanknoteIcon}
-              title={t("cash.emptyTitle")}
-              description={t("cash.emptyBody")}
-              className="border-0 p-0"
-            />
-          ) : (
-            // A phone shows each open stop as a block: customer and day, what is still open, then
-            // the two actions with words on them. From 768 px it is a table row again.
-            <Table className={stackedTable.table}>
-              <TableHeader className={stackedTable.header}>
-                <TableRow>
-                  <TableHead>{t("columns.date")}</TableHead>
-                  <TableHead>{t("columns.customer")}</TableHead>
-                  <TableHead>{t("columns.driver")}</TableHead>
-                  <TableHead className="text-right">{t("columns.due")}</TableHead>
-                  <TableHead className="text-right">{t("columns.collected")}</TableHead>
-                  <TableHead className="text-right">{t("columns.open")}</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody className={stackedTable.body}>
-                {cashRows.map((row) => {
-                  const dateText = fmt.calendarDate(parseCalendarDate(row.date) ?? today);
-                  return (
-                    <TableRow
-                      key={row.stopId}
-                      data-testid={`cash-row-${row.stopId}`}
-                      className={stackedTable.row}
-                    >
-                      <TableCell className="tabular-nums max-md:hidden">{dateText}</TableCell>
-                      <TableCell className={stackedTable.cell}>
-                        <span className="block font-medium">{row.customerName}</span>
-                        <span className="block text-sm text-muted-foreground tabular-nums">
-                          {row.customerNumber}
-                          <span className="md:hidden"> · {dateText}</span>
-                        </span>
-                      </TableCell>
-                      <TableCell className="max-md:hidden">
-                        {row.driverName ?? t("columns.noDriver")}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums max-md:hidden">
-                        {fmt.amount(row.dueCents)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums max-md:hidden">
-                        {row.collectedCents === null ? "—" : fmt.amount(row.collectedCents)}
-                      </TableCell>
-                      <TableCell
-                        className={cn("text-right font-semibold tabular-nums", stackedTable.cell)}
-                      >
-                        {fmt.amount(row.dueCents - (row.collectedCents ?? 0))}
-                      </TableCell>
-                      <TableCell className={cn(stackedTable.cell, "max-md:col-span-2")}>
-                        <RowButtons>
-                          <CashReceiveButton
-                            stopId={row.stopId}
-                            customerName={row.customerName}
-                            dateText={dateText}
-                            dueCents={row.dueCents}
-                          />
+      <PaymentsTabs
+        initial={filtered ? "schulden" : tab}
+        debtAlert={debtors.length > 0}
+        debts={
+          <>
+            {debtors.length > 0 ? (
+              <Card data-testid="cash-debtors">
+                <CardHeader>
+                  <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+                    <UsersIcon className="size-5" aria-hidden />
+                    {t("debtors.title")}
+                    <InfoTip>{t("debtors.body")}</InfoTip>
+                  </h2>
+                </CardHeader>
+                <CardContent>
+                  <ol className="flex flex-col">
+                    {debtors.slice(0, 10).map((debtor) => {
+                      const active = filtered?.customerId === debtor.customerId;
+                      return (
+                        <li
+                          key={debtor.customerId}
+                          className="border-b border-border last:border-b-0"
+                        >
                           <Link
-                            href={`/admin/planning?date=${row.date}`}
-                            className="inline-flex h-11 items-center justify-center gap-1 px-3 text-base link max-md:flex-1 md:h-9 md:px-2"
-                            data-testid={`cash-link-${row.stopId}`}
+                            href={
+                              active
+                                ? "/admin/payments#cash-open"
+                                : `/admin/payments?kunde=${debtor.customerId}#cash-open`
+                            }
+                            aria-current={active ? "true" : undefined}
+                            className={cn(
+                              "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 rounded-md px-2 py-3 transition-colors hover:bg-muted active:bg-muted",
+                              active && "bg-muted",
+                            )}
+                            data-testid={`debtor-${debtor.customerId}`}
                           >
-                            {t("cash.toTour")}
-                            <ArrowRightIcon className="size-4 rtl:rotate-180" aria-hidden />
+                            <span className="min-w-0">
+                              <span className="block truncate font-medium">
+                                {debtor.customerName}
+                              </span>
+                              <span className="block text-sm text-muted-foreground tabular-nums">
+                                {t("debtors.meta", {
+                                  count: debtor.stopCount,
+                                  date: fmt.calendarDate(
+                                    parseCalendarDate(debtor.oldestDate) ?? today,
+                                  ),
+                                })}
+                              </span>
+                            </span>
+                            <span
+                              className="text-lg font-semibold tabular-nums"
+                              data-testid={`debtor-open-${debtor.customerId}`}
+                            >
+                              {fmt.amount(debtor.openCents)}
+                            </span>
+                            {/* How big this debt is next to the biggest one, at a glance. */}
+                            <span
+                              className="col-span-2 h-1.5 overflow-hidden rounded-full bg-muted"
+                              aria-hidden
+                            >
+                              <span
+                                className="block h-full rounded-full bg-foreground/70"
+                                style={{
+                                  width: `${Math.max(4, Math.round((debtor.openCents / maxDebt) * 100))}%`,
+                                }}
+                              />
+                            </span>
                           </Link>
-                        </RowButtons>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </CardContent>
+              </Card>
+            ) : null}
 
-      <Card data-testid="monthly-open">
-        <CardHeader>
-          <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-            <ReceiptTextIcon className="size-5" aria-hidden />
-            {t("monthly.title")}
-            <InfoTip>{t("monthly.body")}</InfoTip>
-          </h2>
-        </CardHeader>
-        <CardContent>
-          {openMonthly.length === 0 ? (
-            <EmptyState
-              icon={ReceiptTextIcon}
-              title={t("monthly.emptyTitle")}
-              description={t("monthly.emptyBody")}
-              className="border-0 p-0"
-            />
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t("columns.month")}</TableHead>
-                    <TableHead>{t("columns.customer")}</TableHead>
-                    <TableHead className="text-right">{t("columns.orders")}</TableHead>
-                    <TableHead className="text-right">{t("columns.total")}</TableHead>
-                    <TableHead />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {openMonthly.map((row) => (
-                    <TableRow
-                      key={`${row.customerId}:${row.periodStart}`}
-                      data-testid={`monthly-row-${row.customerId}-${row.monthKey}`}
+            <Card data-testid="cash-open" id="cash-open" className="scroll-mt-20">
+              <CardHeader>
+                <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+                  <BanknoteIcon className="size-5" aria-hidden />
+                  {t("cash.title")}
+                  <InfoTip>{t("cash.body")}</InfoTip>
+                </h2>
+                {filtered ? (
+                  <p className="flex flex-wrap items-center gap-2 text-base">
+                    <span>{t("debtors.filtered", { name: filtered.customerName })}</span>
+                    <Link
+                      href="/admin/payments#cash-open"
+                      className="inline-flex h-11 items-center gap-1 link md:h-9"
+                      data-testid="cash-filter-clear"
                     >
-                      <TableCell className="tabular-nums">
-                        {t("monthLabel", {
-                          month: formatter.dateTime(new Date(`${row.periodStart}T00:00:00Z`), {
-                            month: "long",
-                            year: "numeric",
-                            timeZone: "UTC",
-                          }),
-                        })}
-                      </TableCell>
-                      <TableCell>
-                        <span className="block font-medium">{row.customerName}</span>
-                        <span className="block text-sm text-muted-foreground">
-                          {row.customerNumber}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatter.number(row.orderCount, { maximumFractionDigits: 0 })}
-                        {row.noAmountCount > 0 ? (
-                          <Badge variant="warning" size="sm" className="ms-2">
-                            {t("monthly.noAmount", { count: row.noAmountCount })}
-                          </Badge>
-                        ) : null}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold tabular-nums">
-                        {fmt.amount(row.amountCents)}
-                      </TableCell>
-                      <TableCell>
+                      <XIcon className="size-4" aria-hidden />
+                      {t("debtors.showAll")}
+                    </Link>
+                  </p>
+                ) : null}
+              </CardHeader>
+              <CardContent>
+                {cash.length === 0 ? (
+                  <EmptyState
+                    icon={BanknoteIcon}
+                    title={t("cash.emptyTitle")}
+                    description={t("cash.emptyBody")}
+                    className="border-0 p-0"
+                  />
+                ) : (
+                  // A phone shows each open stop as a block: customer and day, what is still open, then
+                  // the two actions with words on them. From 768 px it is a table row again.
+                  <Table className={stackedTable.table}>
+                    <TableHeader className={stackedTable.header}>
+                      <TableRow>
+                        <TableHead>{t("columns.date")}</TableHead>
+                        <TableHead>{t("columns.customer")}</TableHead>
+                        <TableHead>{t("columns.driver")}</TableHead>
+                        <TableHead className="text-right">{t("columns.due")}</TableHead>
+                        <TableHead className="text-right">{t("columns.collected")}</TableHead>
+                        <TableHead className="text-right">{t("columns.open")}</TableHead>
+                        <TableHead />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className={stackedTable.body}>
+                      {cashRows.map((row) => {
+                        const dateText = fmt.calendarDate(parseCalendarDate(row.date) ?? today);
+                        return (
+                          <TableRow
+                            key={row.stopId}
+                            data-testid={`cash-row-${row.stopId}`}
+                            className={stackedTable.row}
+                          >
+                            <TableCell className="tabular-nums max-md:hidden">{dateText}</TableCell>
+                            <TableCell className={stackedTable.cell}>
+                              <span className="block font-medium">{row.customerName}</span>
+                              <span className="block text-sm text-muted-foreground tabular-nums">
+                                {row.customerNumber}
+                                <span className="md:hidden"> · {dateText}</span>
+                              </span>
+                            </TableCell>
+                            <TableCell className="max-md:hidden">
+                              {row.driverName ?? t("columns.noDriver")}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums max-md:hidden">
+                              {fmt.amount(row.dueCents)}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums max-md:hidden">
+                              {row.collectedCents === null ? "—" : fmt.amount(row.collectedCents)}
+                            </TableCell>
+                            <TableCell
+                              className={cn(
+                                "text-right font-semibold tabular-nums",
+                                stackedTable.cell,
+                              )}
+                            >
+                              {fmt.amount(row.openCents)}
+                              {row.creditedCents > 0 ? (
+                                // Paid by money the driver took above what was due elsewhere.
+                                <span
+                                  className="block text-sm font-normal text-muted-foreground"
+                                  data-testid={`cash-credited-${row.stopId}`}
+                                >
+                                  {t("cash.credited", { amount: fmt.amount(row.creditedCents) })}
+                                </span>
+                              ) : null}
+                            </TableCell>
+                            <TableCell className={cn(stackedTable.cell, "max-md:col-span-2")}>
+                              <RowButtons>
+                                <CashReceiveButton
+                                  stopId={row.stopId}
+                                  customerName={row.customerName}
+                                  dateText={dateText}
+                                  dueCents={row.dueCents - row.creditedCents}
+                                />
+                                <Link
+                                  href={`/admin/planning?date=${row.date}`}
+                                  className="inline-flex h-11 items-center justify-center gap-1 px-3 text-base link max-md:flex-1 md:h-9 md:px-2"
+                                  data-testid={`cash-link-${row.stopId}`}
+                                >
+                                  {t("cash.toTour")}
+                                  <ArrowRightIcon className="size-4 rtl:rotate-180" aria-hidden />
+                                </Link>
+                              </RowButtons>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        }
+        monthly={
+          <>
+            <Card data-testid="monthly-open">
+              <CardHeader>
+                <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+                  <ReceiptTextIcon className="size-5" aria-hidden />
+                  {t("monthly.title")}
+                  <InfoTip>{t("monthly.body")}</InfoTip>
+                </h2>
+              </CardHeader>
+              <CardContent>
+                {openMonthly.length === 0 ? (
+                  <EmptyState
+                    icon={ReceiptTextIcon}
+                    title={t("monthly.emptyTitle")}
+                    description={t("monthly.emptyBody")}
+                    className="border-0 p-0"
+                  />
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{t("columns.month")}</TableHead>
+                          <TableHead>{t("columns.customer")}</TableHead>
+                          <TableHead className="text-right">{t("columns.orders")}</TableHead>
+                          <TableHead className="text-right">{t("columns.total")}</TableHead>
+                          <TableHead />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {openMonthly.map((row) => (
+                          <TableRow
+                            key={`${row.customerId}:${row.periodStart}`}
+                            data-testid={`monthly-row-${row.customerId}-${row.monthKey}`}
+                          >
+                            <TableCell className="tabular-nums">
+                              {t("monthLabel", {
+                                month: formatter.dateTime(
+                                  new Date(`${row.periodStart}T00:00:00Z`),
+                                  {
+                                    month: "long",
+                                    year: "numeric",
+                                    timeZone: "UTC",
+                                  },
+                                ),
+                              })}
+                            </TableCell>
+                            <TableCell>
+                              <span className="block font-medium">{row.customerName}</span>
+                              <span className="block text-sm text-muted-foreground">
+                                {row.customerNumber}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {formatter.number(row.orderCount, { maximumFractionDigits: 0 })}
+                              {row.noAmountCount > 0 ? (
+                                <Badge variant="warning" size="sm" className="ms-2">
+                                  {t("monthly.noAmount", { count: row.noAmountCount })}
+                                </Badge>
+                              ) : null}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold tabular-nums">
+                              {fmt.amount(row.amountCents)}
+                            </TableCell>
+                            <TableCell>
+                              <Link
+                                href={`/admin/payments/${row.customerId}?month=${row.monthKey}`}
+                                className="inline-flex items-center gap-1 text-base link"
+                                data-testid={`monthly-link-${row.customerId}-${row.monthKey}`}
+                              >
+                                {t("monthly.open")}
+                                <ArrowRightIcon className="size-4 rtl:rotate-180" aria-hidden />
+                              </Link>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card data-testid="month-export">
+              <CardHeader>
+                <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+                  <FileSpreadsheetIcon className="size-5" aria-hidden />
+                  {t("export.allTitle")}
+                  <InfoTip>{t("export.allBody")}</InfoTip>
+                </h2>
+              </CardHeader>
+              <CardContent>
+                <MonthExportForm months={exportMonths} defaultMonth={exportMonths[1]?.value} />
+              </CardContent>
+            </Card>
+
+            {paidHistory.total > 0 ? (
+              <Card data-testid="monthly-paid">
+                <CardHeader>
+                  <h2 className="text-lg font-semibold tracking-tight">{t("paid.title")}</h2>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                  <ul className="flex flex-col">
+                    {paidHistory.rows.map((row) => (
+                      <li
+                        key={row.id}
+                        className="flex flex-wrap items-baseline gap-x-3 border-b border-border py-2.5 last:border-b-0"
+                      >
+                        <Badge variant="success">{t("paid.badge")}</Badge>
                         <Link
                           href={`/admin/payments/${row.customerId}?month=${row.monthKey}`}
-                          className="inline-flex items-center gap-1 text-base link"
-                          data-testid={`monthly-link-${row.customerId}-${row.monthKey}`}
+                          className="min-w-0 flex-1 font-medium underline-offset-4 hover:underline"
                         >
-                          {t("monthly.open")}
-                          <ArrowRightIcon className="size-4 rtl:rotate-180" aria-hidden />
+                          {row.customerName}
                         </Link>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card data-testid="month-export">
-        <CardHeader>
-          <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-            <FileSpreadsheetIcon className="size-5" aria-hidden />
-            {t("export.allTitle")}
-            <InfoTip>{t("export.allBody")}</InfoTip>
-          </h2>
-        </CardHeader>
-        <CardContent>
-          <MonthExportForm months={exportMonths} defaultMonth={exportMonths[1]?.value} />
-        </CardContent>
-      </Card>
-
-      {paidHistory.total > 0 ? (
-        <Card data-testid="monthly-paid">
-          <CardHeader>
-            <h2 className="text-lg font-semibold tracking-tight">{t("paid.title")}</h2>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <ul className="flex flex-col">
-              {paidHistory.rows.map((row) => (
-                <li
-                  key={row.id}
-                  className="flex flex-wrap items-baseline gap-x-3 border-b border-border py-2.5 last:border-b-0"
-                >
-                  <Badge variant="success">{t("paid.badge")}</Badge>
+                        <span className="text-sm text-muted-foreground tabular-nums">
+                          {t("monthLabel", {
+                            month: formatter.dateTime(new Date(`${row.periodStart}T00:00:00Z`), {
+                              month: "long",
+                              year: "numeric",
+                              timeZone: "UTC",
+                            }),
+                          })}
+                        </span>
+                        <span className="font-semibold tabular-nums">
+                          {fmt.amount(row.amountCents)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                   <Link
-                    href={`/admin/payments/${row.customerId}?month=${row.monthKey}`}
-                    className="min-w-0 flex-1 font-medium underline-offset-4 hover:underline"
+                    href="/admin/payments/history"
+                    className="inline-flex items-center gap-1 self-start text-base link"
+                    data-testid="payment-history-link"
                   >
-                    {row.customerName}
+                    {t("paid.all", { count: paidHistory.total })}
+                    <ArrowRightIcon className="size-4 rtl:rotate-180" aria-hidden />
                   </Link>
-                  <span className="text-sm text-muted-foreground tabular-nums">
-                    {t("monthLabel", {
-                      month: formatter.dateTime(new Date(`${row.periodStart}T00:00:00Z`), {
-                        month: "long",
-                        year: "numeric",
-                        timeZone: "UTC",
-                      }),
-                    })}
-                  </span>
-                  <span className="font-semibold tabular-nums">{fmt.amount(row.amountCents)}</span>
-                </li>
-              ))}
-            </ul>
-            <Link
-              href="/admin/payments/history"
-              className="inline-flex items-center gap-1 self-start text-base link"
-              data-testid="payment-history-link"
-            >
-              {t("paid.all", { count: paidHistory.total })}
-              <ArrowRightIcon className="size-4 rtl:rotate-180" aria-hidden />
-            </Link>
-          </CardContent>
-        </Card>
-      ) : null}
+                </CardContent>
+              </Card>
+            ) : null}
+          </>
+        }
+      />
     </div>
   );
 }
@@ -422,11 +460,13 @@ export default async function Page({
 }: PageProps<"/[locale]/admin/payments">) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const { kunde } = await searchParams;
+  const { kunde, reiter } = await searchParams;
   const customerFilter = (Array.isArray(kunde) ? kunde[0] : kunde)?.slice(0, 64) ?? null;
+  const tab: PaymentsTab =
+    (Array.isArray(reiter) ? reiter[0] : reiter) === "monat" ? "monat" : "schulden";
   return (
     <Suspense fallback={<LoadingSkeleton />}>
-      <Guarded locale={locale} customerFilter={customerFilter} />
+      <Guarded locale={locale} customerFilter={customerFilter} tab={tab} />
     </Suspense>
   );
 }

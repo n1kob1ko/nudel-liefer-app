@@ -110,7 +110,7 @@ async function fixture() {
 
 test.describe.configure({ mode: "serial" });
 
-test("load sheet: totals, reverse order, Deutsch + 中文, A4 print, warning, authorization", async ({
+test("load sheet: totals, stop order 1..x, Deutsch + 中文, A4 print, warning, authorization", async ({
   page,
   browser,
 }, testInfo) => {
@@ -173,11 +173,11 @@ test("load sheet: totals, reverse order, Deutsch + 中文, A4 print, warning, au
       );
     expect(printedItems.length).toBeGreaterThan(STOPS);
 
-    // Section 2: reverse order, last stop first.
+    // Section 2: delivery order, stop 1 first.
     const seqs = await page
       .locator('[data-testid="load-sheet-stop-seq"]:visible')
       .evaluateAll((els) => els.map((el) => Number(el.textContent)));
-    expect(seqs).toEqual(Array.from({ length: STOPS }, (_, i) => STOPS - i));
+    expect(seqs).toEqual(Array.from({ length: STOPS }, (_, i) => i + 1));
 
     // The Print button calls window.print().
     await page.evaluate(() => {

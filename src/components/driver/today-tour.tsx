@@ -11,7 +11,6 @@ import {
   MapIcon,
   MapPinIcon,
   NavigationIcon,
-  PackageIcon,
   PartyPopperIcon,
   PencilLineIcon,
   PlusCircleIcon,
@@ -43,7 +42,6 @@ import {
   summarizeItems,
   switchVehicle,
   tourFinishAt,
-  tripLoadItems,
 } from "@/domain/driver-today";
 import { Link, useRouter } from "@/i18n/navigation";
 import type { DriverToday, TodayItem, TodayStop } from "@/lib/driver-tour-model";
@@ -81,113 +79,49 @@ type UnitKey = "KG" | "PACK" | "CRATE" | "PIECE";
 function ItemSummary({ items }: { items: TodayItem[] }) {
   const t = useTranslations("driver");
   const fmt = createAppFormatters(useFormatter());
-  const { kinds, totals } = summarizeItems(items);
-  const compact = items.length > 4;
+  const { kinds } = summarizeItems(items);
   const separator = (
     <span aria-hidden className="text-muted-foreground">
       ·
     </span>
   );
+  // Every product with its own quantity, never a sum per unit (owner 2026-11-16: "keine
+  // Gesamtmenge"): a long order simply wraps onto more lines.
   return (
     <p
       className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-base leading-tight"
       data-testid="item-summary"
     >
-      {compact ? (
-        <>
-          <span className="inline-flex items-center gap-1.5">
-            <PackageIcon className="size-5 shrink-0 self-center" aria-hidden />
-            <span className="font-medium" data-testid="summary-kinds">
-              {t("today.kinds", { count: kinds })}
-            </span>
-          </span>
-          {totals.map((total) => (
-            <span
-              key={total.unit}
-              className="inline-flex min-w-0 items-baseline gap-1.5 whitespace-nowrap"
-              data-testid="summary-total"
-              data-unit={total.unit}
-            >
-              {separator}
-              <strong className="font-sans text-3xl font-bold tabular-nums">
-                {fmt.quantity(total.quantity)}
-              </strong>{" "}
-              <span>{t(`unitsTotal.${total.unit as UnitKey}`)}</span>
-            </span>
-          ))}
-        </>
-      ) : (
-        items.map((item, index) => {
-          const quantity = item.quantity;
-          return (
-            // The separator belongs to the *following* item, so a wrapped line never ends with a
-            // dangling "·".
-            <span
-              key={item.productId}
-              className="inline-flex min-w-0 items-baseline gap-1.5"
-              data-testid="summary-total"
-              data-unit={item.unit}
-            >
-              {index > 0 ? separator : null}
-              <strong className="font-sans text-3xl font-bold tabular-nums">
-                {fmt.quantity(quantity)}
-              </strong>
-              <span aria-hidden>×</span>
-              <span className="min-w-0 font-medium">{item.name}</span>
-              {isPieceUnit(item.unit) ? null : (
-                <span className="shrink-0 text-muted-foreground">
-                  {t(`units.${item.unit as UnitKey}`, { count: quantity })}
-                </span>
-              )}
-            </span>
-          );
-        })
-      )}
-      {compact ? null : (
-        // "1 Sorte" stays for screen readers and for the specs, without taking vertical space.
-        <span className="sr-only" aria-hidden data-testid="summary-kinds">
-          {t("today.kinds", { count: kinds })}
-        </span>
-      )}
-    </p>
-  );
-}
-
-/**
- * The compact right-hand summary of a *list row* (re-design.md §7.2.4, design review point 1): one
- * short line per unit — "12,5 kg" over "5 Kiste" — at 16 px (the driver floor; §7.2 says 15 px),
- * muted and tabular, so mixed units are never added together and the narrow column never needs a
- * long "12,5 kg · 5 Kiste" line. Display-size numerals stay in the hero card and the stop detail: a
- * 30 px `<strong>` here was what covered the status badge.
- *
- * `summary-total` / `data-unit` stay on the single values (`driver-today.spec` reads them per row),
- * but deliberately without a `<strong>`: the layout audit's "quantities >= 28 px bold" rule targets
- * the hero and stop-detail quantities, not this row.
- */
-function RowSummary({ items }: { items: TodayItem[] }) {
-  const t = useTranslations("driver");
-  const fmt = createAppFormatters(useFormatter());
-  const { totals } = summarizeItems(items);
-  return (
-    <span
-      className="flex flex-col items-end font-sans text-base tabular-nums text-muted-foreground"
-      data-testid="item-summary"
-    >
-      {totals.map((total) => {
-        const quantity = total.quantity;
+      {items.map((item, index) => {
+        const quantity = item.quantity;
         return (
+          // The separator belongs to the *following* item, so a wrapped line never ends with a
+          // dangling "·".
           <span
-            key={total.unit}
-            className="whitespace-nowrap"
+            key={item.productId}
+            className="inline-flex min-w-0 items-baseline gap-1.5"
             data-testid="summary-total"
-            data-unit={total.unit}
+            data-unit={item.unit}
           >
-            {/* Same ICU plural form as the hero chip: "5 Kisten", not "5 Kiste" (run 3 review). */}
-            {fmt.quantity(quantity)} {t(`unitsTotal.${total.unit as UnitKey}`)}
+            {index > 0 ? separator : null}
+            <strong className="font-sans text-3xl font-bold tabular-nums">
+              {fmt.quantity(quantity)}
+            </strong>
+            <span aria-hidden>×</span>
+            <span className="min-w-0 font-medium">{item.name}</span>
+            {isPieceUnit(item.unit) ? null : (
+              <span className="shrink-0 text-muted-foreground">
+                {t(`units.${item.unit as UnitKey}`, { count: quantity })}
+              </span>
+            )}
           </span>
         );
       })}
-    </span>
+      {/* "1 Sorte" stays for screen readers and for the specs, without taking vertical space. */}
+      <span className="sr-only" aria-hidden data-testid="summary-kinds">
+        {t("today.kinds", { count: kinds })}
+      </span>
+    </p>
   );
 }
 
@@ -528,15 +462,14 @@ function StopRow({
           {stop.status === "PENDING" ? <StopMarks stop={stop} /> : null}
         </span>
       </span>
-      {/* Reserved right column (80 px): the summary stacks inside it, so it can never spill onto
-          the status badge or squeeze the customer name below ~20 visible characters. */}
-      <span className="flex w-20 shrink-0 flex-col items-end gap-0.5 overflow-hidden">
+      {/* Right column: the time only. What a customer gets is shown on the current stop alone
+          (owner 2026-11-16: no quantities, weights or totals in the list). */}
+      <span className="flex shrink-0 flex-col items-end gap-0.5">
         {rowTime ? (
           <span className="font-sans text-base tabular-nums" data-testid="stop-row-time">
             {fmtTime(new Date(rowTime))}
           </span>
         ) : null}
-        <RowSummary items={stop.items} />
       </span>
     </>
   );
@@ -880,7 +813,6 @@ export function TodayTour({
             {reloadBefore.has(stop.id) ? (
               <ReloadStop
                 trip={reloadBefore.get(stop.id)!}
-                items={tripLoadItems(stops, reloadBefore.get(stop.id)!)}
                 switchTo={switchVehicle(stops, reloadBefore.get(stop.id)!)}
                 onChecklist={
                   today.departedAt === undefined

@@ -200,6 +200,54 @@ describe.skipIf(!process.env.DATABASE_URL)("payments", { timeout: 60_000 }, () =
       expect(await openCashQuery(db(), TODAY)).toEqual([]);
     });
 
+    it("offsets money collected above what was due against the customer's old debts (owner 2026-11-16)", async () => {
+      // c1 owes 30 EUR from 2099-05-10 and 20 EUR from 2099-05-12; on 2099-05-15 the driver takes
+      // 70 EUR for a 30 EUR delivery: the 40 EUR surplus pays the oldest debt first.
+      const old1 = await order({
+        customerId: c1,
+        date: "2099-05-10",
+        term: "ON_DELIVERY",
+        amountCents: 3000,
+      });
+      const old2 = await order({
+        customerId: c1,
+        date: "2099-05-12",
+        term: "ON_DELIVERY",
+        amountCents: 2000,
+      });
+      const now = await order({
+        customerId: c1,
+        date: "2099-05-15",
+        term: "ON_DELIVERY",
+        amountCents: 3000,
+      });
+      const other = await order({
+        customerId: c2,
+        date: "2099-05-11",
+        term: "ON_DELIVERY",
+        amountCents: 1000,
+      });
+      const a = await tourWithStop({ date: "2099-05-10", customerId: c1, orders: [old1.id] });
+      const b = await tourWithStop({ date: "2099-05-12", customerId: c1, orders: [old2.id] });
+      await tourWithStop({
+        date: "2099-05-15",
+        customerId: c1,
+        orders: [now.id],
+        collectedCents: 7000,
+      });
+      const c = await tourWithStop({ date: "2099-05-11", customerId: c2, orders: [other.id] });
+
+      const rows = await openCashQuery(db(), TODAY);
+      // The 30 EUR debt is paid, 10 EUR go to the 20 EUR one; c2's debt is untouched.
+      expect(rows.map((row) => [row.stopId, row.creditedCents, row.openCents])).toEqual([
+        [b.stop.id, 1000, 1000],
+        [c.stop.id, 0, 1000],
+      ]);
+      expect(rows.map((row) => row.stopId)).not.toContain(a.stop.id);
+      // Nothing was written: the old stops keep "nothing collected".
+      expect((await db().stop.findUnique({ where: { id: a.stop.id } }))?.collectedCents).toBeNull();
+    });
+
     it("ignores stops that are not delivered, tours that are not released and future days", async () => {
       const cash = await order({
         customerId: c1,

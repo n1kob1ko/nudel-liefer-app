@@ -9,7 +9,6 @@ import {
   roundedMinutes,
   summarizeItems,
   tourFinishAt,
-  tripLoadItems,
 } from "./driver-today";
 
 describe("nextPendingStop", () => {
@@ -119,27 +118,6 @@ describe("reload stops (NUD-147)", () => {
   it("is empty for one trip, for caches without trips and for no stops", () => {
     expect(reloadBeforeStops([{ id: "a" }, { id: "b" }]).size).toBe(0);
     expect(reloadBeforeStops([]).size).toBe(0);
-  });
-
-  it("sums the load of one trip per product", () => {
-    const stops = [
-      { trip: 1, items: [{ productId: "p1", quantity: 2, name: "Nudeln" }] },
-      {
-        trip: 2,
-        items: [
-          { productId: "p1", quantity: 3, name: "Nudeln" },
-          { productId: "p2", quantity: 1, name: "Teig" },
-        ],
-      },
-      { trip: 2, items: [{ productId: "p1", quantity: 4, name: "Nudeln" }] },
-    ];
-    expect(tripLoadItems(stops, 2)).toEqual([
-      { productId: "p1", quantity: 7, name: "Nudeln" },
-      { productId: "p2", quantity: 1, name: "Teig" },
-    ]);
-    // the inputs are not touched
-    expect(stops[1]!.items[0]!.quantity).toBe(3);
-    expect(tripLoadItems(stops, 5)).toEqual([]);
   });
 });
 

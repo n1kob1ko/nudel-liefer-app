@@ -234,9 +234,9 @@
       "mapSheetCount": "{count, plural, one {# otevřená zastávka} few {# otevřené zastávky} many {# otevřené zastávky} other {# otevřených zastávek}}",
       "focusOnMap": "Ukázat na mapě",
       "reloadTitle": "Doplnění nákladu v depu",
-      "reloadHint": "Vraťte se do depa a naložte zboží pro jízdu {trip}:",
+      "reloadHint": "Vraťte se do depa a naložte zboží pro jízdu {trip}.",
       "switchTitle": "Výměna vozidla",
-      "switchHint": "Vraťte se do depa a přesedněte do vozidla {vehicle}. Pro jízdu {trip} je naloženo:",
+      "switchHint": "Vraťte se do depa a přesedněte do vozidla {vehicle}. Pak jízda {trip}.",
       "problemGroup": "{count, plural, one {Problémy (#)} few {Problémy (#)} many {Problémy (#)} other {Problémy (#)}}"
     },
     "units": {
@@ -273,7 +273,6 @@
       "photoNotSaved": "Fotku se nepodařilo uložit v zařízení. Zkuste to prosím znovu.",
       "backToTour": "Zpět na trasu",
       "photos": "Fotky",
-      "summaryTotal": "Celkem",
       "statusDeliveredAt": "Doručeno {time}",
       "statusProblem": "Problém: {reason}",
       "navigateStarting": "Otevírá se navigace …",
@@ -286,7 +285,6 @@
       "viewerPrev": "Předchozí fotka",
       "viewerNext": "Další fotka",
       "viewerClose": "Zavřít",
-      "summaryTotalMixed": "Celkem podle jednotky",
       "weekdayMo": "Po",
       "weekdayTu": "Út",
       "weekdayWe": "St",
@@ -493,7 +491,6 @@
       "sheetTitle": "Příprava na odjezd",
       "sheetTitleTrip": "Příprava jízdy {trip}",
       "sheetDescription": "Klepněte na každý řádek, jakmile je hotový.",
-      "productsHeading": "Naložit",
       "keysHeading": "Vzít klíče",
       "fixedHeading": "Další",
       "keyNoNumber": "bez čísla",
@@ -528,12 +525,6 @@
         "nothing": "Bez vybrané hotovosti se zastávka nepočítá jako doručená. Pokud zákazník nezaplatí, klepni na „Problém“ a zavolej.",
         "confirm": "Vybráno a doručeno"
       }
-    },
-    "upcoming": {
-      "title": "Nadcházející trasy",
-      "tomorrow": "Zítra · {date}",
-      "stops": "{count, plural, one {# zastávka} few {# zastávky} many {# zastávky} other {# zastávek}}",
-      "from": "od {time}"
     },
     "marks": {
       "invoice": "Předat fakturu",

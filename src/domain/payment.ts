@@ -156,11 +156,13 @@ export function openCashByCustomer(
     date: string;
     dueCents: number;
     collectedCents: number | null;
+    /** Paid by the customer's overpayments elsewhere (`applyCashCredit`). */
+    creditedCents?: number;
   }>,
 ): OpenCashByCustomer[] {
   const byCustomer = new Map<string, OpenCashByCustomer>();
   for (const row of rows) {
-    const open = row.dueCents - (row.collectedCents ?? 0);
+    const open = row.dueCents - (row.collectedCents ?? 0) - (row.creditedCents ?? 0);
     if (open <= 0) continue;
     const entry = byCustomer.get(row.customerId);
     if (entry) {
@@ -184,4 +186,60 @@ export function openCashByCustomer(
       a.oldestDate.localeCompare(b.oldestDate) ||
       a.customerName.localeCompare(b.customerName),
   );
+}
+
+/** A delivered cash stop as `applyCashCredit` needs it. */
+export type CashBalanceRow = {
+  stopId: string;
+  customerId: string;
+  /** `YYYY-MM-DD` of the delivery. */
+  date: string;
+  dueCents: number;
+  collectedCents: number | null;
+};
+
+/**
+ * Overpayments settle old debts automatically (owner 2026-11-16: "soll automatisch gegengerechnet
+ * werden, wenn z. B. der Fahrer mehr kassiert bei jemandem, der offene Schulden hatte"). Per
+ * customer, everything collected above what was due at a stop is a credit; it pays that customer's
+ * open deliveries, the oldest first. Nothing is written: the stops keep what the driver typed (the
+ * audit stays true), and an undone overpayment simply stops counting.
+ *
+ * Returns every delivery with money still owed *before* the credit (open or short), with
+ * `creditedCents` (taken from the credit) and `openCents` (what is still owed after it, >= 0), in
+ * the input order, plus the credit left over per customer (`leftCents`, money paid in advance).
+ */
+export function applyCashCredit<T extends CashBalanceRow>(
+  rows: readonly T[],
+): {
+  owed: Array<T & { creditedCents: number; openCents: number }>;
+  leftCents: Map<string, number>;
+} {
+  const credit = new Map<string, number>();
+  for (const row of rows) {
+    const over = (row.collectedCents ?? 0) - row.dueCents;
+    if (row.dueCents > 0 && row.collectedCents !== null && over > 0) {
+      credit.set(row.customerId, (credit.get(row.customerId) ?? 0) + over);
+    }
+  }
+  const owed = rows
+    .filter((row) => row.dueCents > 0 && row.dueCents - (row.collectedCents ?? 0) > 0)
+    .map((row) => ({
+      ...row,
+      creditedCents: 0,
+      openCents: row.dueCents - (row.collectedCents ?? 0),
+    }));
+  const oldestFirst = [...owed].sort(
+    (a, b) => a.date.localeCompare(b.date) || a.stopId.localeCompare(b.stopId),
+  );
+  for (const row of oldestFirst) {
+    const available = credit.get(row.customerId) ?? 0;
+    if (available <= 0) continue;
+    const take = Math.min(available, row.openCents);
+    row.creditedCents = take;
+    row.openCents -= take;
+    credit.set(row.customerId, available - take);
+  }
+  const leftCents = new Map([...credit].filter(([, cents]) => cents > 0));
+  return { owed, leftCents };
 }

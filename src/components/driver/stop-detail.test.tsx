@@ -171,7 +171,9 @@ describe.each(Object.keys(LOCALES))("StopDetail in %s", (locale) => {
     expect(screen.getByTestId("next-stop")).toHaveAttribute("href", "/driver/stops/s3");
     expect(screen.getByTestId("status-actions-slot")).toBeInTheDocument();
     // The delivery card stays above the photos card, the top bar carries the position.
-    expect(screen.getByTestId("summary-total")).toBeInTheDocument();
+    expect(screen.getAllByTestId("stop-item").length).toBeGreaterThan(1);
+    // No total row (owner 2026-11-16): only what this customer gets, product by product.
+    expect(screen.queryByTestId("summary-total")).not.toBeInTheDocument();
     expect(screen.getByTestId("stop-position")).toHaveTextContent("2");
   });
 

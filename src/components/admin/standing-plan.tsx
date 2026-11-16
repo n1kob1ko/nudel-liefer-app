@@ -625,8 +625,10 @@ export function StandingPlan({
                           onFridge={toggleFridge}
                           onMove={
                             // Also after sending, while the driver has not been there yet: the
-                            // next "Änderungen senden" moves the stop to the other route.
-                            row.extra &&
+                            // next "Änderungen senden" moves the stop to the other route. Since
+                            // 2026-11-16 a standing customer with an order of the day can move
+                            // too (for the day, or into another standing tour for good).
+                            (row.extra !== null || row.orderId !== null) &&
                             plan.editable &&
                             !pending &&
                             (row.stop === null || row.stop.status === "PENDING")
@@ -1100,7 +1102,8 @@ function CustomerCell({ row, onMove }: { row: DayPlanRow; onMove?: () => void })
           {row.name}
           {row.extra ? (
             <Badge variant="outline" size="sm" data-testid={`extra-${row.customerId}`}>
-              {t("extra.label")}
+              {/* A standing customer of another route, here for this day only. */}
+              {row.extra.home ? t("extra.today") : t("extra.label")}
             </Badge>
           ) : null}
         </span>

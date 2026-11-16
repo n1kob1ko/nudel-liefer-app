@@ -1,7 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 
 import { groupByTrip, normalizeTrips } from "@/domain/fleet";
-import { loadOrder, loadSheetTotals } from "@/domain/load-sheet";
+import { deliveryOrder, loadSheetTotals } from "@/domain/load-sheet";
 import { type AppLocale } from "@/lib/localized-text";
 import { productLabel } from "@/lib/product-label";
 import type { TourPrint } from "@/server/tour-print";
@@ -12,8 +12,8 @@ const isUnit = (u: string): u is UnitKey => (UNITS as readonly string[]).include
 
 /**
  * The printable packing list / load sheet (NUD-091), rendered in the language of the printout
- * (`locale`). Section 1: total per product (and unit, never mixed). Section 2: per stop in load
- * order (last stop first). The quantities are the tour's own (`Stop.items`).
+ * (`locale`). Section 1: total per product (and unit, never mixed). Section 2: per stop in delivery
+ * order (stop 1 first). The quantities are the tour's own (`Stop.items`).
  */
 export async function LoadSheet({ tour, locale }: { tour: TourPrint; locale: AppLocale }) {
   const t = await getTranslations({ locale, namespace: "admin.tours.print" });
@@ -92,33 +92,28 @@ export async function LoadSheet({ tour, locale }: { tour: TourPrint; locale: App
   const renderStops = (sheetStops: TourPrint["stops"]) => (
     <section data-testid="load-sheet-stops">
       <h2 className="text-lg font-bold">{t("stopsHeading")}</h2>
-      <p className="mb-1 text-[0.9em] text-neutral-700">{t("stopsHint")}</p>
       <table className="w-full table-fixed border-collapse">
         <thead>
           <tr className="border-y-2 border-black">
-            <th scope="col" className="w-[9%] py-1 pe-1 text-start">
-              {t("loadPosition")}
-            </th>
-            <th scope="col" className="w-[9%] py-1 pe-1 text-start">
+            <th scope="col" className="w-[10%] py-1 pe-1 text-start">
               {t("stop")}
             </th>
-            <th scope="col" className="w-[34%] py-1 pe-2 text-start">
+            <th scope="col" className="w-[38%] py-1 pe-2 text-start">
               {t("customer")}
             </th>
-            <th scope="col" className="w-[48%] py-1 text-start">
+            <th scope="col" className="w-[52%] py-1 text-start">
               {t("items")}
             </th>
           </tr>
         </thead>
         <tbody>
-          {loadOrder(sheetStops).map((stop) => (
+          {deliveryOrder(sheetStops).map((stop) => (
             <tr
               key={stop.id}
               className="border-b border-neutral-500 align-top"
               data-testid="load-sheet-stop-row"
               data-sequence={stop.sequence}
             >
-              <td className="py-1.5 pe-1 text-lg font-bold">{stop.loadPosition}</td>
               <td className="py-1.5 pe-1 text-lg font-bold" data-testid="load-sheet-stop-seq">
                 {stop.sequence}
               </td>

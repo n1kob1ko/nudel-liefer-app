@@ -157,6 +157,11 @@ describe.each(Object.keys(LOCALES))("TodayTour in %s", (locale) => {
     expect(within(next).getByTestId("details")).toHaveAttribute("href", "/driver/stops/s3");
     // The delivered stop is gone for the driver (owner 2026-11-14); open and problem stops stay.
     expect(screen.getAllByTestId("stop-row")).toHaveLength(3);
+    // The list shows no quantities, weights or totals (owner 2026-11-16): only the current stop.
+    for (const row of screen.getAllByTestId("stop-row")) {
+      expect(within(row).queryByTestId("item-summary")).toBeNull();
+      expect(within(row).queryByTestId("summary-total")).toBeNull();
+    }
     expect(screen.queryByText("Trattoria 1")).toBeNull();
     expect(screen.queryByTestId("done-group")).toBeNull();
     expect(screen.queryByTestId("updated-banner")).toBeNull();

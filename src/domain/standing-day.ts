@@ -69,9 +69,11 @@ export type DayPlanRow = {
   fridgeAlways: boolean;
   /**
    * NUD-212: a customer of no standing tour that rides on this route today ("Zusatz"); `moved` =
-   * the office chose the place, otherwise it is where the detour is smallest.
+   * the office chose the place, otherwise it is where the detour is smallest. `home`: a standing
+   * customer of another route, moved here for this day only (owner 2026-11-16) — his own standing
+   * tour's id; `null` for a customer of no standing tour.
    */
-  extra: { moved: boolean; slot: number } | null;
+  extra: { moved: boolean; slot: number; home: string | null } | null;
   /** NUD-212: the customer's stop on the route's tour once sent (number and state), else `null`. */
   stop: { number: number; status: "PENDING" | "DELIVERED" | "PROBLEM" } | null;
   /** NUD-212: the delivery point on the map (route rows only), `null` without any location. */

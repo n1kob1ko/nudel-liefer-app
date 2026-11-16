@@ -237,7 +237,7 @@ test("driver: a reload at the depot sits between the trips and lists the next lo
   test.setTimeout(120_000);
   const fixture = await createDriverFixture("reload");
   try {
-    // Stop 3 is the first stop of trip 2: its load (1 x Penne, a PACK) is what is reloaded.
+    // Stop 3 is the first stop of trip 2.
     await fixture.db.query(`UPDATE "Stop" SET "trip"=2 WHERE "tourId"=$1 AND "sequence"=3`, [
       fixture.tourId,
     ]);
@@ -247,9 +247,8 @@ test("driver: a reload at the depot sits between the trips and lists the next lo
     const reload = page.getByTestId("reload-stop");
     await expect(reload).toHaveCount(1);
     await expect(reload).toContainText("Nachladen im Depot");
-    await expect(reload.getByTestId("reload-item")).toHaveCount(1);
-    await expect(reload.getByTestId("reload-item")).toContainText("1");
-    await expect(reload.getByTestId("reload-item")).toContainText("Penne");
+    // No load totals for the driver (owner 2026-11-16).
+    await expect(reload.getByTestId("reload-item")).toHaveCount(0);
     // Between stop 2 and stop 3 of the list.
     const order = await page
       .locator('[data-testid="stop-list"] > li')

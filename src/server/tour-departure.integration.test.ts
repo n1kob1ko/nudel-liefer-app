@@ -5,7 +5,6 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { buildDepartureChecklist } from "@/domain/departure-checklist";
 import type { SyncEntry } from "@/domain/driver-sync";
-import { loadSheetTotals } from "@/domain/load-sheet";
 import { toDriverToday } from "@/lib/driver-tour-model";
 
 import { hashSecret } from "./auth/password";
@@ -27,7 +26,6 @@ vi.mock("./db", async (importOriginal) => ({
 const { applySyncBatch } = await import("./driver-sync");
 const { applyDriverDeparture } = await import("./tour-departure");
 const { getDriverTourResponse } = await import("./driver-tour-payload");
-const { getTourPrint } = await import("./tour-print");
 
 const text = (de: string, hans: string) => ({
   de,
@@ -264,37 +262,18 @@ describe.skipIf(!process.env.DATABASE_URL)(
       expect(toDriverToday(response, "zh-Hans")?.checklist).toEqual([{ id: "c1", text: "送货单" }]);
     });
 
-    it("the checklist totals equal the load sheet totals, per trip and for the whole tour", async () => {
+    it("the checklist lists the keys per trip and no product totals", async () => {
       const response = await getDriverTourResponse(t.prisma, driver(), OPTIONS);
       const today = toDriverToday(response, "de")!;
-      const print = (await getTourPrint(t.prisma, tourId))!;
       const asStops = today.stops.map((stop) => ({
         trip: stop.trip,
         customerId: stop.customerId,
         customerName: stop.customerName,
         hasKey: stop.hasKey,
         keyNumber: stop.keyNumber,
-        items: stop.items,
       }));
-      for (const trip of [1, 2]) {
-        const sheet = loadSheetTotals(
-          print.stops.filter((s) => s.trip === trip),
-          print.products,
-        ).map((row) => [row.productId, row.unit, row.quantity]);
-        const checklist = buildDepartureChecklist(asStops, trip).products.map((line) => [
-          line.productId,
-          line.unit,
-          line.quantity,
-        ]);
-        expect(checklist).toEqual(sheet);
-      }
-      // Trip 1: 14 Kiste (4 + 10), 22 Sackerl (5 + 17), 3 x Wantan-Teig.
       const trip1 = buildDepartureChecklist(asStops, 1);
-      expect(trip1.products.map((l) => [l.unit, l.quantity])).toEqual([
-        ["PACK", 22],
-        ["CRATE", 14],
-        ["PIECE", 3],
-      ]);
+      expect(Object.keys(trip1)).toEqual(["keys"]);
       // Keys: only customers whose key exists, in delivery order, per trip.
       expect(trip1.keys.map((k) => [k.keyNumber, k.customerName])).toEqual([["12", "Trattoria 1"]]);
       expect(buildDepartureChecklist(asStops, 2).keys.map((k) => k.keyNumber)).toEqual(["31"]);

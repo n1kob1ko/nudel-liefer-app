@@ -372,6 +372,7 @@ Read rule: `pick(text, locale)` returns the requested locale; if empty, the clos
 | NUD-210 | Order inbox: many photos at once, read in the background, checked one by one | M2.8 | 207, 031, 150 | done |
 | NUD-211 | No "KI" / "AI" in the texts of the app: reading is "automatisch" | M2.8 | 150, 210 | done |
 | NUD-212 | Day routes from the standing tours: the day plan sends them, no "Touren" tab | M2.8 | 209, 186, 043 | review |
+| NUD-215 | Notes of the client meeting, part 2: driver sees only the current stop, load sheet 1..x, debts tab, route per delivery | M2.8 | 212, 196 | review |
 | NUD-100 | AI screenshot extraction (review required) | M3 | 031 | superseded → NUD-150 |
 | NUD-101 | Recurring / standing orders | M3 | 032 | superseded → NUD-149 |
 | NUD-102 | Multiple drivers / tours per day | M3 | 043 | superseded → NUD-147 |
@@ -4191,6 +4192,24 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 - Simulated three delivery days (2026-11-16 to 18) locally with two routes (Nord, Süd), 20 standing customers, 6 extras, a customer without location, a driver dropping out (Süd to a third driver), an overloaded route, phone orders during the day and both drivers ticking stops on the phone. Found and fixed: a delivered stop could be changed, the phone layout scrolled sideways, a customer without location was numbered, the overview said "Tour 1", the load sheet said "Zurück zur Tour", the overview did not show unsent changes, a toast covered the send button.
 - Open for the owner: a driver change on the standing tour stays until the office switches back; an overloaded route asks again on every send while it is overloaded.
 
+
+#### NUD-215 · Client meeting notes, part 2: only the current stop for the driver, load sheet 1..x, debts tab, route per delivery
+**Status:** review · **depends_on:** 212, 196 · Source: owner 2026-11-16 (notes of the client meeting: "Gewicht löschen ... der Fahrer soll nur sehen bei dem aktuellen Stopp, was der Kunde bekommt", "sortieren im Ladeschein nach Stopp von 1 bis x", "Symbol R ... Rechnung", "für offene Beträge Schulden-Tab mit !!! ... automatisch gegengerechnet", "Stammroute bearbeiten bei Lieferung zuweisen" (decision card: "Beides"), "Fahrer sollen immer am selben Tag die aktuellen Lieferungen sehen").
+
+**Acceptance criteria**
+- [x] Driver: the stop list shows no quantities (only the time); the next-stop card lists every product with its quantity, never a sum per unit; the stop page has no "Gesamt" row; the departure checklist has no product totals (keys and fixed items stay); the reload card names the trip without load totals.
+- [x] Driver: "Kommende Touren" is gone; the home screen shows today only.
+- [x] Driver: the invoice mark is a bold "R" in a ring (`invoice-icon.tsx`), the snowflake stays.
+- [x] Load sheet: section 2 lists the stops from stop 1 to the last one (was reverse load order); the "Laden" column and the reverse hint are gone.
+- [x] Payments: two tabs, "Schulden" (with a red "!!!" while anybody owes cash) and "Monatsrechnungen" (`?reiter=monat`). Money a driver collects above what is due pays the same customer's oldest open deliveries (`applyCashCredit`), shown as "… verrechnet"; a delivery it covers fully leaves the list; "Erhalten" is prefilled with what is left.
+- [x] Day plan: "Route ändern" also on a standing customer with an order of the day: for this day only (badge "Nur heute", "Zurück auf …"), or with "Immer auf dieser Route" into that standing tour for good at the chosen position (`assignStandingTour`, leaves the other tour). A completed stop never moves (`stop_completed`).
+- [x] de, en, zh-Hans (driver texts in all five); checked at 390 px and 1280 px.
+
+**Implementation notes (NUD-215)**
+- The credit is computed when the list is read, nothing is written: the stops keep what the driver typed (audit stays true) and an undone overpayment stops counting. Credit left over (paid in advance) is not shown yet.
+- A standing customer moved for one day is stored like an extra (`Order.routeStandingTourId` = the other route); `loadDayRoutes` leaves him out of his own route that day (`DayRoutes.homes`). Choosing his own route clears it.
+- Removed: `UpcomingTours`, `driver-upcoming.ts` (NUD-205 preview), `tripLoadItems`, the checklist's product lines.
+
 ## 9. Decision log (append-only, one line per decision taken during implementation)
 
 | Date | Ticket | Decision | Reason |
@@ -4702,6 +4721,8 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 | 2026-11-14 | NUD-212 | The place of a moved extra lives on the order (`routeStandingTourId`, `routeSlot`) | It belongs to that delivery only; the retention job removes it with the order and no table is added. |
 | 2026-11-18 | NUD-212 | A delivered or problem stop locks its quantities on the day plan and in the server | Simulation: the office could change what the driver had already delivered, and the bill would then show a quantity nobody delivered. |
 | 2026-11-14 | NUD-212 | A customer without a stop flags only the day route he lands on; tours of the old flow are still all flagged | With two fixed routes the target is known (member or placed extra); flagging every open tour told the office and the load sheet of the other driver about a change that was not his. |
+| 2026-11-16 | NUD-215 | Overpayments are offset against old cash debts at read time, oldest first, per customer | Writing the credit into other stops would change what the driver recorded and need its own undo; computing it keeps every number true and follows an undo automatically. |
+| 2026-11-16 | NUD-215 | The driver's checklist lost its product totals; loading goes by the office's load sheet | The owner wants the driver to see only what the current customer gets, never a sum. |
 
 ## 10. Open questions for the client (do not block on these – use placeholders)
 
