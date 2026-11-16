@@ -69,7 +69,10 @@ export function roundedMinutes(seconds: number): number {
  * there. The stored ETAs are the one basis for every time on the driver's screen and in the office,
  * so "Ende ca." is derived from them instead of adding the remaining work a second time.
  */
-export function tourFinishAt(lastEta: Date | string | null, serviceSecondsPerStop: number): Date | null {
+export function tourFinishAt(
+  lastEta: Date | string | null,
+  serviceSecondsPerStop: number,
+): Date | null {
   if (lastEta === null) return null;
   const at = lastEta instanceof Date ? lastEta : new Date(lastEta);
   if (!Number.isFinite(at.getTime())) return null;
@@ -112,24 +115,4 @@ export function switchVehicle(
   const vehicleOf = (t: number) => stops.find((s) => (s.trip ?? 1) === t)?.vehicleName ?? null;
   const next = vehicleOf(trip);
   return next !== null && next !== vehicleOf(trip - 1) ? next : null;
-}
-
-/**
- * What the vehicle is loaded with for one trip: the quantities of all stops of that trip, summed
- * per product (the first occurrence keeps the name and unit), in order of first appearance.
- */
-export function tripLoadItems<I extends { productId: string; quantity: number }>(
-  stops: ReadonlyArray<{ trip?: number; items: ReadonlyArray<I> }>,
-  trip: number,
-): I[] {
-  const sums = new Map<string, I>();
-  for (const stop of stops) {
-    if ((stop.trip ?? 1) !== trip) continue;
-    for (const item of stop.items) {
-      const known = sums.get(item.productId);
-      if (known) known.quantity += item.quantity;
-      else sums.set(item.productId, { ...item });
-    }
-  }
-  return [...sums.values()];
 }

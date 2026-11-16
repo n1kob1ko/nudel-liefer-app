@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { formatCalendarDate, parseCalendarDate } from "@/domain/order";
 import {
+  applyCashCredit,
   billTotalCents,
   cashDueCents,
   type CashState,
@@ -98,13 +99,18 @@ export type CashRow = {
   collectedCents: number | null;
   /** `open` (nothing recorded) or `short` (less than due). */
   state: Extract<CashState, "open" | "short">;
-  overCents: number;
+  /** Paid by the customer's overpayments at other stops (`applyCashCredit`, owner 2026-11-16). */
+  creditedCents: number;
+  /** Still owed after the credit (euro cents, > 0). */
+  openCents: number;
 };
 
 /**
  * Cash deliveries with money still open, newest first. Only stops of a released / running /
- * completed tour count: that is when the goods really changed hands. `over` collections are not
- * listed as open — the money is there (they are shown in the month page and the audit history).
+ * completed tour count: that is when the goods really changed hands. Money a driver collected above
+ * what was due (`over`) is not listed: it pays the same customer's oldest open deliveries
+ * automatically (owner 2026-11-16, `applyCashCredit`), so a delivery it covers completely
+ * disappears from the list and a partly covered one shows the rest.
  */
 export async function openCashQuery(
   db: Pick<PaymentsDb, "stop">,
@@ -122,7 +128,7 @@ export async function openCashQuery(
       },
     },
     orderBy: [{ tour: { date: "desc" } }, { sequence: "asc" }],
-    take: 500,
+    take: 1000,
     select: {
       id: true,
       status: true,
@@ -142,39 +148,48 @@ export async function openCashQuery(
     },
   });
 
-  const rows: CashRow[] = [];
-  for (const stop of stops) {
-    const dueCents = cashDueCents(
-      stop.orders
-        .map((link) => link.order)
-        .filter((order) => order.status === "CONFIRMED")
-        .map((order) => ({ paymentTerm: order.paymentTerm, amountCents: order.amountCents })),
-    );
-    const state = cashState(dueCents, stop.collectedCents);
-    const collected = stop.collectedCents;
-    // A cash stop without an amount anywhere is not "open money" — nothing is known about it.
-    if (dueCents <= 0) continue;
-    const waiting = state === "open" || state === "short";
-    if (!waiting) continue;
-    rows.push({
+  // Future deliveries (tomorrow's cash) are not open yet; today and earlier are.
+  const cutoff = formatCalendarDate(today);
+  const balances = stops
+    .map((stop) => ({
+      stop,
       stopId: stop.id,
-      tourId: stop.tour.id,
-      date: formatCalendarDate(stop.tour.date),
-      tourStatus: stop.tour.status,
       customerId: stop.customer.id,
-      customerNumber: stop.customer.customerNumber,
-      customerName: stop.customer.name,
-      driverName: stop.tour.driver?.displayName ?? null,
-      dueCents,
-      collectedCents: collected,
+      date: formatCalendarDate(stop.tour.date),
+      dueCents: cashDueCents(
+        stop.orders
+          .map((link) => link.order)
+          .filter((order) => order.status === "CONFIRMED")
+          .map((order) => ({ paymentTerm: order.paymentTerm, amountCents: order.amountCents })),
+      ),
+      collectedCents: stop.collectedCents,
+    }))
+    // A cash stop without an amount anywhere is not "open money": nothing is known about it.
+    .filter((row) => row.dueCents > 0 && row.date <= cutoff);
+
+  const rows: CashRow[] = [];
+  for (const row of applyCashCredit(balances).owed) {
+    if (row.openCents <= 0) continue;
+    const state = cashState(row.dueCents, row.collectedCents);
+    if (state !== "open" && state !== "short") continue;
+    rows.push({
+      stopId: row.stopId,
+      tourId: row.stop.tour.id,
+      date: row.date,
+      tourStatus: row.stop.tour.status,
+      customerId: row.customerId,
+      customerNumber: row.stop.customer.customerNumber,
+      customerName: row.stop.customer.name,
+      driverName: row.stop.tour.driver?.displayName ?? null,
+      dueCents: row.dueCents,
+      collectedCents: row.collectedCents,
       state,
-      overCents: 0,
+      creditedCents: row.creditedCents,
+      openCents: row.openCents,
     });
     if (rows.length >= limit) break;
   }
-  // Future deliveries (tomorrow's cash) are not open yet; today and earlier are.
-  const cutoff = formatCalendarDate(today);
-  return rows.filter((row) => row.date <= cutoff);
+  return rows;
 }
 
 // ---------------------------------------------------------------------------------------------

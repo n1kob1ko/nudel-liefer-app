@@ -22,7 +22,6 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { StopNumberBadge } from "@/components/shared/stop-number-badge";
 import { Button } from "@/components/ui/button";
 import { formatAddress } from "@/domain/driver-stop";
-import { summarizeItems } from "@/domain/driver-today";
 import type { ProblemReasonName } from "@/domain/stop-status";
 import { Link } from "@/i18n/navigation";
 import { isIosDevice } from "@/lib/device";
@@ -279,7 +278,7 @@ export function StopDetail({
 
       <ParkingSpotsCard spots={stop.parkingSpots ?? []} stop={stop} tiles={tiles} />
 
-      <DeliveryCard items={stop.items} fmt={fmt} locale={locale} />
+      <DeliveryCard items={stop.items} fmt={fmt} />
 
       <StopPayment stop={stop} />
 
@@ -439,25 +438,13 @@ function ItemRow({
 }
 
 /**
- * The "Lieferung" card: one row per product and a total row when there is more than one.
- *
- * The total is summed **per unit** (design review point 7): kg and crates are never added into one
- * "17,5 × Kisten". With a single unit the row reads "12,5 kg"; with several units it is labelled
- * "Gesamt je Einheit" and lists one value per unit, so a driver can act on each of them.
+ * The "Lieferung" card: one row per product, nothing else. No total row (owner 2026-11-16: the
+ * driver sees what this customer gets, never a sum or a weight).
  */
-function DeliveryCard({
-  items,
-  fmt,
-  locale,
-}: {
-  items: TodayItem[];
-  fmt: AppFormatters;
-  locale: string;
-}) {
+function DeliveryCard({ items, fmt }: { items: TodayItem[]; fmt: AppFormatters }) {
   const t = useTranslations("driver");
   const tStop = useTranslations("driver.stop");
   const unitLabel = (unit: string, count: number) => t(`units.${unit as UnitKey}`, { count });
-  const { totals } = summarizeItems(items);
   return (
     <section className="overflow-hidden rounded-xl border bg-card" data-testid="stop-items">
       <h2 className="flex items-center gap-2 border-b bg-muted/40 px-4 py-2.5 text-base font-semibold">
@@ -469,29 +456,6 @@ function DeliveryCard({
           <ItemRow key={item.productId} item={item} unitLabel={unitLabel} fmt={fmt} />
         ))}
       </ul>
-      {items.length > 1 ? (
-        <p
-          className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t px-4 py-3 text-base font-semibold"
-          data-testid="summary-total"
-        >
-          <span>
-            {totals.length > 1
-              ? tStop("summaryTotalMixed")
-              : stopText(tStop, locale, "summaryTotal")}
-          </span>
-          <span className="flex flex-wrap items-baseline justify-end gap-x-2 text-end">
-            {totals.map((total, index) => (
-              <span key={total.unit} className="whitespace-nowrap" data-unit={total.unit}>
-                {index > 0 ? <span aria-hidden>· </span> : null}
-                <strong className="font-sans text-3xl font-bold tabular-nums">
-                  {fmt.quantity(total.quantity)}
-                </strong>{" "}
-                <span className="text-base">{t(`unitsTotal.${total.unit as UnitKey}`)}</span>
-              </span>
-            ))}
-          </span>
-        </p>
-      ) : null}
     </section>
   );
 }

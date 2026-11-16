@@ -2819,19 +2819,19 @@ export const HAND_OFF: HandOffContent = {
         zh: "正确使用装车单的两个部分，并重视警告提示。",
       },
       path: {
-        de: "Touren → Tour → «Ladeliste drucken» → Abschnitte «1. Gesamtmenge pro Produkt» und «2. Beladereihenfolge»",
-        zh: "配送线路 → 线路 →「打印装车单」→「1. 各产品总数量」和「2. 装车顺序」",
+        de: "Touren → Tour → «Ladeliste drucken» → Abschnitte «1. Gesamtmenge pro Produkt» und «2. Stopps»",
+        zh: "配送线路 → 线路 →「打印装车单」→「1. 各产品总数量」和「2. 站点」",
       },
       search: {
         de: [
           "ladeliste lesen",
           "ladeliste",
-          "beladereihenfolge",
+          "stopps",
           "gesamtmenge pro produkt",
           "beladen",
           "a4",
         ],
-        zh: ["装车单", "装车顺序", "总数量", "装车", "A4"],
+        zh: ["装车单", "站点", "总数量", "装车", "A4"],
       },
       steps: [
         {
@@ -2843,17 +2843,10 @@ export const HAND_OFF: HandOffContent = {
         },
         {
           text: {
-            de: "Abschnitt «2. Beladereihenfolge» zeigt die Stopps in Lade-Reihenfolge.",
-            zh: "「2. 装车顺序」按装车顺序列出各个站点。",
+            de: "Abschnitt «2. Stopps» zeigt die Stopps in Lieferreihenfolge, Stopp 1 zuerst.",
+            zh: "「2. 站点」按送货顺序列出各个站点，第 1 站在最前面。",
           },
-          label: "2. Beladereihenfolge",
-        },
-        {
-          text: {
-            de: "Merksatz beachten: «Der letzte Stopp wird zuerst eingeladen, der erste Stopp zuletzt (liegt dann oben).»",
-            zh: "记住这条规则：「最后一站最先装车，第一站最后装车（放在最上面）。」",
-          },
-          label: "Der letzte Stopp wird zuerst eingeladen, der erste Stopp zuletzt",
+          label: "2. Stopps",
         },
         {
           text: {

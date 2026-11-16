@@ -14,6 +14,7 @@ import { createTourService } from "./tour-service";
  * driver app and the packing list need no change.
  */
 const {
+  assignStandingTour,
   moveExtra,
   saveStandingDay,
   saveStandingTour,
@@ -796,7 +797,7 @@ describe.skipIf(!process.env.DATABASE_URL)("day plan (standing tours)", { timeou
       let plan = await standingDayQuery(db(), DAY, today);
       const route2 = plan.routes.find((r) => r.id === second)!;
       expect(route2.rows.map((r) => r.customerId)).toEqual([c2, c4, c3]);
-      expect(route2.rows[1]!.extra).toEqual({ moved: true, slot: 1 });
+      expect(route2.rows[1]!.extra).toEqual({ moved: true, slot: 1, home: null });
       expect(plan.routes.find((r) => r.id === first)!.rows.map((r) => r.customerId)).toEqual([c1]);
 
       expect(await move(null, null)).toEqual({ ok: true });
@@ -805,15 +806,11 @@ describe.skipIf(!process.env.DATABASE_URL)("day plan (standing tours)", { timeou
       expect(back?.extra).toMatchObject({ moved: false });
     });
 
-    it("refuses a standing customer, an unknown route, a past day and a customer without order", async () => {
+    it("refuses an unknown route, a past day and a customer without order", async () => {
       await reset();
       const route = await createRoute("Stammtour 1", [c1]);
       const move = (input: Record<string, unknown>, day = today) =>
         moveExtra(db(), adminId, { date: DAY, slot: 0, ...input }, day, tours);
-      expect(await move({ customerId: c1, standingTourId: route })).toEqual({
-        ok: false,
-        error: "standing_customer",
-      });
       expect(await move({ customerId: c4, standingTourId: "nope" })).toEqual({
         ok: false,
         error: "not_found",
@@ -830,6 +827,147 @@ describe.skipIf(!process.env.DATABASE_URL)("day plan (standing tours)", { timeou
         ok: false,
         error: "date_in_past",
       });
+    });
+
+    it("moves a standing customer to the other route for one day only, and back (owner 2026-11-16)", async () => {
+      await reset();
+      const first = await createRoute("Stammtour 1", [c1, c2]);
+      const second = await createRoute("Stammtour 2", [c3]);
+      await saveStandingDay(
+        db(),
+        adminId,
+        {
+          date: DAY,
+          rows: [
+            { customerId: c1, lines: [{ productId: p1, quantity: 1 }] },
+            { customerId: c2, lines: [{ productId: p1, quantity: 2 }] },
+          ],
+        },
+        today,
+        tours,
+      );
+      const move = (standingTourId: string | null, slot: number | null) =>
+        moveExtra(db(), adminId, { date: DAY, customerId: c2, standingTourId, slot }, today, tours);
+
+      expect(await move(second, 0)).toEqual({ ok: true });
+      let plan = await standingDayQuery(db(), DAY, today);
+      expect(plan.routes.find((r) => r.id === first)!.rows.map((r) => r.customerId)).toEqual([c1]);
+      const route2 = plan.routes.find((r) => r.id === second)!;
+      expect(route2.rows.map((r) => r.customerId)).toEqual([c2, c3]);
+      expect(route2.rows[0]!.extra).toEqual({ moved: true, slot: 0, home: first });
+      // The standing tours themselves did not change.
+      expect(
+        (await db().standingTourCustomer.findMany({ where: { customerId: c2 } })).map(
+          (m) => m.standingTourId,
+        ),
+      ).toEqual([first]);
+
+      // His own route = back home: nothing stored any more.
+      expect(await move(first, 1)).toEqual({ ok: true });
+      expect((await orderOf(c2)).routeStandingTourId).toBeNull();
+      plan = await standingDayQuery(db(), DAY, today);
+      expect(plan.routes.find((r) => r.id === first)!.rows.map((r) => r.customerId)).toEqual([
+        c1,
+        c2,
+      ]);
+    });
+
+    it("refuses to move a stop the driver already completed", async () => {
+      await reset();
+      const first = await createRoute("Stammtour 1", [c1]);
+      const second = await createRoute("Stammtour 2", [c3]);
+      await saveStandingDay(
+        db(),
+        adminId,
+        { date: DAY, rows: [{ customerId: c1, lines: [{ productId: p1, quantity: 1 }] }] },
+        today,
+        tours,
+      );
+      await db().tour.create({
+        data: {
+          date: date(DAY),
+          status: "IN_PROGRESS",
+          standingTourId: first,
+          depotSnapshot: {},
+          stops: { create: [{ customerId: c1, sequence: 1, status: "DELIVERED" }] },
+        },
+      });
+      expect(
+        await moveExtra(
+          db(),
+          adminId,
+          { date: DAY, customerId: c1, standingTourId: second, slot: 0 },
+          today,
+          tours,
+        ),
+      ).toEqual({ ok: false, error: "stop_completed" });
+      expect(
+        await assignStandingTour(
+          db(),
+          adminId,
+          { date: DAY, customerId: c1, standingTourId: second, afterCustomerId: null },
+          today,
+          tours,
+        ),
+      ).toEqual({ ok: false, error: "stop_completed" });
+    });
+  });
+
+  describe("assignStandingTour (owner 2026-11-16)", () => {
+    it("puts a customer into a standing tour for good, at a position, and out of the other one", async () => {
+      await reset();
+      const first = await createRoute("Stammtour 1", [c1, c2]);
+      const second = await createRoute("Stammtour 2", [c3]);
+      await saveStandingDay(
+        db(),
+        adminId,
+        { date: DAY, rows: [{ customerId: c4, lines: [{ productId: p1, quantity: 2 }] }] },
+        today,
+        tours,
+      );
+      // An extra placed by hand first: the place on the order goes once he is a member.
+      await moveExtra(
+        db(),
+        adminId,
+        { date: DAY, customerId: c4, standingTourId: second, slot: 1 },
+        today,
+        tours,
+      );
+      const assign = (customerId: string, standingTourId: string, afterCustomerId: string | null) =>
+        assignStandingTour(
+          db(),
+          adminId,
+          { date: DAY, customerId, standingTourId, afterCustomerId },
+          today,
+          tours,
+        );
+      const members = async (id: string) =>
+        (
+          await db().standingTourCustomer.findMany({
+            where: { standingTourId: id },
+            orderBy: { sortOrder: "asc" },
+          })
+        ).map((m) => m.customerId);
+
+      expect(await assign(c4, first, c1)).toEqual({ ok: true });
+      expect(await members(first)).toEqual([c1, c4, c2]);
+      expect((await orderOf(c4)).routeStandingTourId).toBeNull();
+      const plan = await standingDayQuery(db(), DAY, today);
+      const row = plan.routes.find((r) => r.id === first)!.rows.find((r) => r.customerId === c4)!;
+      expect(row.extra).toBeNull();
+
+      // Moving a member into the other tour takes him out of his old one.
+      expect(await assign(c2, second, null)).toEqual({ ok: true });
+      expect(await members(first)).toEqual([c1, c4]);
+      expect(await members(second)).toEqual([c2, c3]);
+      const audit = await db().auditLog.findFirst({
+        where: { entity: "StandingTour", entityId: first, action: "standing_tour.update" },
+        orderBy: { createdAt: "desc" },
+      });
+      expect(audit?.diff).toMatchObject({ via: "day_plan_assign", removed: [c2] });
+
+      expect(await assign(c2, second, "nope")).toEqual({ ok: false, error: "not_found" });
+      expect(await assign(c2, "nope", null)).toEqual({ ok: false, error: "not_found" });
     });
   });
 });

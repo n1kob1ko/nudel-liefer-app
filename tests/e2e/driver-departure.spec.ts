@@ -101,18 +101,12 @@ test.describe("driver", () => {
     await card.getByTestId("departure-open").click();
     const sheet = page.getByTestId("departure-sheet");
     await expect(sheet).toBeVisible();
-    // Totals over the tour (fixture: Spaghetti 13 + 27 kg, Penne 4 + 1 Sackerl), key and fixed item.
-    const products = sheet.getByTestId("departure-product");
-    await expect(products).toHaveCount(2);
-    await expect(products.first()).toContainText("40");
-    await expect(products.first()).toContainText("Spaghetti lose");
-    await expect(products.last()).toContainText("5");
-    await expect(products.last()).toContainText("Sackerl");
-    await expect(products.last()).toContainText("Penne");
+    // Key and fixed item; no product totals (owner 2026-11-16).
+    await expect(sheet.getByTestId("departure-product")).toHaveCount(0);
     await expect(sheet.getByTestId("departure-key")).toContainText("12");
     await expect(sheet.getByTestId("departure-key")).toContainText(fx.names[1]!);
     await expect(sheet.getByTestId("departure-fixed-item")).toContainText("Lieferscheine");
-    await expect(sheet.getByTestId("departure-progress")).toHaveAttribute("data-total", "4");
+    await expect(sheet.getByTestId("departure-progress")).toHaveAttribute("data-total", "2");
     expect(await noHorizontalScroll(page)).toBe(true);
 
     // Opening recorded the loading start (and only that).
@@ -121,13 +115,13 @@ test.describe("driver", () => {
 
     // One tap per line; every line is a 48 px target.
     const rows = sheet.getByRole("checkbox");
-    await expect(rows).toHaveCount(4);
-    for (let i = 0; i < 4; i++) {
+    await expect(rows).toHaveCount(2);
+    for (let i = 0; i < 2; i++) {
       expect((await rows.nth(i).boundingBox())!.height).toBeGreaterThanOrEqual(48);
       await rows.nth(i).click();
       await expect(rows.nth(i)).toHaveAttribute("aria-checked", "true");
     }
-    await expect(sheet.getByTestId("departure-progress")).toHaveAttribute("data-done", "4");
+    await expect(sheet.getByTestId("departure-progress")).toHaveAttribute("data-done", "2");
     const go = sheet.getByTestId("departure-go");
     expect((await go.boundingBox())!.height).toBeGreaterThanOrEqual(48);
 
@@ -185,7 +179,7 @@ test.describe("driver", () => {
     await expect(card).toBeVisible();
     await card.getByTestId("departure-open").click();
     const sheet = page.getByTestId("departure-sheet");
-    await expect(sheet.getByTestId("departure-product").first()).toBeVisible();
+    await expect(sheet.getByTestId("departure-key").first()).toBeVisible();
     await sheet.getByRole("checkbox").first().click();
     await sheet.getByTestId("departure-go").click();
     await expect(sheet).toBeHidden();

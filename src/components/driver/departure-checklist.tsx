@@ -1,7 +1,7 @@
 "use client";
 
-import { CheckIcon, ClipboardCheckIcon, KeyRoundIcon, PackageIcon } from "lucide-react";
-import { useFormatter, useTranslations } from "next-intl";
+import { CheckIcon, ClipboardCheckIcon, KeyRoundIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -19,12 +19,8 @@ import {
   parseTicked,
 } from "@/domain/departure-checklist";
 import type { TodayStop } from "@/lib/driver-tour-model";
-import { createAppFormatters } from "@/lib/format";
 import { enqueueMutation } from "@/lib/offline/outbox-browser";
-import { isPieceUnit } from "@/lib/units";
 import { cn } from "@/lib/utils";
-
-type UnitKey = "KG" | "PACK" | "CRATE" | "PIECE";
 
 /** Where the ticks of one checklist live on the device (a per-driver convenience, never required). */
 const tickKey = (tourId: string, trip: number) => `nudel.driver.checklist.${tourId}.${trip}`;
@@ -167,8 +163,8 @@ function TickRow({
 }
 
 /**
- * The checklist of one trip: the products to load (same totals as the load sheet), the keys to
- * take and the office's fixed items; one tap per line. The first trip ends with "Losfahren"
+ * The checklist of one trip: the keys to take and the office's fixed items; one tap per line. No
+ * product totals (owner 2026-11-16: the driver only sees what the current customer gets). The first trip ends with "Losfahren"
  * (`departedAt`), later trips (after a reload at the depot) only with "Fertig".
  */
 export function DepartureSheet({
@@ -189,8 +185,6 @@ export function DepartureSheet({
   onDeparted: () => void;
 }) {
   const t = useTranslations("driver.departure");
-  const tUnits = useTranslations("driver.units");
-  const fmt = createAppFormatters(useFormatter());
   const checklist = useMemo(
     () =>
       buildDepartureChecklist(
@@ -200,7 +194,6 @@ export function DepartureSheet({
           customerName: stop.customerName,
           hasKey: stop.hasKey,
           keyNumber: stop.keyNumber,
-          items: stop.items,
         })),
         trip,
       ),
@@ -269,48 +262,6 @@ export function DepartureSheet({
             <p className="text-base text-muted-foreground" data-testid="departure-empty">
               {firstTrip ? t("empty") : t("emptyTrip")}
             </p>
-          ) : null}
-
-          {checklist.products.length > 0 ? (
-            <section aria-labelledby="departure-products">
-              <h3
-                id="departure-products"
-                className="mb-2 flex items-center gap-2 text-lg font-semibold"
-              >
-                <PackageIcon className="size-5 shrink-0" aria-hidden />
-                {t("productsHeading")}
-              </h3>
-              <ul className="flex flex-col gap-2" data-testid="departure-products">
-                {checklist.products.map((line) => (
-                  <TickRow
-                    key={line.id}
-                    checked={ticked.has(line.id)}
-                    onToggle={() => toggle(line.id)}
-                    testId="departure-product"
-                  >
-                    <span
-                      className="flex min-w-0 flex-wrap items-baseline gap-x-2"
-                      data-unit={line.unit}
-                      data-quantity={line.quantity}
-                    >
-                      <strong className="font-sans text-3xl font-bold tabular-nums">
-                        {fmt.quantity(line.quantity)}
-                      </strong>
-                      {isPieceUnit(line.unit) ? (
-                        <span aria-hidden className="text-2xl">
-                          ×
-                        </span>
-                      ) : (
-                        <span className="text-lg">
-                          {tUnits(line.unit as UnitKey, { count: line.quantity })}
-                        </span>
-                      )}
-                      <span className="min-w-0 text-lg font-semibold break-words">{line.name}</span>
-                    </span>
-                  </TickRow>
-                ))}
-              </ul>
-            </section>
           ) : null}
 
           {checklist.keys.length > 0 ? (

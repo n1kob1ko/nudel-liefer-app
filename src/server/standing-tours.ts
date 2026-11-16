@@ -333,16 +333,26 @@ export async function standingDayQuery(
         stopOf.set(s.customerId, { number: s.sequence, status: s.status });
       }
     }
-    const order = dayRouteOrder(
-      tour.customers.map((m) => m.customerId),
-      [...extras.values()],
-    );
+    // The route of the day: its members (without the ones moved to another route for the day)
+    // and the customers placed on it.
+    const order =
+      definition?.order ??
+      dayRouteOrder(
+        tour.customers.map((m) => m.customerId),
+        [...extras.values()],
+      );
     const rows = order
       .map((customerId) => {
         const extra = extras.get(customerId);
         const row = rowOf(
           customerId,
-          extra ? { moved: extra.moved, slot: extra.slot } : null,
+          extra
+            ? {
+                moved: extra.moved,
+                slot: extra.slot,
+                home: dayRoutes.homes.get(customerId) ?? null,
+              }
+            : null,
           stopOf.get(customerId) ?? null,
         );
         return row ? { ...row, location: dayRoutes.points.get(customerId) ?? null } : null;
@@ -956,11 +966,26 @@ export const moveExtraSchema = z
 
 export type MoveExtraResult =
   | { ok: true }
-  | { ok: false; error: "invalid" | "date_in_past" | "not_found" | "standing_customer" };
+  | {
+      ok: false;
+      error: "invalid" | "date_in_past" | "not_found" | "stop_completed";
+    };
+
+/** The customer's stop of that day was delivered or reported: it never moves again. */
+async function stopCompletedOn(db: StandingDb, customerId: string, day: Date): Promise<boolean> {
+  const done = await db.tour.findFirst({
+    where: { date: day, stops: { some: { customerId, status: { not: "PENDING" } } } },
+    select: { id: true },
+  });
+  return done !== null;
+}
 
 /**
- * NUD-212: puts a customer of no standing tour on a route at a position for one delivery day. The
- * place is stored on his CONFIRMED orders of that day; the routes are sent again by the office.
+ * NUD-212: puts a customer on a route at a position for one delivery day. The place is stored on
+ * his CONFIRMED orders of that day; the routes are sent again by the office. Since 2026-11-16 (the
+ * owner: "Stammroute bei Lieferung zuweisen") this also works for a customer of a standing tour:
+ * he rides on the other route for that day only, and choosing his own route (or `null`) puts him
+ * back. A stop the driver already completed stays where it is.
  */
 export async function moveExtra(
   db: StandingDb,
@@ -982,23 +1007,29 @@ export async function moveExtra(
     });
     if (!route?.active) return { ok: false, error: "not_found" };
   }
+  if (await stopCompletedOn(db, input.customerId, day)) {
+    return { ok: false, error: "stop_completed" };
+  }
   const member = await db.standingTourCustomer.findFirst({
     where: { customerId: input.customerId, standingTour: { active: true } },
-    select: { customerId: true },
+    orderBy: [{ standingTour: { sortOrder: "asc" } }, { standingTour: { name: "asc" } }],
+    select: { standingTourId: true },
   });
-  if (member) return { ok: false, error: "standing_customer" };
+  // A standing customer on his own route is simply at home: nothing to store.
+  const home = member?.standingTourId ?? null;
+  const target = input.standingTourId === home ? null : input.standingTourId;
   return db.$transaction(async (tx): Promise<MoveExtraResult> => {
     const orders = await tx.order.findMany({
       where: { customerId: input.customerId, deliveryDate: day, status: "CONFIRMED" },
       select: { id: true, routeStandingTourId: true, routeSlot: true },
     });
     if (orders.length === 0) return { ok: false, error: "not_found" };
-    const slot = input.standingTourId ? input.slot : null;
+    const slot = target ? input.slot : null;
     for (const order of orders) {
-      if (order.routeStandingTourId === input.standingTourId && order.routeSlot === slot) continue;
+      if (order.routeStandingTourId === target && order.routeSlot === slot) continue;
       await tx.order.update({
         where: { id: order.id },
-        data: { routeStandingTourId: input.standingTourId, routeSlot: slot },
+        data: { routeStandingTourId: target, routeSlot: slot },
         select: { id: true },
       });
       await recordAudit(tx, {
@@ -1009,8 +1040,153 @@ export async function moveExtra(
         diff: {
           via: "day_route_place",
           deliveryDate: input.date,
-          routeStandingTourId: { from: order.routeStandingTourId, to: input.standingTourId },
+          routeStandingTourId: { from: order.routeStandingTourId, to: target },
           routeSlot: { from: order.routeSlot, to: slot },
+        },
+      });
+    }
+    await tours.markOutdatedForDate(day, tx);
+    return { ok: true };
+  });
+}
+
+export const assignStandingSchema = z
+  .object({
+    /** The delivery day the office is planning (its routes are sent again). */
+    date: dateTextSchema,
+    customerId: idSchema,
+    standingTourId: idSchema,
+    /** Delivered right after this member of the standing tour; `null` = first. */
+    afterCustomerId: idSchema.nullable(),
+  })
+  .strict();
+
+export type AssignStandingResult =
+  | { ok: true }
+  | {
+      ok: false;
+      error: "invalid" | "date_in_past" | "not_found" | "customer_inactive" | "stop_completed";
+    };
+
+/**
+ * "Immer auf dieser Route" (owner 2026-11-16): puts a customer into a standing tour for good, at a
+ * position, straight from the day plan. He leaves any other standing tour (membership is
+ * exclusive), and the one-day places on his orders of that day are cleared, because he now rides on
+ * the route as a member. The day's routes are flagged to be sent again; other days pick the change
+ * up when they are planned.
+ */
+export async function assignStandingTour(
+  db: StandingDb,
+  actorId: string,
+  rawInput: unknown,
+  today: Date,
+  tours: TourHook,
+): Promise<AssignStandingResult> {
+  const parsed = assignStandingSchema.safeParse(rawInput);
+  if (!parsed.success) return { ok: false, error: "invalid" };
+  const input = parsed.data;
+  const day = parseCalendarDate(input.date);
+  if (!day) return { ok: false, error: "invalid" };
+  if (isPastDeliveryDate(day, today)) return { ok: false, error: "date_in_past" };
+  if (input.afterCustomerId === input.customerId) return { ok: false, error: "invalid" };
+  const [route, customer] = await Promise.all([
+    db.standingTour.findUnique({
+      where: { id: input.standingTourId },
+      select: {
+        active: true,
+        customers: {
+          orderBy: [{ sortOrder: "asc" }, { customerId: "asc" }],
+          select: { customerId: true },
+        },
+      },
+    }),
+    db.customer.findUnique({ where: { id: input.customerId }, select: { active: true } }),
+  ]);
+  if (!route?.active || !customer) return { ok: false, error: "not_found" };
+  if (!customer.active) return { ok: false, error: "customer_inactive" };
+  if (await stopCompletedOn(db, input.customerId, day)) {
+    return { ok: false, error: "stop_completed" };
+  }
+  const others = route.customers
+    .map((member) => member.customerId)
+    .filter((id) => id !== input.customerId);
+  let at = 0;
+  if (input.afterCustomerId !== null) {
+    const index = others.indexOf(input.afterCustomerId);
+    if (index === -1) return { ok: false, error: "not_found" };
+    at = index + 1;
+  }
+  const next = [...others.slice(0, at), input.customerId, ...others.slice(at)];
+  const before = route.customers.map((member) => member.customerId);
+
+  return db.$transaction(async (tx): Promise<AssignStandingResult> => {
+    const left = await tx.standingTourCustomer.findMany({
+      where: { customerId: input.customerId, standingTourId: { not: input.standingTourId } },
+      select: { standingTourId: true },
+    });
+    for (const old of left) {
+      await tx.standingTourCustomer.delete({
+        where: {
+          standingTourId_customerId: {
+            standingTourId: old.standingTourId,
+            customerId: input.customerId,
+          },
+        },
+      });
+      await recordAudit(tx, {
+        actorId,
+        entity: "StandingTour",
+        entityId: old.standingTourId,
+        action: "standing_tour.update",
+        diff: { via: "day_plan_assign", removed: [input.customerId] },
+      });
+    }
+    // Rewrite the order of the target tour as a whole, like the standing tour form does.
+    await tx.standingTourCustomer.deleteMany({ where: { standingTourId: input.standingTourId } });
+    await tx.standingTourCustomer.createMany({
+      data: next.map((customerId, index) => ({
+        standingTourId: input.standingTourId,
+        customerId,
+        sortOrder: index,
+      })),
+    });
+    await recordAudit(tx, {
+      actorId,
+      entity: "StandingTour",
+      entityId: input.standingTourId,
+      action: "standing_tour.update",
+      diff: {
+        via: "day_plan_assign",
+        added: before.includes(input.customerId) ? [] : [input.customerId],
+        customerIds: next,
+      },
+    });
+    // He is a member now: the one-day places of his orders that day are void.
+    const placed = await tx.order.findMany({
+      where: {
+        customerId: input.customerId,
+        deliveryDate: day,
+        status: "CONFIRMED",
+        OR: [{ routeStandingTourId: { not: null } }, { routeSlot: { not: null } }],
+      },
+      select: { id: true, routeStandingTourId: true, routeSlot: true },
+    });
+    for (const order of placed) {
+      await tx.order.update({
+        where: { id: order.id },
+        data: { routeStandingTourId: null, routeSlot: null },
+        select: { id: true },
+      });
+      await recordAudit(tx, {
+        actorId,
+        entity: "Order",
+        entityId: order.id,
+        action: "order.update",
+        diff: {
+          via: "day_plan_assign",
+          deliveryDate: input.date,
+          routeStandingTourId: { from: order.routeStandingTourId, to: null },
+          routeSlot: { from: order.routeSlot, to: null },
         },
       });
     }

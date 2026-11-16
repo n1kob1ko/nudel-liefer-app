@@ -142,7 +142,7 @@ describe.each(Object.keys(LOCALES))("departure checklist in %s", (locale) => {
     expect(screen.getByTestId("departure-skip")).toBeInTheDocument();
   });
 
-  it("opening it records the loading start and lists totals, keys and fixed items", async () => {
+  it("opening it records the loading start and lists keys and fixed items, no totals", async () => {
     renderIn(locale, <TodayTour today={today(stops())} tiles={TILES} />);
     fireEvent.click(screen.getByTestId("departure-open"));
     await waitFor(() => expect(mocks.enqueue).toHaveBeenCalledTimes(1));
@@ -152,20 +152,8 @@ describe.each(Object.keys(LOCALES))("departure checklist in %s", (locale) => {
       customerName: "KundeTest1",
     });
     const sheet = within(screen.getByTestId("departure-sheet"));
-    const products = sheet.getAllByTestId("departure-product");
-    // Totals over the whole tour in packaging units: 22 Sackerl, 14 Kiste, 3 x Wantan-Teig.
-    expect(
-      products.map((row) => {
-        const line = row.querySelector("[data-unit]")!;
-        return [line.getAttribute("data-unit"), line.getAttribute("data-quantity")];
-      }),
-    ).toEqual([
-      ["PACK", "22"],
-      ["CRATE", "14"],
-      ["PIECE", "3"],
-    ]);
-    expect(products[2]).toHaveTextContent("×");
-    expect(products[2]).toHaveTextContent("Wantan-Teig");
+    // No product totals (owner 2026-11-16): the driver sees quantities at the stop only.
+    expect(sheet.queryByTestId("departure-product")).toBeNull();
     // One line per needed key: only the customer whose key exists.
     const keys = sheet.getAllByTestId("departure-key");
     expect(keys).toHaveLength(1);
@@ -179,8 +167,8 @@ describe.each(Object.keys(LOCALES))("departure checklist in %s", (locale) => {
     const view = renderIn(locale, <TodayTour today={today(stops())} tiles={TILES} />);
     fireEvent.click(screen.getByTestId("departure-open"));
     const sheet = within(screen.getByTestId("departure-sheet"));
-    expect(sheet.getByTestId("departure-progress")).toHaveAttribute("data-total", "5");
-    const first = sheet.getAllByTestId("departure-product")[0]!;
+    expect(sheet.getByTestId("departure-progress")).toHaveAttribute("data-total", "2");
+    const first = sheet.getAllByTestId("departure-key")[0]!;
     expect(first).toHaveAttribute("aria-checked", "false");
     fireEvent.click(first);
     expect(first).toHaveAttribute("aria-checked", "true");
@@ -192,7 +180,7 @@ describe.each(Object.keys(LOCALES))("departure checklist in %s", (locale) => {
     renderIn(locale, <TodayTour today={today(stops())} tiles={TILES} />);
     fireEvent.click(screen.getByTestId("departure-open"));
     expect(
-      within(screen.getByTestId("departure-sheet")).getAllByTestId("departure-product")[0],
+      within(screen.getByTestId("departure-sheet")).getAllByTestId("departure-key")[0],
     ).toHaveAttribute("aria-checked", "true");
   });
 
@@ -284,11 +272,9 @@ describe.each(Object.keys(LOCALES))("departure checklist in %s", (locale) => {
     const trips = [stop(1), stop(2), stop(3, { trip: 2, hasKey: true, keyNumber: "31" })];
     renderIn(locale, <TodayTour today={today(trips)} tiles={TILES} />);
     fireEvent.click(screen.getByTestId("reload-checklist"));
-    // Only the stops of trip 2: one Kiste line of 7, a key line, no 'Losfahren'.
+    // Only the stops of trip 2: its key line, no product lines, no 'Losfahren'.
     const sheet = within(screen.getByTestId("departure-sheet"));
-    const products = sheet.getAllByTestId("departure-product");
-    expect(products).toHaveLength(3);
-    expect(products[1]!.querySelector("[data-unit]")).toHaveAttribute("data-quantity", "7");
+    expect(sheet.queryByTestId("departure-product")).toBeNull();
     expect(sheet.getByTestId("departure-key")).toHaveTextContent("31");
     expect(sheet.queryByTestId("departure-go")).not.toBeInTheDocument();
     expect(mocks.enqueue).not.toHaveBeenCalled();

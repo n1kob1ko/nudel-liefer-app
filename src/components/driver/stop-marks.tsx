@@ -1,6 +1,5 @@
 "use client";
 
-import { ReceiptTextIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
@@ -8,12 +7,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 
 import { FridgeIcon } from "./fridge-icon";
+import { InvoiceIcon } from "./invoice-icon";
 
 type Mark = "invoice" | "fridge";
 
 /**
  * Two reminders on the driver screens (owner 2026-11-14): the snowflake when the goods go into the
- * customer's fridge and a receipt when the invoice goes with the delivery. Only the symbols show
+ * customer's fridge and an "R" when the invoice goes with the delivery (owner 2026-11-16). Only the symbols show
  * (owner 2026-11-15); a tap on one opens a small box right at it that says what it means.
  *
  * `interactive` symbols (next-stop card, stop detail) are popover buttons with a 48 px touch target.
@@ -43,11 +43,7 @@ export function StopMarks({
 }
 
 function markIcon(mark: Mark, size: string): ReactNode {
-  return mark === "fridge" ? (
-    <FridgeIcon className={size} />
-  ) : (
-    <ReceiptTextIcon className={cn(size, "shrink-0")} aria-hidden />
-  );
+  return mark === "fridge" ? <FridgeIcon className={size} /> : <InvoiceIcon className={size} />;
 }
 
 function MarkSymbol({

@@ -414,7 +414,8 @@
       },
       "extra": {
         "label": "Extra",
-        "move": "Change route"
+        "move": "Change route",
+        "today": "Today only"
       },
       "move": {
         "title": "{name}: change route",
@@ -431,8 +432,14 @@
           "invalid": "Invalid input.",
           "date_in_past": "Past days can no longer be changed.",
           "not_found": "Route or order not found. Please reload the page.",
-          "standing_customer": "This customer belongs to a standing tour."
-        }
+          "stop_completed": "This stop is already done and stays where it is.",
+          "customer_inactive": "The customer is inactive."
+        },
+        "always": "Always on this route",
+        "alwaysHint": "Changes the standing route, for every following day.",
+        "bodyAlways": "The customer joins this standing route for good.",
+        "home": "Back to {route}",
+        "savedAlways": "Added to {route}. The driver gets it with “Send changes”."
       },
       "send": {
         "first": "Send to drivers",
@@ -1796,9 +1803,7 @@
         "totalsHeading": "1. Total quantity per product",
         "product": "Product",
         "quantity": "Quantity",
-        "stopsHeading": "2. Loading order",
-        "stopsHint": "The last stop is loaded first, the first stop last (so it lies on top).",
-        "loadPosition": "Load",
+        "stopsHeading": "2. Stops",
         "stop": "Stop",
         "customer": "Customer",
         "items": "Products and quantities",
@@ -2127,6 +2132,12 @@
     },
     "payments": {
       "title": "Payments",
+      "tabs": {
+        "label": "Payments",
+        "debts": "Debts",
+        "monthly": "Monthly bills",
+        "alert": "There are open debts"
+      },
       "description": "Open cash and open monthly bills. The driver collects cash at the stop; the office marks monthly bills as paid.",
       "summary": "Open amounts",
       "backToPayments": "Back to payments",
@@ -2147,7 +2158,7 @@
       },
       "cash": {
         "title": "Open cash payments",
-        "body": "Stops with “cash on delivery” where the driver collected nothing or less than the amount.",
+        "body": "Stops with “cash on delivery” where the driver collected nothing or less than the amount. If the driver collects more than is due, the extra is offset automatically against the same customer’s oldest open amounts.",
         "openTotal": "Open in cash ({count})",
         "emptyTitle": "No open cash payments",
         "emptyBody": "Every cash order is collected or not delivered yet.",
@@ -2168,7 +2179,8 @@
             "not_completed": "The stop is not delivered yet.",
             "tour_not_active": "The tour is not released yet."
           }
-        }
+        },
+        "credited": "{amount} offset"
       },
       "monthly": {
         "title": "Open monthly bills",
@@ -2402,9 +2414,9 @@
       "mapSheetCount": "{count, plural, one {# open stop} other {# open stops}}",
       "focusOnMap": "Show on the map",
       "reloadTitle": "Reload at the depot",
-      "reloadHint": "Return to the depot and load for trip {trip}:",
+      "reloadHint": "Return to the depot and load for trip {trip}.",
       "switchTitle": "Switch vehicle",
-      "switchHint": "Return to the depot and switch into {vehicle}. Loaded for trip {trip}:",
+      "switchHint": "Return to the depot and switch into {vehicle}. Then trip {trip}.",
       "problemGroup": "{count, plural, one {Problems (#)} other {Problems (#)}}"
     },
     "units": {
@@ -2441,7 +2453,6 @@
       "photoNotSaved": "The photo could not be saved on this device. Please try again.",
       "backToTour": "Back to the tour",
       "photos": "Photos",
-      "summaryTotal": "Total",
       "statusDeliveredAt": "Delivered {time}",
       "statusProblem": "Problem: {reason}",
       "navigateStarting": "Opening navigation …",
@@ -2454,7 +2465,6 @@
       "viewerPrev": "Previous photo",
       "viewerNext": "Next photo",
       "viewerClose": "Close",
-      "summaryTotalMixed": "Total per unit",
       "weekdayMo": "Mon",
       "weekdayTu": "Tue",
       "weekdayWe": "Wed",
@@ -2661,7 +2671,6 @@
       "sheetTitle": "Prepare departure",
       "sheetTitleTrip": "Prepare trip {trip}",
       "sheetDescription": "Tap each line when it is done.",
-      "productsHeading": "Load",
       "keysHeading": "Take keys",
       "fixedHeading": "Other",
       "keyNoNumber": "no number",
@@ -2696,12 +2705,6 @@
         "nothing": "Without collected cash the stop does not count as delivered. If the customer does not pay, tap “Problem” and call.",
         "confirm": "Collected and delivered"
       }
-    },
-    "upcoming": {
-      "title": "Upcoming tours",
-      "tomorrow": "Tomorrow · {date}",
-      "stops": "{count, plural, one {# stop} other {# stops}}",
-      "from": "from {time}"
     },
     "marks": {
       "invoice": "Hand over invoice",

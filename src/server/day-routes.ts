@@ -36,9 +36,15 @@ export type DayRouteDefinition = {
   name: string;
   driverId: string | null;
   vehicleId: string | null;
-  /** Standing customers in standing order (all of them, not only today's). */
+  /**
+   * Standing customers in standing order (all of them, not only today's), without the ones the
+   * office moved to another route for the day.
+   */
   members: string[];
-  /** Customers of no standing tour with an order that day, placed on this route. */
+  /**
+   * Customers placed on this route for the day: customers of no standing tour with an order that
+   * day, and standing customers of another route moved here for the day.
+   */
   extras: Array<{ customerId: string; slot: number; moved: boolean }>;
   /** Every customer of the route in delivery order (members and extras). */
   order: string[];
@@ -48,6 +54,8 @@ export type DayRoutes = {
   routes: DayRouteDefinition[];
   /** The place of every extra of the day (customer id -> route and slot). */
   places: Map<string, Place & { moved: boolean }>;
+  /** Standing customers moved to another route for the day -> their own standing tour. */
+  homes: Map<string, string>;
   /** Customers of the routes (members and extras) without any location: never a stop. */
   unrouted: Set<string>;
   /** The delivery point of every customer of the routes (`null` = no location). */
@@ -85,13 +93,16 @@ async function standingRoutes(db: Pick<PrismaClient, "standingTour">) {
 
 /**
  * The routes of one delivery day: every active standing tour with its members, and the customers
- * of no standing tour that have a CONFIRMED order that day, placed on a route.
+ * of no standing tour that have a CONFIRMED order that day, placed on a route. A standing customer
+ * whose order of the day names another route (owner 2026-11-16, "nur für diesen Tag") rides on that
+ * route for the day like an extra and is left out of his own one.
  */
 export async function loadDayRoutes(db: Db, day: Date, depot: LatLng | null): Promise<DayRoutes> {
-  const routes = await standingRoutes(db);
-  const memberOf = new Set(routes.flatMap((r) => r.members));
+  const standing = await standingRoutes(db);
+  const homeOf = new Map(standing.flatMap((r) => r.members.map((id) => [id, r.id] as const)));
+  const routeIds = new Set(standing.map((r) => r.id));
   const orders = await db.order.findMany({
-    where: { deliveryDate: day, status: "CONFIRMED", customerId: { notIn: [...memberOf] } },
+    where: { deliveryDate: day, status: "CONFIRMED" },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     select: {
       customerId: true,
@@ -104,6 +115,16 @@ export async function loadDayRoutes(db: Db, day: Date, depot: LatLng | null): Pr
   const wanted = new Map<string, { routeId: string | null; slot: number | null }>();
   for (const order of orders) {
     if (!order.items.some((i) => i.quantity > 0)) continue;
+    const home = homeOf.get(order.customerId);
+    if (home !== undefined) {
+      // A standing customer only leaves his route when the office put him on another active one.
+      const target = order.routeStandingTourId;
+      if (!target || target === home || !routeIds.has(target)) continue;
+      if (wanted.has(order.customerId)) continue;
+      extraIds.push(order.customerId);
+      wanted.set(order.customerId, { routeId: target, slot: order.routeSlot });
+      continue;
+    }
     if (!wanted.has(order.customerId)) extraIds.push(order.customerId);
     const before = wanted.get(order.customerId);
     // The first order the office placed decides; an unplaced one never overrides it.
@@ -114,8 +135,12 @@ export async function loadDayRoutes(db: Db, day: Date, depot: LatLng | null): Pr
       });
     }
   }
+  const away = new Set(extraIds.filter((id) => homeOf.has(id)));
+  // The members of the day: a standing customer moved to another route is not on his own one.
+  const routes = standing.map((r) => ({ ...r, members: r.members.filter((id) => !away.has(id)) }));
+  const memberOf = new Set(standing.flatMap((r) => r.members));
   const customers = await db.customer.findMany({
-    where: { id: { in: [...memberOf, ...extraIds] } },
+    where: { id: { in: [...new Set([...memberOf, ...extraIds])] } },
     select: customerLocationSelect,
   });
   const pointOf = new Map(
@@ -145,6 +170,7 @@ export async function loadDayRoutes(db: Db, day: Date, depot: LatLng | null): Pr
     places,
     points: pointOf,
     unrouted: new Set([...pointOf].filter(([, point]) => point === null).map(([id]) => id)),
+    homes: new Map([...away].map((id) => [id, homeOf.get(id)!])),
     routes: routes.map((route) => {
       const extras = extraIds.flatMap((customerId) => {
         const place = places.get(customerId);

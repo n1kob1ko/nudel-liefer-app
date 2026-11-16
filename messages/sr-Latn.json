@@ -234,9 +234,9 @@
       "mapSheetCount": "{count, plural, one {# otvorena stanica} few {# otvorene stanice} other {# otvorenih stanica}}",
       "focusOnMap": "Prikaži na mapi",
       "reloadTitle": "Dopuna tovara u depou",
-      "reloadHint": "Vratite se u depo i utovarite robu za vožnju {trip}:",
+      "reloadHint": "Vratite se u depo i utovarite robu za vožnju {trip}.",
       "switchTitle": "Promena vozila",
-      "switchHint": "Vratite se u depo i presedite u vozilo {vehicle}. Za vožnju {trip} je utovareno:",
+      "switchHint": "Vratite se u depo i presedite u vozilo {vehicle}. Zatim vožnja {trip}.",
       "problemGroup": "{count, plural, one {Problemi (#)} few {Problemi (#)} other {Problemi (#)}}"
     },
     "units": {
@@ -273,7 +273,6 @@
       "photoNotSaved": "Fotografija se nije mogla sačuvati na uređaju. Pokušajte ponovo.",
       "backToTour": "Nazad na turu",
       "photos": "Fotografije",
-      "summaryTotal": "Ukupno",
       "statusDeliveredAt": "Isporučeno {time}",
       "statusProblem": "Problem: {reason}",
       "navigateStarting": "Navigacija se otvara …",
@@ -286,7 +285,6 @@
       "viewerPrev": "Prethodna fotografija",
       "viewerNext": "Sledeća fotografija",
       "viewerClose": "Zatvori",
-      "summaryTotalMixed": "Ukupno po jedinici",
       "weekdayMo": "pon",
       "weekdayTu": "uto",
       "weekdayWe": "sre",
@@ -493,7 +491,6 @@
       "sheetTitle": "Priprema polaska",
       "sheetTitleTrip": "Priprema vožnje {trip}",
       "sheetDescription": "Dodirnite svaki red kada je gotov.",
-      "productsHeading": "Utovar",
       "keysHeading": "Ponesite ključeve",
       "fixedHeading": "Ostalo",
       "keyNoNumber": "bez broja",
@@ -528,12 +525,6 @@
         "nothing": "Bez naplaćenog novca stajalište se ne računa kao isporučeno. Ako kupac ne plati, dodirni „Problem“ i pozovi.",
         "confirm": "Naplaćeno i isporučeno"
       }
-    },
-    "upcoming": {
-      "title": "Naredne ture",
-      "tomorrow": "Sutra · {date}",
-      "stops": "{count, plural, one {# stanica} few {# stanice} other {# stanica}}",
-      "from": "od {time}"
     },
     "marks": {
       "invoice": "Predaj račun",

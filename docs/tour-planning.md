@@ -114,9 +114,9 @@ neighbour then 2-opt; returns indices into the stops).
 
 The sheet is built from the quantities the TOUR carries (`Stop.items`), never from live orders.
 `loadSheetTotals` sums per product and unit with `sumQuantities` (units are never added together)
-sorted by `LOAD_SHEET_UNIT_ORDER` (`KG, PACK, CRATE, PIECE`), then catalog order. `loadOrder` lists
-stops in LOAD order = reverse delivery order (`loadPosition` counts from 1, the last stop loaded
-first).
+sorted by `LOAD_SHEET_UNIT_ORDER` (`KG, PACK, CRATE, PIECE`), then catalog order. `deliveryOrder` lists
+the stops in delivery order, stop 1 first (owner 2026-11-16; before, the sheet used reverse load
+order).
 
 ## Server layer (`src/server`)
 

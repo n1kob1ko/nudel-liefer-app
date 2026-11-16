@@ -183,12 +183,11 @@ for (const locale of LOCALES) {
       "https://www.google.com/maps/dir/?api=1&destination=48.21,16.38&travelmode=driving",
     );
 
-    // Mixed units are not added together: stop 3 has 5 kg and 3 packs. Select the row by its stop
-    // id rather than by position.
+    // The list shows no quantities, weights or totals (owner 2026-11-16): only the next stop does.
     const row3 = page.locator(`[data-testid="stop-row"][data-stop-id="${stopIds[2]}"]`);
-    await expect(row3.getByTestId("summary-total")).toHaveCount(2);
-    await expect(row3.getByTestId("summary-total").nth(0)).toHaveAttribute("data-unit", "KG");
-    await expect(row3.getByTestId("summary-total").nth(1)).toHaveAttribute("data-unit", "PACK");
+    await expect(row3).toBeVisible();
+    await expect(row3.getByTestId("summary-total")).toHaveCount(0);
+    await expect(row3.getByTestId("item-summary")).toHaveCount(0);
 
     // List: the three open stops. A delivered stop leaves the driver's list (owner 2026-11-14:
     // the driver sees no history), only the progress counts it.
@@ -357,11 +356,7 @@ test("re-released tour: banner, changed-stop highlight, acknowledged once", asyn
   await expect(page.getByTestId("today-tour")).toBeVisible();
   await expect(banner).toHaveCount(0);
 
-  // Quantities shown are the released ones.
-  await expect(
-    page
-      .locator(`[data-testid="stop-row"][data-stop-id="${stopIds[2]}"]`)
-      .getByTestId("summary-total")
-      .first(),
-  ).toContainText("8");
+  // Quantities shown (on the stop itself) are the released ones.
+  await page.goto(`/de/driver/stops/${stopIds[2]}`);
+  await expect(page.locator('[data-testid="item-quantity"]:visible').first()).toContainText("8");
 });

@@ -98,7 +98,7 @@ const EXTRA: Row = {
   fridge: false,
   invoiceAlways: false,
   fridgeAlways: false,
-  extra: { moved: false, slot: 1 },
+  extra: { moved: false, slot: 1, home: null },
   stop: null,
   location: { lat: 48.22, lng: 16.42 },
 };
