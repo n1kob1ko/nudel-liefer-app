@@ -476,13 +476,13 @@ export async function saveStandingDay(
 
   const dayText = formatCalendarDate(day);
   try {
-    return await saveRows();
+    return await saveRows(day);
   } catch (error) {
     if (error instanceof StopCompletedError) return { ok: false, error: "stop_completed" };
     throw error;
   }
 
-  function saveRows() {
+  function saveRows(day: Date) {
     return db.$transaction(
       async (tx): Promise<StandingDaySaveResult> => {
         // Same key as "Touren planen": a plan run and a day-plan save of one date never interleave.

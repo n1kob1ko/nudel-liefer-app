@@ -307,7 +307,7 @@ function Lane({
             </Link>
           </h3>
           <p className="truncate text-sm text-muted-foreground">
-            {[t("board.tourNumber", { number: row.number }), row.vehicleName]
+            {[row.routeName ?? t("board.tourNumber", { number: row.number }), row.vehicleName]
               .filter(Boolean)
               .join(" · ")}
           </p>

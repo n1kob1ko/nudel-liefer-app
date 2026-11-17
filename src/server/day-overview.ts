@@ -36,6 +36,7 @@ export async function getDayOverview(
       departedAt: true,
       driver: { select: { displayName: true } },
       vehicle: { select: { name: true } },
+      standingTour: { select: { name: true } },
       stops: {
         orderBy: { sequence: "asc" },
         select: {
@@ -57,6 +58,7 @@ export async function getDayOverview(
     departedAt: tour.departedAt,
     driverName: tour.driver?.displayName ?? null,
     vehicleName: tour.vehicle?.name ?? null,
+    routeName: tour.standingTour?.name ?? null,
     stops: tour.stops.map((stop) => ({
       id: stop.id,
       sequence: stop.sequence,

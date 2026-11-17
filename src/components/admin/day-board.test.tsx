@@ -65,6 +65,7 @@ const threeDrivers = () =>
     tour("b", {
       createdAt: at("05:10"),
       vehicleName: "Transporter 2",
+      routeName: "Route Süd",
       stops: [
         stop(1, "DELIVERED"),
         stop(2, "PROBLEM", { name: "Cucina Bella", completedAt: at("08:27") }),
@@ -117,6 +118,8 @@ describe("DayBoard", () => {
     expect(first.getByText("Tour 1 · Transporter 1")).toBeInTheDocument();
     expect(first.getByTestId("lane-status")).toHaveTextContent("Unterwegs");
     expect(first.getByTestId("lane-progress")).toHaveTextContent("1 von 3");
+    // NUD-212: a day route says which standing tour it is, not "Tour 2".
+    expect(within(lanes[1]!).getByText("Route Süd · Transporter 2")).toBeInTheDocument();
     // Last open stop arrives 09:00, ten minutes there.
     expect(first.getByTestId("lane-finish")).toHaveTextContent("Ende ca. 09:10");
     expect(first.getByTestId("lane-next-name")).toHaveTextContent("Kunde 2");
