@@ -332,7 +332,8 @@
         "cancelled": "cancelled",
         "merged": "several orders",
         "delivered": "delivered",
-        "problem": "Problem"
+        "problem": "Problem",
+        "noLocation": "No location"
       },
       "route": {
         "summary": "{count, plural, one {# customer} other {# customers}} · {weight} kg",

@@ -345,7 +345,10 @@ export function StandingPlan({
         // The stop numbers of the day: the rows with a quantity, in delivery order.
         const numbers = new Map<string, number>();
         for (const row of rows) {
-          if (hasQuantity(row.customerId)) numbers.set(row.customerId, numbers.size + 1);
+          // A customer without any location is on no tour (the send reports him).
+          if (hasQuantity(row.customerId) && row.location !== null) {
+            numbers.set(row.customerId, numbers.size + 1);
+          }
         }
         const over = route.capacityKg !== null && weight > route.capacityKg;
         const mapOpen = maps.includes(route.id);
@@ -512,6 +515,7 @@ export function StandingPlan({
                           key={row.customerId}
                           row={row}
                           number={numbers.get(row.customerId) ?? null}
+                          noLocation={row.location === null && hasQuantity(row.customerId)}
                           products={plan.products}
                           locale={locale}
                           values={values[row.customerId] ?? {}}
@@ -828,6 +832,7 @@ function moveInColumn(event: KeyboardEvent<HTMLInputElement>) {
 function PlanRow({
   row,
   number,
+  noLocation = false,
   products,
   locale,
   values,
@@ -840,6 +845,8 @@ function PlanRow({
   row: DayPlanRow;
   /** Stop number on the route (rows with a quantity), `undefined` outside a route. */
   number?: number | null;
+  /** Ordered, but without any location: the driver cannot get this customer. */
+  noLocation?: boolean;
   products: ReadonlyArray<PlanProduct>;
   locale: AppLocale;
   values: Record<string, string>;
@@ -910,6 +917,12 @@ function PlanRow({
       </TableCell>
       <TableCell className="max-md:basis-full max-md:p-0 max-md:empty:hidden">
         <div className="flex flex-wrap gap-1 max-md:empty:hidden">
+          {noLocation ? (
+            <Badge variant="warning" data-testid={`no-location-${row.customerId}`}>
+              <TriangleAlertIcon aria-hidden />
+              {t("state.noLocation")}
+            </Badge>
+          ) : null}
           {row.stop?.status === "DELIVERED" ? (
             <Badge variant="success" data-testid={`stop-state-${row.customerId}`}>
               <CheckIcon aria-hidden />

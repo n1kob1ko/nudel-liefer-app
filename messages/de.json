@@ -332,7 +332,8 @@
         "cancelled": "storniert",
         "merged": "mehrere Bestellungen",
         "delivered": "geliefert",
-        "problem": "Problem"
+        "problem": "Problem",
+        "noLocation": "Kein Ort"
       },
       "route": {
         "summary": "{count, plural, one {# Kunde} other {# Kunden}} · {weight} kg",

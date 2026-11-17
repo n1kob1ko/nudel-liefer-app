@@ -412,6 +412,22 @@ describe("StandingPlan day routes (NUD-212)", () => {
     expect(screen.getByTestId("route-head-r2")).toHaveTextContent("Keine Bestellung");
   });
 
+  it("numbers no customer without a location and marks him (simulation 17.11.)", () => {
+    const base = plan();
+    const route = base.routes[0]!;
+    renderPlan({
+      ...base,
+      routes: [
+        { ...route, rows: [{ ...EXTRA, location: null }, route.rows[0]!, route.rows[1]!] },
+        base.routes[1]!,
+      ],
+    });
+    expect(screen.queryByTestId("stop-number-c5")).not.toBeInTheDocument();
+    expect(screen.getByTestId("stop-number-c1")).toHaveTextContent("1");
+    expect(screen.getByTestId("no-location-c5")).toHaveTextContent("Kein Ort");
+    expect(screen.getByTestId("route-head-r1")).toHaveTextContent("1 Stopp");
+  });
+
   it("warns when a route is heavier than its vehicle", () => {
     renderPlan(plan({}, { capacityKg: 5 }));
     expect(screen.getByTestId("route-load-r1")).toHaveAttribute("data-over", "true");

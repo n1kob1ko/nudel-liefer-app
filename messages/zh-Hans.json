@@ -332,7 +332,8 @@
         "cancelled": "已取消",
         "merged": "多个订单",
         "delivered": "已送达",
-        "problem": "问题"
+        "problem": "问题",
+        "noLocation": "无位置"
       },
       "route": {
         "summary": "{count, plural, other {# 个客户}} · {weight} kg",
