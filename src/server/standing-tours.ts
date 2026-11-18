@@ -375,12 +375,14 @@ export async function standingDayQuery(
 }
 
 /** The stored road of a tour (GeoJSON line) as [lng, lat] pairs, `null` when there is none. */
+// unbounded-ok-start: stored Tour.geometry JSON, written by the server
 function readGeometry(value: unknown): Array<[number, number]> | null {
   const parsed = z
     .object({ coordinates: z.array(z.tuple([z.number(), z.number()])) })
     .safeParse(value);
   return parsed.success && parsed.data.coordinates.length > 1 ? parsed.data.coordinates : null;
 }
+// unbounded-ok-end
 
 // ---------------------------------------------------------------------------------------------
 // Saving the day
