@@ -1762,7 +1762,7 @@
       },
       "print": {
         "open": "Ladeliste drucken",
-        "back": "Zurück zur Tour",
+        "back": "Zurück zur Tagesplanung",
         "printButton": "Drucken",
         "languageLabel": "Sprache des Ausdrucks",
         "outdatedScreen": "Die Bestellungen haben sich seit dem Erstellen bzw. der Freigabe dieser Tour geändert. Die Ladeliste zeigt die Mengen der Tour, nicht die aktuellen Bestellungen. Bitte die Tour prüfen und erneut freigeben, bevor beladen wird.",

@@ -1756,7 +1756,7 @@
       },
       "print": {
         "open": "Print load sheet",
-        "back": "Back to the tour",
+        "back": "Back to the day plan",
         "printButton": "Print",
         "languageLabel": "Language of the printout",
         "outdatedScreen": "The orders have changed since this tour was created or released. The load sheet shows the quantities of the tour, not the current orders. Please check the tour and release it again before loading.",
