@@ -198,7 +198,8 @@
         "parkingMissingHint": "Parkplatz festlegen.",
         "unconfirmedOrders": "{count, plural, one {# Entwurf für den nächsten Liefertag} other {# Entwürfe für den nächsten Liefertag}}",
         "unconfirmedOrdersHint": "{date} · noch nicht bestätigt",
-        "emptyDescriptionAll": "Keine Probleme gemeldet, keine Bestellung ohne Tour und alle Kundenstammdaten vollständig."
+        "emptyDescriptionAll": "Keine Probleme gemeldet, keine Bestellung ohne Tour und alle Kundenstammdaten vollständig.",
+        "unsentRoutes": "{count, plural, one {Eine Route hat Änderungen, die der Fahrer noch nicht hat} other {# Routen haben Änderungen, die die Fahrer noch nicht haben}}"
       },
       "activity": {
         "title": "Letzte Aktivität",

@@ -198,7 +198,8 @@
         "parkingMissingHint": "Set a parking spot.",
         "unconfirmedOrders": "{count, plural, one {# draft for the next delivery day} other {# drafts for the next delivery day}}",
         "unconfirmedOrdersHint": "{date} · not yet confirmed",
-        "emptyDescriptionAll": "No problems reported, no order without a tour and all customer master data complete."
+        "emptyDescriptionAll": "No problems reported, no order without a tour and all customer master data complete.",
+        "unsentRoutes": "{count, plural, one {One route has changes the driver does not have yet} other {# routes have changes the drivers do not have yet}}"
       },
       "activity": {
         "title": "Recent activity",

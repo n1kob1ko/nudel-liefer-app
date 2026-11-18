@@ -198,7 +198,8 @@
         "parkingMissingHint": "请设置停车位。",
         "unconfirmedOrders": "{count, plural, other {下个配送日有 # 个草稿订单}}",
         "unconfirmedOrdersHint": "{date} · 尚未确认",
-        "emptyDescriptionAll": "没有已报告的问题，没有未排入路线的订单，客户资料也都完整。"
+        "emptyDescriptionAll": "没有已报告的问题，没有未排入路线的订单，客户资料也都完整。",
+        "unsentRoutes": "{count} 条线路有司机尚未收到的更改"
       },
       "activity": {
         "title": "最近活动",
