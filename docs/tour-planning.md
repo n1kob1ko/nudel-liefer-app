@@ -18,6 +18,15 @@ and keeps a released tour in sync when the orders behind it change. It is split 
 rules (under `src/domain`) and server-side orchestration with the database and the routing provider
 (under `src/server`).
 
+**Since NUD-212 (D34) the office does not plan tours by hand any more.** The customer has two
+drivers on two fixed standing tours. The day plan (`/admin/planning`) builds each route from its
+standing tour in fixed order, adds the extras of the day where the straight-line detour is smallest
+(`src/domain/day-route.ts`), and "An Fahrer senden" creates, rebuilds or re-releases the tours
+(`src/server/day-routes.ts`, `sendDayWith`). `Tour.standingTourId` names the standing tour a route
+came from. The builder, re-release, driver read model and load sheet below are still the ones
+used; the optimizing planner and the `/admin/tours` pages are only reachable by address and no
+longer linked.
+
 ## Domain rules (`src/domain`)
 
 These are pure TypeScript modules with no framework or database imports.
