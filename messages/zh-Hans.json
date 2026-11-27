@@ -371,7 +371,8 @@
         "customer_inactive": "某个客户已停用。请重新加载页面。",
         "product_not_found": "未找到某个产品。请重新加载页面。",
         "product_inactive": "某个产品已停用。请重新加载页面。",
-        "stop_completed": "司机已为该客户送过货。数量保持为已送达的数量。"
+        "stop_completed": "司机已为该客户送过货。数量保持为已送达的数量。",
+        "amount_required": "{name} 缺少金额。该客户现金付款，没有金额司机无法收款。"
       },
       "manage": {
         "open": "编辑固定线路",
@@ -464,13 +465,17 @@
           "vehicle_required": "{route} 没有车辆。",
           "vehicle_invalid": "{route} 的车辆未启用。",
           "overloaded": "{route} 超重。",
-          "conflict": "刚才有人同时做了更改。请再发送一次。"
+          "conflict": "刚才有人同时做了更改。请再发送一次。",
+          "amount_required": "{name} 缺少金额。该客户现金付款，没有金额司机无法收款。"
         }
       },
       "marks": {
         "invoice": "发票",
         "fridge": "冰箱",
-        "always": "每次（在客户中设置）"
+        "always": "每次（在客户中设置）",
+        "cash": "现金",
+        "cashAlways": "始终现金付款（客户设置）",
+        "amountLabel": "{name} – 现金金额"
       },
       "tabs": {
         "label": "路线",
@@ -694,7 +699,9 @@
         "fridge": "每次都放入冰箱",
         "fridgeHint": "司机在每个站点都会看到冰箱图标。只针对某一天：在每日计划中设置。",
         "invoice": "每次都给发票",
-        "invoiceHint": "司机在每个站点都会看到发票图标。只针对某一天：在每日计划中设置。"
+        "invoiceHint": "司机在每个站点都会看到发票图标。只针对某一天：在每日计划中设置。",
+        "cash": "始终现金付款",
+        "cashHint": "在每日计划中，此客户会有一个填写当天金额的字段。司机收款后才能完成该站点。"
       },
       "detail": {
         "number": "客户编号 {number}",
@@ -1454,8 +1461,9 @@
         "paymentMonthly": "月度账单（累计）",
         "paymentCash": "货到付款",
         "amount": "金额",
-        "amountHint": "此订单的欧元金额，例如 42.50。留空 = 尚未填写（月度账单上显示为“无金额”）。",
+        "amountHint": "此订单的欧元金额，例如 42.50。“货到付款”必须填写；月结时可留空（月度账单上显示为“无金额”）。",
         "amountInvalid": "请输入如 42 或 42.50 的金额（最多两位小数）。",
+        "amountRequired": "选择“货到付款”时必须填写金额：司机按此金额收款。",
         "inbox": {
           "title": "核对照片",
           "back": "返回照片收件箱",
@@ -2167,11 +2175,13 @@
           "button": "已收",
           "hint": "已收现金",
           "title": "已收现金",
-          "amount": "共收到（€）",
+          "amount": "本次收到（€）",
+          "open": "仍未付：{amount}",
           "cancel": "取消",
           "confirm": "已收",
           "toast": "已记录 {customer} 的现金",
           "errors": {
+            "changed": "金额已被更改，请刷新页面。",
             "invalid": "请输入金额，例如 42.50。",
             "generic": "操作失败，请重试。",
             "forbidden": "只有办公室可以记录。",

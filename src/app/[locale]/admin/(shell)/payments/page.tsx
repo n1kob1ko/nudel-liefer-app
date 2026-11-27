@@ -283,7 +283,8 @@ async function Guarded({
                                   stopId={row.stopId}
                                   customerName={row.customerName}
                                   dateText={dateText}
-                                  dueCents={row.dueCents - row.creditedCents}
+                                  openCents={row.openCents}
+                                  collectedCents={row.collectedCents}
                                 />
                                 <Link
                                   href={`/admin/planning?date=${row.date}`}

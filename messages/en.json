@@ -371,7 +371,8 @@
         "customer_inactive": "A customer is inactive. Please reload the page.",
         "product_not_found": "A product was not found. Please reload the page.",
         "product_inactive": "A product is no longer active. Please reload the page.",
-        "stop_completed": "The driver has already served this customer. The quantity stays as delivered."
+        "stop_completed": "The driver has already served this customer. The quantity stays as delivered.",
+        "amount_required": "The amount for {name} is missing. The customer pays cash; without an amount the driver cannot collect."
       },
       "manage": {
         "open": "Edit standing tours",
@@ -464,13 +465,17 @@
           "vehicle_required": "{route} has no vehicle.",
           "vehicle_invalid": "The vehicle of {route} is not active.",
           "overloaded": "{route} is too heavy.",
-          "conflict": "Someone changed something at the same time. Please send again."
+          "conflict": "Someone changed something at the same time. Please send again.",
+          "amount_required": "The amount for {name} is missing. The customer pays cash; without an amount the driver cannot collect."
         }
       },
       "marks": {
         "invoice": "Invoice",
         "fridge": "Fridge",
-        "always": "Always (set on the customer)"
+        "always": "Always (set on the customer)",
+        "cash": "Cash",
+        "cashAlways": "Always pays cash (customer setting)",
+        "amountLabel": "{name} – cash amount"
       },
       "tabs": {
         "label": "Routes",
@@ -694,7 +699,9 @@
         "fridge": "Always into the fridge",
         "fridgeHint": "The driver sees a fridge symbol at every stop. For one day only: in the day plan.",
         "invoice": "Always hand an invoice",
-        "invoiceHint": "The driver sees an invoice symbol at every stop. For one day only: in the day plan."
+        "invoiceHint": "The driver sees an invoice symbol at every stop. For one day only: in the day plan.",
+        "cash": "Always pays cash",
+        "cashHint": "In the day plan this customer gets a field for the amount of the day. The driver can only close the stop after collecting it."
       },
       "detail": {
         "number": "Customer number {number}",
@@ -1454,8 +1461,9 @@
         "paymentMonthly": "Monthly bill (accumulated)",
         "paymentCash": "Cash on delivery",
         "amount": "Amount",
-        "amountHint": "Amount of this order in euro, e.g. 42.50. Empty = no amount yet (shows as “no amount” on the monthly bill).",
+        "amountHint": "Amount of this order in euro, e.g. 42.50. Required for “Cash on delivery”; on the monthly bill it may stay empty (shows as “no amount”).",
         "amountInvalid": "Please enter an amount like 42 or 42.50 (at most two decimals).",
+        "amountRequired": "For “Cash on delivery” please enter the amount: it is exactly what the driver collects.",
         "inbox": {
           "title": "Check photo",
           "back": "Back to the photo inbox",
@@ -2167,11 +2175,13 @@
           "button": "Received",
           "hint": "Cash received",
           "title": "Cash received",
-          "amount": "Received in total (€)",
+          "amount": "Received now (€)",
+          "open": "Still open: {amount}",
           "cancel": "Cancel",
           "confirm": "Received",
           "toast": "Cash from {customer} recorded",
           "errors": {
+            "changed": "The amount changed in the meantime. Please reload the page.",
             "invalid": "Please enter an amount, e.g. 42.50.",
             "generic": "That did not work. Please try again.",
             "forbidden": "Only the office can record this.",

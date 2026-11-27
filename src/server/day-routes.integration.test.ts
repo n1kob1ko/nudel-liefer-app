@@ -322,6 +322,26 @@ describe.skipIf(!process.env.DATABASE_URL)("day routes (NUD-212)", { timeout: 60
     expect(await send()).toEqual({ ok: false, error: "vehicle_required", standingTourId: north });
   });
 
+  it("sends no cash order without its amount (owner 2026-11-27)", async () => {
+    const o = await order("N1");
+    await t.prisma.customer.update({ where: { id: c.N1! }, data: { paysCash: true } });
+    try {
+      // A "zahlt bar" customer whose order is still on the monthly bill (a standing order made it).
+      expect(await send()).toEqual({
+        ok: false,
+        error: "amount_required",
+        customerName: "N1",
+      });
+      await t.prisma.order.update({ where: { id: o }, data: { paymentTerm: "ON_DELIVERY" } });
+      expect(await send()).toMatchObject({ ok: false, error: "amount_required" });
+      expect(await t.prisma.tour.count({ where: { date: day } })).toBe(0);
+      await t.prisma.order.update({ where: { id: o }, data: { amountCents: 1200 } });
+      expect((await send()).ok).toBe(true);
+    } finally {
+      await t.prisma.customer.update({ where: { id: c.N1! }, data: { paysCash: false } });
+    }
+  });
+
   it("takes a new standing driver over on a sent route", async () => {
     await order("N1");
     await send();

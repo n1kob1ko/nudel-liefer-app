@@ -398,6 +398,27 @@ describe.skipIf(!process.env.DATABASE_URL)("payments", { timeout: 60_000 }, () =
       expect(audit.diff).toMatchObject({ from: null, to: 4200, dueCents: 4200, via: "office" });
       expect((await openCashQuery(db(), TODAY)).map((row) => row.stopId)).not.toContain(stop.id);
 
+      // The dialog adds the cash that came in now to what is stored (simulation 2026-11-27): it
+      // must still be what the dialog started from, so a second tap never counts money twice.
+      await db().stop.update({ where: { id: stop.id }, data: { collectedCents: 1000 } });
+      expect(
+        await applyOfficeCashReceipt(
+          db(),
+          { id: adminId, role: "ADMIN" },
+          { stopId: stop.id, collectedCents: 4200, fromCents: 1000 },
+        ),
+      ).toEqual({ ok: true, stopId: stop.id, collectedCents: 4200 });
+      expect(
+        await applyOfficeCashReceipt(
+          db(),
+          { id: adminId, role: "ADMIN" },
+          { stopId: stop.id, collectedCents: 7400, fromCents: 1000 },
+        ),
+      ).toEqual({ ok: false, error: "changed" });
+      expect(await db().stop.findUniqueOrThrow({ where: { id: stop.id } })).toMatchObject({
+        collectedCents: 4200,
+      });
+
       // A stop the driver has not delivered takes no money, from the office either.
       await db().stop.update({ where: { id: stop.id }, data: { status: "PENDING" } });
       expect(

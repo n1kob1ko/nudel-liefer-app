@@ -98,6 +98,9 @@ const EXTRA: Row = {
   fridge: false,
   invoiceAlways: false,
   fridgeAlways: false,
+  cash: false,
+  cashAlways: false,
+  amountCents: null,
   extra: { moved: false, slot: 1, home: null },
   stop: null,
   location: { lat: 48.22, lng: 16.42 },
@@ -138,6 +141,9 @@ function plan(overrides: Partial<DayPlan> = {}, routeOverrides: Partial<Route> =
             fridge: false,
             invoiceAlways: false,
             fridgeAlways: false,
+            cash: false,
+            cashAlways: false,
+            amountCents: null,
             extra: null,
             stop: null,
             location: { lat: 48.2, lng: 16.4 },
@@ -158,6 +164,9 @@ function plan(overrides: Partial<DayPlan> = {}, routeOverrides: Partial<Route> =
             fridge: false,
             invoiceAlways: false,
             fridgeAlways: false,
+            cash: false,
+            cashAlways: false,
+            amountCents: null,
             extra: null,
             stop: null,
             location: { lat: 48.21, lng: 16.41 },
@@ -198,6 +207,9 @@ function plan(overrides: Partial<DayPlan> = {}, routeOverrides: Partial<Route> =
         fridge: false,
         invoiceAlways: false,
         fridgeAlways: false,
+        cash: false,
+        cashAlways: false,
+        amountCents: null,
         extra: null,
         stop: null,
         location: null,
@@ -374,6 +386,44 @@ describe("StandingPlan (NUD-194)", () => {
     expect(fridge).toBeDisabled();
     expect(fridge).toHaveAttribute("title", "Immer (beim Kunden eingestellt)");
     expect(screen.getByTestId("invoice-c1")).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("asks a cash customer for the amount of the day before it saves or sends (owner 2026-11-27)", async () => {
+    vi.mocked(saveStandingDayAction).mockResolvedValue({
+      ok: true,
+      written: 1,
+      created: 0,
+      updated: 1,
+      merged: 0,
+    });
+    vi.mocked(sendDayAction).mockResolvedValue({ ok: true, routes: [], warnings: [] });
+    const cash = plan();
+    const route = cash.routes[0]!;
+    route.rows[0] = { ...route.rows[0]!, cash: true, cashAlways: true, amountCents: null };
+    renderPlan(cash);
+
+    // Only the cash customer has the field; a monthly customer has none.
+    const amount = screen.getByTestId("amount-c1");
+    expect(screen.queryByTestId("amount-c2")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("planning-send"));
+    expect(await screen.findByTestId("planning-error")).toHaveTextContent(
+      `Bei ${route.rows[0]!.name} fehlt der Betrag`,
+    );
+    expect(amount).toHaveAttribute("aria-invalid", "true");
+    expect(saveStandingDayAction).not.toHaveBeenCalled();
+    expect(sendDayAction).not.toHaveBeenCalled();
+
+    fireEvent.change(amount, { target: { value: "42,50" } });
+    expect(screen.getByTestId("planning-dirty")).toHaveTextContent("1");
+    fireEvent.click(screen.getByTestId("planning-send"));
+    await waitFor(() => expect(sendDayAction).toHaveBeenCalled());
+    const input = lastInput(vi.mocked(saveStandingDayAction)) as {
+      rows: Array<{ customerId: string; amount?: string }>;
+    };
+    expect(input.rows.map((r) => [r.customerId, r.amount])).toEqual([
+      ["c1", "42,50"],
+      ["c2", undefined],
+    ]);
   });
 
   it("is read-only for a past day, without a send button", () => {

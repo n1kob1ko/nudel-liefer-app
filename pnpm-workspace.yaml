@@ -19,6 +19,10 @@ overrides:
   # Resolve it to the same range the app itself depends on (keep in step with `zod` in package.json).
   # Remove this entry when a `@serwist/build` release depends on zod >= 4.6.6.
   "@serwist/build>zod": "^4.6.7"
+  # `effect` <= 3.22.0 (ReDoS in Schema.TemplateLiteral, GHSA-7589-6fvf-x4pw) comes in through
+  # prisma's config loader and an optional peer of @hookform/resolvers. Remove this entry once
+  # prisma depends on effect >= 3.22.1.
+  effect: ">=3.22.1 <4"
 # NUD-093: `braces` <= 3.0.3 (ReDoS on deeply nested patterns, GHSA-vfj7-8cjw-p6xm) has no patched
 # release. It is only reachable through dev tooling (eslint-config-next -> fast-glob), which globs
 # the repository's own files and never untrusted patterns. Not part of the production bundle

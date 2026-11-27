@@ -1,6 +1,12 @@
 "use client";
 
-import { AlertTriangleIcon, ReceiptTextIcon, RefrigeratorIcon, SearchIcon } from "lucide-react";
+import {
+  AlertTriangleIcon,
+  BanknoteIcon,
+  ReceiptTextIcon,
+  RefrigeratorIcon,
+  SearchIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type FormEvent, type ReactNode, useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -45,6 +51,8 @@ export type CustomerFormValues = {
   intoFridge: boolean;
   /** Always hand an invoice: the driver sees an invoice symbol at every stop. */
   alwaysInvoice: boolean;
+  /** Always pays cash at the stop: the day plan asks for the amount of each delivery. */
+  paysCash: boolean;
 };
 
 export type KeyValues = { hasKey: "unknown" | "yes" | "no"; keyNumber: string };
@@ -141,6 +149,7 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
   const [abbreviation, setAbbreviation] = useState(initial.abbreviation);
   const [intoFridge, setIntoFridge] = useState(initial.intoFridge);
   const [alwaysInvoice, setAlwaysInvoice] = useState(initial.alwaysInvoice);
+  const [paysCash, setPaysCash] = useState(initial.paysCash);
   const [pin, setPin] = useState(initial.pin);
   const [search, setSearch] = useState<Search>({ state: "idle" });
   const [focus, setFocus] = useState<{ point: LatLng; nonce: number } | null>(null);
@@ -171,6 +180,7 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
     abbreviation: initial.abbreviation,
     intoFridge: initial.intoFridge,
     alwaysInvoice: initial.alwaysInvoice,
+    paysCash: initial.paysCash,
     lat: initial.pin?.lat ?? null,
     lng: initial.pin?.lng ?? null,
   };
@@ -189,6 +199,7 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
       abbreviation,
       intoFridge,
       alwaysInvoice,
+      paysCash,
       lat: pin?.lat ?? null,
       lng: pin?.lng ?? null,
     }) !== JSON.stringify(initialValues);
@@ -219,6 +230,7 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
     setAbbreviation(initial.abbreviation);
     setIntoFridge(initial.intoFridge);
     setAlwaysInvoice(initial.alwaysInvoice);
+    setPaysCash(initial.paysCash);
     setPin(initial.pin);
     setSearch({ state: "idle" });
     setFocus(null);
@@ -288,6 +300,7 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
       ...(abbreviation === initial.abbreviation ? {} : { abbreviation }),
       intoFridge,
       alwaysInvoice,
+      paysCash,
     };
     startTransition(async () => {
       let result;
@@ -606,6 +619,22 @@ export function CustomerForm({ customerId, initial, tiles, customerName, photos 
             checked={intoFridge}
             onCheckedChange={setIntoFridge}
             data-testid="customer-fridge"
+          />
+        </label>
+        <label
+          htmlFor="cust-cash"
+          className="flex min-h-12 max-w-xl cursor-pointer items-center gap-3 rounded-lg border border-border px-3 py-2"
+        >
+          <BanknoteIcon className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-base font-medium">{t("cash")}</span>
+            <span className="block text-sm text-muted-foreground">{t("cashHint")}</span>
+          </span>
+          <Switch
+            id="cust-cash"
+            checked={paysCash}
+            onCheckedChange={setPaysCash}
+            data-testid="customer-cash"
           />
         </label>
       </section>

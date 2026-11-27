@@ -202,6 +202,9 @@ model Customer {
   intoFridge              Boolean   @default(false)
   /// Always hand this customer an invoice (owner 2026-11-14), like `intoFridge`.
   alwaysInvoice           Boolean   @default(false)
+  /// Always pays cash at the stop (owner 2026-11-27): the day plan creates this customer's orders
+  /// as ON_DELIVERY and asks for the amount of the day; the driver cannot close the stop without it.
+  paysCash                Boolean   @default(false)
   active                  Boolean   @default(true)
   /// Accent-folded number/name/address for search. Maintained by a DB trigger (migration NUD-013); never write it.
   searchText              String    @default("")
