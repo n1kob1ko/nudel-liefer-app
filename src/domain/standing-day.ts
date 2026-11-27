@@ -68,6 +68,14 @@ export type DayPlanRow = {
   invoiceAlways: boolean;
   fridgeAlways: boolean;
   /**
+   * Cash at the stop (owner 2026-11-27): `cash` = the day plan shows an amount field for this row,
+   * because the customer always pays cash (`cashAlways`, customer form) or an order of the day is
+   * already "Bar bei Lieferung". `amountCents`: the amount of the day's orders, `null` = none typed.
+   */
+  cash: boolean;
+  cashAlways: boolean;
+  amountCents: number | null;
+  /**
    * NUD-212: a customer of no standing tour that rides on this route today ("Zusatz"); `moved` =
    * the office chose the place, otherwise it is where the detour is smallest. `home`: a standing
    * customer of another route, moved here for this day only (owner 2026-11-16) — his own standing

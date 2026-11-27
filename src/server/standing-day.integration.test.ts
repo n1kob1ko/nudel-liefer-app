@@ -674,6 +674,69 @@ describe.skipIf(!process.env.DATABASE_URL)("day plan (standing tours)", { timeou
       );
       expect(same).toMatchObject({ ok: true, written: 0 });
     });
+
+    it("asks a 'zahlt bar' customer for the amount of the day and stores cash orders (owner 2026-11-27)", async () => {
+      await reset();
+      await createRoute("Stammtour 1", [c1, c2]);
+      await db().customer.update({ where: { id: c1 }, data: { paysCash: true } });
+      try {
+        const line = (quantity: number) => [{ productId: p1, quantity }];
+        const save = (rows: unknown[]) =>
+          saveStandingDay(db(), adminId, { date: DAY, rows }, today, tours);
+
+        let plan = await standingDayQuery(db(), DAY, today);
+        const row = (id: string) => plan.routes[0]!.rows.find((r) => r.customerId === id)!;
+        expect(row(c1)).toMatchObject({ cash: true, cashAlways: true, amountCents: null });
+        expect(row(c2)).toMatchObject({ cash: false, cashAlways: false, amountCents: null });
+
+        // Something ordered without an amount: refused, nothing stored.
+        expect(await save([{ customerId: c1, lines: line(2) }])).toEqual({
+          ok: false,
+          error: "amount_required",
+          customerId: c1,
+        });
+        expect(await save([{ customerId: c1, lines: line(2), amount: "" }])).toMatchObject({
+          error: "amount_required",
+        });
+        expect(await save([{ customerId: c1, lines: line(2), amount: "viel" }])).toEqual({
+          ok: false,
+          error: "invalid",
+        });
+        expect(await db().order.count({ where: { customerId: c1 } })).toBe(0);
+        // Nothing ordered needs no amount; a monthly customer's amount is ignored.
+        expect(
+          await save([
+            { customerId: c1, lines: line(0) },
+            { customerId: c2, lines: line(1), amount: "9,99" },
+          ]),
+        ).toMatchObject({ ok: true, created: 1 });
+        expect(await orderOf(c2)).toMatchObject({ paymentTerm: "MONTHLY", amountCents: null });
+
+        expect(await save([{ customerId: c1, lines: line(2), amount: "42,50" }])).toMatchObject({
+          ok: true,
+          created: 1,
+        });
+        expect(await orderOf(c1)).toMatchObject({ paymentTerm: "ON_DELIVERY", amountCents: 4250 });
+        plan = await standingDayQuery(db(), DAY, today);
+        expect(row(c1)).toMatchObject({ cash: true, amountCents: 4250 });
+
+        // Only the amount changes: written and audited, the route is not marked as changed.
+        const again = await save([{ customerId: c1, lines: line(2), amount: "40" }]);
+        expect(again).toMatchObject({ ok: true, written: 1, created: 0, updated: 0 });
+        const order = await orderOf(c1);
+        expect(order).toMatchObject({ paymentTerm: "ON_DELIVERY", amountCents: 4000 });
+        const audit = await db().auditLog.findFirstOrThrow({
+          where: { entity: "Order", entityId: order.id, action: "order.update" },
+          orderBy: { createdAt: "desc" },
+        });
+        expect(audit.diff).toMatchObject({ amountCents: { from: 4250, to: 4000 } });
+        // Left out = kept.
+        expect(await save([{ customerId: c1, lines: line(3) }])).toMatchObject({ ok: true });
+        expect(await orderOf(c1)).toMatchObject({ amountCents: 4000 });
+      } finally {
+        await db().customer.update({ where: { id: c1 }, data: { paysCash: false } });
+      }
+    });
   });
 
   describe("standing tours", () => {

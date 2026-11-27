@@ -170,10 +170,16 @@ export async function applyDriverPayment(
 const officeSchema = z.strictObject({
   stopId: z.string().min(1).max(64),
   collectedCents: z.number().int().min(0).max(MAX_AMOUNT_CENTS),
+  /**
+   * What the stop had recorded when the office opened the dialog (simulation 2026-11-27): the
+   * dialog adds the cash that came in now to it. Given, it must still match, so a second tap or a
+   * driver entry in between never counts the same money twice. Left out (older screens): no check.
+   */
+  fromCents: z.number().int().min(0).max(MAX_AMOUNT_CENTS).nullable().optional(),
 });
 
 export type OfficeCashError =
-  "invalid" | "forbidden" | "not_found" | "not_completed" | "tour_not_active";
+  "invalid" | "forbidden" | "not_found" | "not_completed" | "tour_not_active" | "changed";
 
 export type OfficeCashResult =
   { ok: true; stopId: string; collectedCents: number } | { ok: false; error: OfficeCashError };
@@ -208,6 +214,9 @@ export async function applyOfficeCashReceipt(
       return { ok: false, error: "tour_not_active" };
     }
     if (stop.status !== "DELIVERED") return { ok: false, error: "not_completed" };
+    if (input.fromCents !== undefined && input.fromCents !== stop.collectedCents) {
+      return { ok: false, error: "changed" };
+    }
 
     const dueCents = cashDueCents(
       stop.orders
@@ -215,11 +224,16 @@ export async function applyOfficeCashReceipt(
         .filter((order) => order.status === "CONFIRMED")
         .map((order) => ({ paymentTerm: order.paymentTerm, amountCents: order.amountCents })),
     );
-    await tx.stop.update({
-      where: { id: stop.id },
+    // Guarded write: the amount the dialog started from must still be stored (two taps, or the
+    // driver's queued entry arriving in between, never add the same cash twice).
+    const written = await tx.stop.updateMany({
+      where: {
+        id: stop.id,
+        ...(input.fromCents !== undefined ? { collectedCents: input.fromCents } : {}),
+      },
       data: { collectedCents: input.collectedCents, collectedAt: now, collectedById: actor.id },
-      select: { id: true },
     });
+    if (written.count === 0) return { ok: false, error: "changed" };
     await recordAudit(tx, {
       actorId: actor.id,
       entity: "Stop",

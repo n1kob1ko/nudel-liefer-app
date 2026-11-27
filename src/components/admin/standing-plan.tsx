@@ -3,6 +3,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeftRightIcon,
+  BanknoteIcon,
   CheckIcon,
   CircleSlashIcon,
   LockIcon,
@@ -51,6 +52,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { amountInputValue, parseAmountToCents } from "@/domain/money";
 import type { DayPlan, DayPlanRow, PlanProduct, RouteState } from "@/domain/standing-day";
 import { Link, useRouter } from "@/i18n/navigation";
 import { type AppLocale, localizedTextSchema, pick } from "@/lib/localized-text";
@@ -121,6 +123,15 @@ function rowFridges(plan: DayPlan): Record<string, boolean> {
   );
 }
 
+/** Amount field text of every cash row ("42,50"; empty = none typed yet). */
+function rowAmounts(plan: DayPlan, locale: string): Record<string, string> {
+  return Object.fromEntries(
+    [...plan.routes.flatMap((route) => route.rows), ...plan.offRoute]
+      .filter((row) => row.cash)
+      .map((row) => [row.customerId, amountInputValue(row.amountCents, locale)]),
+  );
+}
+
 function rowInvoices(plan: DayPlan): Record<string, boolean> {
   return Object.fromEntries(
     [...plan.routes.flatMap((route) => route.rows), ...plan.offRoute].map((row) => [
@@ -176,6 +187,9 @@ export function StandingPlan({
   // tour plus one for the customers of no standing tour.
   const [tab, setTab] = useState<string>(plan.routes[0]?.id ?? EXTRA_TAB);
   const [fridges, setFridges] = useState<Record<string, boolean>>(() => rowFridges(plan));
+  // Cash rows (owner 2026-11-27): the amount of the day, typed here.
+  const [amounts, setAmounts] = useState<Record<string, string>>(() => rowAmounts(plan, locale));
+  const [showMissing, setShowMissing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [overload, setOverload] = useState<{ route: string; overKg: number } | null>(null);
@@ -191,6 +205,8 @@ export function StandingPlan({
     );
     setInvoices(rowInvoices(plan));
     setFridges(rowFridges(plan));
+    setAmounts(rowAmounts(plan, locale));
+    setShowMissing(false);
     setAdded([]);
     setError(null);
   }
@@ -223,6 +239,11 @@ export function StandingPlan({
 
   function toggleInvoice(customerId: string) {
     setInvoices((current) => ({ ...current, [customerId]: !current[customerId] }));
+    setError(null);
+  }
+
+  function setAmount(customerId: string, value: string) {
+    setAmounts((current) => ({ ...current, [customerId]: value }));
     setError(null);
   }
 
@@ -266,6 +287,7 @@ export function StandingPlan({
       added.includes(row.customerId) ||
       (invoices[row.customerId] ?? false) !== row.invoice ||
       (fridges[row.customerId] ?? false) !== row.fridge ||
+      (row.cash && parseAmountToCents(amounts[row.customerId] ?? "") !== row.amountCents) ||
       productIds.some(
         (productId) =>
           quantityOf(values[row.customerId]?.[productId]) !== (row.quantities[productId] ?? 0),
@@ -284,6 +306,14 @@ export function StandingPlan({
     productIds.some((productId) => quantityOf(values[customerId]?.[productId]) > 0);
   const routeName = (id: string | undefined) =>
     plan.routes.find((route) => route.id === id)?.name ?? "";
+  // A cash row with something ordered needs its amount: the driver collects exactly that. Rows the
+  // driver already completed are history and are left alone.
+  const amountMissing = (row: DayPlanRow) =>
+    row.cash &&
+    hasQuantity(row.customerId) &&
+    (row.stop === null || row.stop.status === "PENDING") &&
+    !parseAmountToCents(amounts[row.customerId] ?? "");
+  const firstMissing = savedRows.find(amountMissing);
   const anySent = plan.routes.some((route) => route.tourId !== null);
   const toSend =
     changedCount > 0 ||
@@ -298,7 +328,18 @@ export function StandingPlan({
       })),
       invoice: invoices[row.customerId] ?? false,
       fridge: fridges[row.customerId] ?? false,
+      ...(row.cash ? { amount: amounts[row.customerId] ?? "" } : {}),
     }));
+  }
+
+  /** Names the first cash row without an amount; `true` when every amount is there. */
+  function amountsComplete(): boolean {
+    if (!firstMissing) return true;
+    setError(t("errors.amount_required", { name: firstMissing.name }));
+    setShowMissing(true);
+    // Open the tab with that customer, so the red field is in view.
+    setTab(plan.routes.find((route) => route.rows.includes(firstMissing))?.id ?? EXTRA_TAB);
+    return false;
   }
 
   /** Saves the typed quantities; `false` when it failed (the error is shown). */
@@ -311,7 +352,8 @@ export function StandingPlan({
       return false;
     }
     if (!result.ok) {
-      setError(t(`errors.${result.error}`));
+      const name = savedRows.find((row) => row.customerId === result.customerId)?.name ?? "";
+      setError(t(`errors.${result.error}`, { name }));
       return false;
     }
     setError(null);
@@ -324,6 +366,7 @@ export function StandingPlan({
   }
 
   function save() {
+    if (!amountsComplete()) return;
     startTransition(async () => {
       if (await saveRows(false)) router.refresh();
     });
@@ -331,6 +374,7 @@ export function StandingPlan({
 
   function send(overrideOverload = false) {
     setOverload(null);
+    if (!amountsComplete()) return;
     startTransition(async () => {
       if (!overrideOverload && changedCount > 0 && !(await saveRows(true))) return;
       let result;
@@ -350,7 +394,10 @@ export function StandingPlan({
           });
         }
         return setError(
-          t(`send.errors.${result.error}`, { route: routeName(result.standingTourId) }),
+          t(`send.errors.${result.error}`, {
+            route: routeName(result.standingTourId),
+            name: result.customerName ?? "",
+          }),
         );
       }
       setError(null);
@@ -623,6 +670,9 @@ export function StandingPlan({
                           onInvoice={toggleInvoice}
                           fridge={fridges[row.customerId] ?? false}
                           onFridge={toggleFridge}
+                          amount={row.cash ? (amounts[row.customerId] ?? "") : undefined}
+                          onAmount={setAmount}
+                          amountMissing={showMissing && amountMissing(row)}
                           onMove={
                             // Also after sending, while the driver has not been there yet: the
                             // next "Änderungen senden" moves the stop to the other route. Since
@@ -814,6 +864,9 @@ export function StandingPlan({
                           onInvoice={toggleInvoice}
                           fridge={fridges[row.customerId] ?? false}
                           onFridge={toggleFridge}
+                          amount={row.cash ? (amounts[row.customerId] ?? "") : undefined}
+                          onAmount={setAmount}
+                          amountMissing={showMissing && amountMissing(row)}
                           testId={`off-route-${row.customerId}`}
                         />
                       );
@@ -948,6 +1001,9 @@ function PlanRow({
   onInvoice,
   fridge,
   onFridge,
+  amount,
+  onAmount,
+  amountMissing = false,
   onMove,
   testId,
 }: {
@@ -968,6 +1024,11 @@ function PlanRow({
   /** "In den Kühlschrank": a customer setting, saved with the quantities. */
   fridge: boolean;
   onFridge: (customerId: string) => void;
+  /** Cash row (owner 2026-11-27): the amount field's text; `undefined` = no field (monthly bill). */
+  amount?: string;
+  onAmount: (customerId: string, value: string) => void;
+  /** Something is ordered but the amount is missing (shown after a save / send attempt). */
+  amountMissing?: boolean;
   /** "Verschieben" of an extra; without it the row has no move button. */
   onMove?: () => void;
   testId?: string;
@@ -1057,6 +1118,38 @@ function PlanRow({
             testId={`fridge-${row.customerId}`}
           />
         </div>
+        {amount !== undefined ? (
+          <label
+            className="mt-1.5 flex items-center gap-1.5 text-sm font-medium"
+            title={row.cashAlways ? t("marks.cashAlways") : undefined}
+          >
+            <BanknoteIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            <span>{t("marks.cash")}</span>
+            <span className="relative">
+              <Input
+                value={amount}
+                onChange={(event) => onAmount(row.customerId, event.target.value)}
+                onFocus={(event) => event.currentTarget.select()}
+                disabled={!editable}
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="0,00"
+                aria-label={t("marks.amountLabel", { name: row.name })}
+                aria-invalid={
+                  amountMissing || (amount.trim() !== "" && parseAmountToCents(amount) === null)
+                }
+                className="h-8 w-24 pe-6 text-right tabular-nums max-md:h-11"
+                data-testid={`amount-${row.customerId}`}
+              />
+              <span
+                className="pointer-events-none absolute inset-y-0 end-2 flex items-center text-muted-foreground"
+                aria-hidden
+              >
+                €
+              </span>
+            </span>
+          </label>
+        ) : null}
         <div className="mt-1.5 flex flex-wrap gap-1 empty:hidden">
           {noLocation ? (
             <Badge variant="warning" data-testid={`no-location-${row.customerId}`}>

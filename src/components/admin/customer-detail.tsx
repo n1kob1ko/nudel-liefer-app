@@ -200,6 +200,9 @@ export function CustomerDetailView({
                 <Field label={tf("fridge")} testId="detail-fridge">
                   {customer.intoFridge ? td("fridgeYes") : td("fridgeNo")}
                 </Field>
+                <Field label={tf("cash")} testId="detail-cash">
+                  {customer.paysCash ? td("fridgeYes") : td("fridgeNo")}
+                </Field>
                 <Field label={tf("office.companyName")} testId="detail-company">
                   {customer.companyName ?? td("none")}
                 </Field>

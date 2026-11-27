@@ -174,8 +174,18 @@ describe("orderInputSchema", () => {
     ["date in other format", { deliveryDate: "19.10.2026" }],
     ["unknown status", { status: "CANCELLED" }],
     ["long note", { internalNote: "x".repeat(1001) }],
+    ["cash without amount", { paymentTerm: "ON_DELIVERY" }],
+    ["cash with an empty amount", { paymentTerm: "ON_DELIVERY", amount: "  " }],
+    ["cash with 0 EUR", { paymentTerm: "ON_DELIVERY", amount: "0" }],
   ])("rejects: %s", (_name, override) => {
     expect(orderInputSchema.safeParse({ ...base, ...override }).success).toBe(false);
+  });
+
+  it("takes cash with an amount, and a monthly order without one (owner 2026-11-27)", () => {
+    expect(
+      orderInputSchema.parse({ ...base, paymentTerm: "ON_DELIVERY", amount: "42,50" }).amountCents,
+    ).toBe(4250);
+    expect(orderInputSchema.parse({ ...base, paymentTerm: "MONTHLY" }).amountCents).toBeNull();
   });
 });
 

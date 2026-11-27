@@ -192,9 +192,7 @@ export const orderInputSchema = z
      * Raw answer of the AI extraction (NUD-150), kept next to the order so the office can see what
      * the model read. Validated against the extraction contract - arbitrary client JSON is refused.
      */
-    aiExtraction: extractionAnswerSchema
-      .nullish()
-      .transform((v) => v ?? null),
+    aiExtraction: extractionAnswerSchema.nullish().transform((v) => v ?? null),
     lines: z
       .array(z.object({ productId: idSchema, quantity: quantitySchema }))
       .min(1)
@@ -223,6 +221,12 @@ export const orderInputSchema = z
     };
     if (!isValidWindow(window)) {
       ctx.addIssue({ code: "custom", message: "window" });
+      return z.NEVER;
+    }
+    // Cash at the stop needs the amount (owner 2026-11-27): the driver cannot close a cash stop
+    // without collecting, and without an amount there is nothing to collect or to owe.
+    if (value.paymentTerm === "ON_DELIVERY" && !value.amount) {
+      ctx.addIssue({ code: "custom", message: "amountRequired" });
       return z.NEVER;
     }
     const { amount, ...rest } = value;

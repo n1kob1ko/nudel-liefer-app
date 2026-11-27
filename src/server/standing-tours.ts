@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { diffOrderLines, type LineChange, toAuditQuantity } from "@/domain/audit";
 import { dayRouteOrder } from "@/domain/day-route";
+import { parseAmountToCents } from "@/domain/money";
 import {
   formatCalendarDate,
   isPastDeliveryDate,
@@ -93,6 +94,9 @@ type RowState = {
   /** One of the CONFIRMED orders of the day carries "Rechnung mitgeben" / "Kühlschrank". */
   invoice: boolean;
   fridge: boolean;
+  /** One of the CONFIRMED orders of the day is cash at the stop; amounts of the day's orders. */
+  cash: boolean;
+  amountCents: number | null;
 };
 
 /**
@@ -131,6 +135,7 @@ export async function standingDayQuery(
         city: true,
         intoFridge: true,
         alwaysInvoice: true,
+        paysCash: true,
       },
     }),
     db.standingTour.findMany({
@@ -188,6 +193,8 @@ export async function standingDayQuery(
         status: true,
         handInvoice: true,
         intoFridge: true,
+        paymentTerm: true,
+        amountCents: true,
         items: { select: { productId: true, quantity: true } },
       },
     }),
@@ -223,6 +230,8 @@ export async function standingDayQuery(
         suggestedItems: [],
         invoice: false,
         fridge: false,
+        cash: false,
+        amountCents: null,
       };
       states.set(customerId, state);
     }
@@ -236,6 +245,10 @@ export async function standingDayQuery(
       state.confirmedItems.push(...order.items);
       if (order.handInvoice) state.invoice = true;
       if (order.intoFridge) state.fridge = true;
+      if (order.paymentTerm === "ON_DELIVERY") state.cash = true;
+      if (order.amountCents !== null) {
+        state.amountCents = (state.amountCents ?? 0) + order.amountCents;
+      }
     }
   }
 
@@ -290,6 +303,9 @@ export async function standingDayQuery(
       fridge: state.fridge,
       invoiceAlways: customer.alwaysInvoice,
       fridgeAlways: customer.intoFridge,
+      cash: customer.paysCash || state.cash,
+      cashAlways: customer.paysCash,
+      amountCents: customer.paysCash || state.cash ? state.amountCents : null,
       extra,
       stop,
       location: null,
@@ -443,6 +459,11 @@ export const dayRowSchema = z
      */
     invoice: z.boolean().optional(),
     fridge: z.boolean().optional(),
+    /**
+     * Amount of the day for a cash row (owner 2026-11-27), as typed ("42,50"); `undefined` leaves
+     * it, empty clears it. Ignored for a customer who pays monthly.
+     */
+    amount: z.string().max(20).nullable().optional(),
   })
   .strict();
 
@@ -463,10 +484,17 @@ export type StandingDaySaveError =
   | "product_not_found"
   | "product_inactive"
   /** NUD-212: the driver already delivered (or reported) this customer's stop of the day. */
-  | "stop_completed";
+  | "stop_completed"
+  /** A cash row (owner 2026-11-27) with something ordered but no amount of the day. */
+  | "amount_required";
 
 /** Thrown inside the save transaction so nothing of it is kept. */
 class StopCompletedError extends Error {}
+class AmountRequiredError extends Error {
+  constructor(readonly customerId: string) {
+    super("amount_required");
+  }
+}
 
 export type StandingDaySaveResult =
   | {
@@ -478,7 +506,7 @@ export type StandingDaySaveResult =
       /** Extra orders of a customer that were merged into the first one and cancelled. */
       merged: number;
     }
-  | { ok: false; error: StandingDaySaveError };
+  | { ok: false; error: StandingDaySaveError; customerId?: string };
 
 /**
  * Writes the edited day plan. The caller checked the ADMIN role. Only rows whose quantities differ
@@ -504,7 +532,7 @@ export async function saveStandingDay(
   const [customers, products] = await Promise.all([
     db.customer.findMany({
       where: { id: { in: customerIds } },
-      select: { id: true, active: true },
+      select: { id: true, active: true, paysCash: true },
     }),
     db.product.findMany({
       where: { id: { in: productIds } },
@@ -512,6 +540,16 @@ export async function saveStandingDay(
     }),
   ]);
   if (customers.length !== customerIds.length) return { ok: false, error: "customer_not_found" };
+  const paysCash = new Set(customers.filter((c) => c.paysCash).map((c) => c.id));
+  // A typed amount must be readable: "42,50", "42.5", "42"; empty = none.
+  const typedAmount = new Map<string, number | null>();
+  for (const row of input.rows) {
+    if (row.amount === undefined) continue;
+    const text = (row.amount ?? "").trim();
+    const cents = text === "" ? null : parseAmountToCents(text);
+    if (text !== "" && cents === null) return { ok: false, error: "invalid" };
+    typedAmount.set(row.customerId, cents);
+  }
   if (customers.some((customer) => !customer.active))
     return { ok: false, error: "customer_inactive" };
   if (products.length !== productIds.length) return { ok: false, error: "product_not_found" };
@@ -522,6 +560,9 @@ export async function saveStandingDay(
     return await saveRows(day);
   } catch (error) {
     if (error instanceof StopCompletedError) return { ok: false, error: "stop_completed" };
+    if (error instanceof AmountRequiredError) {
+      return { ok: false, error: "amount_required", customerId: error.customerId };
+    }
     throw error;
   }
 
@@ -562,6 +603,8 @@ export async function saveStandingDay(
               id: true,
               handInvoice: true,
               intoFridge: true,
+              paymentTerm: true,
+              amountCents: true,
               items: { select: { productId: true, quantity: true } },
             },
           });
@@ -581,14 +624,53 @@ export async function saveStandingDay(
               : {}),
           });
           const quantitiesChanged = rowChanged(before, after, productIds);
-          if (!quantitiesChanged) {
+          // Cash at the stop (owner 2026-11-27): a "zahlt bar" customer, or an order of the day that
+          // already is cash. Such a row carries the amount of the day; without it the driver would
+          // have nothing to collect, so something ordered needs one.
+          const cash =
+            paysCash.has(row.customerId) ||
+            existing.some((order) => order.paymentTerm === "ON_DELIVERY");
+          const amountBefore = existing.some((order) => order.amountCents !== null)
+            ? existing.reduce((sum, order) => sum + (order.amountCents ?? 0), 0)
+            : null;
+          const amount = typedAmount.has(row.customerId)
+            ? (typedAmount.get(row.customerId) ?? null)
+            : amountBefore;
+          if (
+            cash &&
+            positiveLines(after, productIds).length > 0 &&
+            !amount &&
+            !completed.has(row.customerId)
+          ) {
+            throw new AmountRequiredError(row.customerId);
+          }
+          const payment = cash
+            ? { paymentTerm: "ON_DELIVERY" as const, amountCents: amount }
+            : ({} as Record<string, never>);
+          const paymentChanged =
+            cash &&
+            existing.length > 0 &&
+            (existing.some((order) => order.paymentTerm !== "ON_DELIVERY") ||
+              amount !== amountBefore);
+          const paymentDiff = paymentChanged
+            ? {
+                paymentTerm: { from: existing[0]!.paymentTerm, to: "ON_DELIVERY" },
+                amountCents: { from: amountBefore, to: amount },
+              }
+            : {};
+          if (paymentChanged && completed.has(row.customerId)) throw new StopCompletedError();
+          if (!quantitiesChanged && !(paymentChanged && existing.length > 1)) {
             // Only a mark changed (or nothing): no stop changes, the driver app reads the marks from
             // the order, so the route does not need to be sent again.
-            if ((invoice === invoiceBefore && fridge === fridgeBefore) || existing.length === 0)
+            if (
+              (invoice === invoiceBefore && fridge === fridgeBefore && !paymentChanged) ||
+              existing.length === 0
+            )
               continue;
+            // One order here (several are merged below): the amount and the marks go onto it.
             await tx.order.updateMany({
               where: { id: { in: existing.map((order) => order.id) } },
-              data: marks,
+              data: { ...marks, ...payment },
             });
             for (const order of existing) {
               await recordAudit(tx, {
@@ -596,7 +678,12 @@ export async function saveStandingDay(
                 entity: "Order",
                 entityId: order.id,
                 action: "order.update",
-                diff: { via: "standing_day", deliveryDate: dayText, ...markDiff(order) },
+                diff: {
+                  via: "standing_day",
+                  deliveryDate: dayText,
+                  ...markDiff(order),
+                  ...paymentDiff,
+                },
               });
             }
             settingOnly.add(row.customerId);
@@ -620,6 +707,7 @@ export async function saveStandingDay(
                 status: "CONFIRMED",
                 source: "MANUAL",
                 ...marks,
+                ...payment,
                 createdById: actorId,
                 items: { create: lines },
               },
@@ -650,18 +738,24 @@ export async function saveStandingDay(
           // One row per customer: the first order takes the new quantities, the rest are merged into it.
           await tx.order.update({
             where: { id: first.id },
-            data: { items: { deleteMany: {}, create: lines }, ...marks },
+            data: { items: { deleteMany: {}, create: lines }, ...marks, ...payment },
             select: { id: true },
           });
           const changes = diffOrderLines(beforeItems, lines);
           const marksChanged = markDiff(first);
-          if (changes.length > 0 || Object.keys(marksChanged).length > 0) {
+          if (changes.length > 0 || Object.keys(marksChanged).length > 0 || paymentChanged) {
             await recordAudit(tx, {
               actorId,
               entity: "Order",
               entityId: first.id,
               action: "order.update",
-              diff: { via: "standing_day", deliveryDate: dayText, lines: changes, ...marksChanged },
+              diff: {
+                via: "standing_day",
+                deliveryDate: dayText,
+                lines: changes,
+                ...marksChanged,
+                ...paymentDiff,
+              },
             });
           }
           for (const order of extra) {

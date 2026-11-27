@@ -373,6 +373,7 @@ Read rule: `pick(text, locale)` returns the requested locale; if empty, the clos
 | NUD-211 | No "KI" / "AI" in the texts of the app: reading is "automatisch" | M2.8 | 150, 210 | done |
 | NUD-212 | Day routes from the standing tours: the day plan sends them, no "Touren" tab | M2.8 | 209, 186, 043 | review |
 | NUD-215 | Notes of the client meeting, part 2: driver sees only the current stop, load sheet 1..x, debts tab, route per delivery | M2.8 | 212, 196 | review |
+| NUD-216 | Simulated delivery days: cash needs its amount, "zahlt bar" customers in the day plan, "Erhalten" asks for the rest | M2.8 | 215, 212, 196 | review |
 | NUD-100 | AI screenshot extraction (review required) | M3 | 031 | superseded → NUD-150 |
 | NUD-101 | Recurring / standing orders | M3 | 032 | superseded → NUD-149 |
 | NUD-102 | Multiple drivers / tours per day | M3 | 043 | superseded → NUD-147 |
@@ -4210,6 +4211,20 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 - A standing customer moved for one day is stored like an extra (`Order.routeStandingTourId` = the other route); `loadDayRoutes` leaves him out of his own route that day (`DayRoutes.homes`). Choosing his own route clears it.
 - Removed: `UpcomingTours`, `driver-upcoming.ts` (NUD-205 preview), `tripLoadItems`, the checklist's product lines.
 
+#### NUD-216 · Simulated delivery days: cash needs its amount, "zahlt bar" in the day plan, "Erhalten" asks for the rest
+**Status:** review · **depends_on:** 215, 212, 196 · Source: owner 2026-11-27 ("Simuliere mal einige Tage ... der Lieferant nicht abschliessen kann solange der Kunde nicht gezahlt hat ... wenn nicht den ganzen Betrag zahlt ... muss es eingespeichert werden"); decision card: "Kunde fest 'zahlt bar' + Betragsfeld".
+
+**Found in a three-day simulation** (two routes, invoice/fridge for the day and always, full, partial, zero and over payments, undo, office receipt): marks, the cash sheet, part payments, the offset and the driver's "today only" behaved. Three gaps:
+- A cash order without an amount let the driver close the stop without collecting, and the money appeared nowhere as open.
+- The day plan created every order on the monthly bill: cash only worked through a second edit in "Bestellungen".
+- "Erhalten" asked for the stop's total taken, prefilled with due minus offset; typing the rest that came in made the debt bigger.
+
+**Acceptance criteria**
+- [x] An order with "Bar bei Lieferung" needs an amount above 0 (`orderInputSchema`, order form shows why).
+- [x] Customer switch "Zahlt immer bar" (`Customer.paysCash`); the day plan shows an amount field ("Bar … €") on such rows and on rows whose order of the day is already cash; save and send refuse a cash row with something ordered but no amount and name the customer (`amount_required`, also checked by `sendDayWith` for orders a standing order generated). The amount is stored on the day's order as `ON_DELIVERY`; an amount-only change does not mark the route as changed (the driver reads it live).
+- [x] "Erhalten" asks for "Jetzt erhalten", prefilled with what is still open, and stores what the driver took plus that; the server refuses it when the stop's amount changed in between (`fromCents`, `changed`).
+- [x] de, en, zh-Hans; checked at 390 px and 1280 px.
+
 ## 9. Decision log (append-only, one line per decision taken during implementation)
 
 | Date | Ticket | Decision | Reason |
@@ -4723,6 +4738,8 @@ Quelle: Übergabe-Protokoll Kap. 7.2 („Abrechnungsexport", „Korrekturzeile",
 | 2026-11-14 | NUD-212 | A customer without a stop flags only the day route he lands on; tours of the old flow are still all flagged | With two fixed routes the target is known (member or placed extra); flagging every open tour told the office and the load sheet of the other driver about a change that was not his. |
 | 2026-11-16 | NUD-215 | Overpayments are offset against old cash debts at read time, oldest first, per customer | Writing the credit into other stops would change what the driver recorded and need its own undo; computing it keeps every number true and follows an undo automatically. |
 | 2026-11-16 | NUD-215 | The driver's checklist lost its product totals; loading goes by the office's load sheet | The owner wants the driver to see only what the current customer gets, never a sum. |
+| 2026-11-27 | NUD-216 | A "zahlt bar" customer's day-plan order is always cash; an order the form made monthly is turned into cash when the day plan saves its amount, and sending refuses it without one | "Zahlt immer bar" means always; a standing order generates monthly orders, and the driver must never get a cash customer with nothing to collect. |
+| 2026-11-27 | NUD-216 | "Erhalten" adds the received cash to what the stop holds, guarded by the value the dialog started from | The office counts the money in its hand; a guarded write keeps a double tap or a late driver entry from counting it twice. |
 
 ## 10. Open questions for the client (do not block on these – use placeholders)
 

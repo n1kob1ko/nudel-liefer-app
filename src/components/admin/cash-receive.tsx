@@ -1,7 +1,7 @@
 "use client";
 
 import { HandCoinsIcon } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { type FormEvent, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -23,33 +23,40 @@ import { recordOfficeCashAction } from "@/server/payment-actions";
 
 /**
  * "Erhalten" on an open cash row (NUD-209): the office records cash the driver handed in without
- * typing it into the app, or that the customer paid later. The field is the stop's whole amount
- * taken, prefilled with what was due, so the common case is one tap on "Erhalten".
+ * typing it into the app, or that the customer paid later. The field is what came in NOW, prefilled
+ * with what is still open (simulation 2026-11-27: asking for the stop's whole amount made the office
+ * type the rest and turn a 10 EUR debt into a 100 EUR one). The stop then stores what the driver
+ * took plus this, and the server refuses it if the stop's amount changed in the meantime.
  */
 export function CashReceiveButton({
   stopId,
   customerName,
   dateText,
-  dueCents,
+  openCents,
+  collectedCents,
 }: {
   stopId: string;
   customerName: string;
   /** The delivery day, already formatted by the page. */
   dateText: string;
-  dueCents: number;
+  /** Still open at this stop (due minus taken minus offset): the prefill. */
+  openCents: number;
+  /** What the stop has recorded so far (`null` = nothing). */
+  collectedCents: number | null;
 }) {
   const t = useTranslations("admin.payments.cash.receive");
   const locale = useLocale();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [amount, setAmount] = useState(() => amountInputValue(dueCents, locale));
+  const money = useFormatter();
+  const [amount, setAmount] = useState(() => amountInputValue(openCents, locale));
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   // Set at once, not with the next render: a double tap must not send twice.
   const sending = useRef(false);
 
   function openDialog() {
-    setAmount(amountInputValue(dueCents, locale));
+    setAmount(amountInputValue(openCents, locale));
     setError(null);
     setOpen(true);
   }
@@ -57,7 +64,7 @@ export function CashReceiveButton({
   function submit(event: FormEvent) {
     event.preventDefault();
     const cents = parseAmountToCents(amount);
-    if (cents === null) return setError(t("errors.invalid"));
+    if (cents === null || cents <= 0) return setError(t("errors.invalid"));
     if (sending.current) return;
     sending.current = true;
     setError(null);
@@ -65,7 +72,11 @@ export function CashReceiveButton({
       try {
         let result;
         try {
-          result = await recordOfficeCashAction({ stopId, collectedCents: cents });
+          result = await recordOfficeCashAction({
+            stopId,
+            collectedCents: (collectedCents ?? 0) + cents,
+            fromCents: collectedCents,
+          });
         } catch {
           return setError(t("errors.generic"));
         }
@@ -96,6 +107,11 @@ export function CashReceiveButton({
               <DialogTitle>{t("title")}</DialogTitle>
               <DialogDescription>
                 {customerName} · {dateText}
+                <span className="block font-medium text-foreground tabular-nums">
+                  {t("open", {
+                    amount: money.number(openCents / 100, { style: "currency", currency: "EUR" }),
+                  })}
+                </span>
               </DialogDescription>
             </DialogHeader>
             <FormField label={t("amount")} error={error ?? undefined}>

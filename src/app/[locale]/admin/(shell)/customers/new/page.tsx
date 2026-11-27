@@ -37,6 +37,7 @@ async function Guarded({ locale }: { locale: string }) {
           abbreviation: "",
           intoFridge: false,
           alwaysInvoice: false,
+          paysCash: false,
         }}
       />
     </div>

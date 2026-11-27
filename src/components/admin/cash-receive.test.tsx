@@ -24,7 +24,7 @@ vi.mock("@/server/payment-actions", () => ({
 vi.mock("@/i18n/navigation", () => ({ useRouter: () => ({ refresh, push: vi.fn() }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-function renderButton() {
+function renderButton(props: { openCents?: number; collectedCents?: number | null } = {}) {
   return render(
     <NextIntlClientProvider locale="de" messages={de as unknown as AbstractIntlMessages}>
       <RowButtons>
@@ -32,7 +32,8 @@ function renderButton() {
           stopId="s1"
           customerName="Gasthaus Linde"
           dateText="16.11.2026"
-          dueCents={4250}
+          openCents={props.openCents ?? 4250}
+          collectedCents={props.collectedCents ?? null}
         />
       </RowButtons>
     </NextIntlClientProvider>,
@@ -51,7 +52,11 @@ describe("CashReceiveButton (NUD-209)", () => {
     expect(screen.getByTestId("cash-receive-amount")).toHaveValue("42,50");
     fireEvent.click(screen.getByTestId("cash-receive-confirm"));
     await waitFor(() =>
-      expect(recordOfficeCashAction).toHaveBeenCalledWith({ stopId: "s1", collectedCents: 4250 }),
+      expect(recordOfficeCashAction).toHaveBeenCalledWith({
+        stopId: "s1",
+        collectedCents: 4250,
+        fromCents: null,
+      }),
     );
     await waitFor(() => expect(refresh).toHaveBeenCalled());
   });
@@ -70,6 +75,40 @@ describe("CashReceiveButton (NUD-209)", () => {
     expect(
       await screen.findByText(de.admin.payments.cash.receive.errors.not_completed),
     ).toBeVisible();
-    expect(recordOfficeCashAction).toHaveBeenCalledWith({ stopId: "s1", collectedCents: 4000 });
+    expect(recordOfficeCashAction).toHaveBeenCalledWith({
+      stopId: "s1",
+      collectedCents: 4000,
+      fromCents: null,
+    });
+  });
+
+  it("asks for the rest after a part payment and adds it to what the driver took", async () => {
+    // Simulation 2026-11-27: 210,80 due, the driver took 100,00, 100,00 came from another day.
+    renderButton({ openCents: 1080, collectedCents: 10000 });
+    fireEvent.click(screen.getByTestId("cash-receive-s1"));
+    expect(screen.getByText("Noch offen: 10,80 €")).toBeVisible();
+    expect(screen.getByTestId("cash-receive-amount")).toHaveValue("10,80");
+    fireEvent.click(screen.getByTestId("cash-receive-confirm"));
+    await waitFor(() =>
+      expect(recordOfficeCashAction).toHaveBeenCalledWith({
+        stopId: "s1",
+        collectedCents: 11080,
+        fromCents: 10000,
+      }),
+    );
+  });
+
+  it("refuses 0 and shows when the amount changed meanwhile", async () => {
+    renderButton({ openCents: 500, collectedCents: 400 });
+    fireEvent.click(screen.getByTestId("cash-receive-s1"));
+    fireEvent.change(screen.getByTestId("cash-receive-amount"), { target: { value: "0" } });
+    fireEvent.click(screen.getByTestId("cash-receive-confirm"));
+    expect(await screen.findByText(de.admin.payments.cash.receive.errors.invalid)).toBeVisible();
+    expect(recordOfficeCashAction).not.toHaveBeenCalled();
+
+    recordOfficeCashAction.mockResolvedValueOnce({ ok: false, error: "changed" });
+    fireEvent.change(screen.getByTestId("cash-receive-amount"), { target: { value: "5" } });
+    fireEvent.click(screen.getByTestId("cash-receive-confirm"));
+    expect(await screen.findByText(de.admin.payments.cash.receive.errors.changed)).toBeVisible();
   });
 });

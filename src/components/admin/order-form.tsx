@@ -490,6 +490,8 @@ export function OrderForm({
     if (!line.productId) return "productRequired";
     return parseQuantity(line.quantity) === null ? "quantityInvalid" : null;
   };
+  // Cash at the stop needs its amount (owner 2026-11-27): the driver collects exactly this.
+  const cashWithoutAmount = paymentTerm === "ON_DELIVERY" && !parseAmountToCents(amount);
   const formError = !customerId
     ? "customerRequired"
     : !dateValid
@@ -502,7 +504,9 @@ export function OrderForm({
           ? "invalid"
           : amount.trim() !== "" && parseAmountToCents(amount) === null
             ? "amountInvalid"
-            : null;
+            : cashWithoutAmount
+              ? "amountRequired"
+              : null;
 
   function save(status: SaveStatus) {
     setSubmitted(true);
@@ -1123,7 +1127,11 @@ export function OrderForm({
                     </SelectContent>
                   </Select>
                 </FormField>
-                <FormField label={t("amount")} info={t("amountHint")} hint={t("optional")}>
+                <FormField
+                  label={t("amount")}
+                  info={t("amountHint")}
+                  hint={paymentTerm === "ON_DELIVERY" ? undefined : t("optional")}
+                >
                   {/* The euro sign stands inside the field, like the unit of a quantity. */}
                   <div className="relative">
                     <Input
@@ -1134,7 +1142,10 @@ export function OrderForm({
                       autoComplete="off"
                       placeholder="0,00"
                       className="pe-9 text-right tabular-nums"
-                      aria-invalid={amount.trim() !== "" && parseAmountToCents(amount) === null}
+                      aria-invalid={
+                        (amount.trim() !== "" && parseAmountToCents(amount) === null) ||
+                        (submitted && cashWithoutAmount)
+                      }
                       data-testid="order-amount"
                     />
                     <span
@@ -1149,6 +1160,14 @@ export function OrderForm({
               {amount.trim() !== "" && parseAmountToCents(amount) === null ? (
                 <p className="text-sm text-destructive" role="alert">
                   {t("amountInvalid")}
+                </p>
+              ) : submitted && cashWithoutAmount ? (
+                <p
+                  className="text-sm text-destructive"
+                  role="alert"
+                  data-testid="order-amount-required"
+                >
+                  {t("amountRequired")}
                 </p>
               ) : null}
             </section>

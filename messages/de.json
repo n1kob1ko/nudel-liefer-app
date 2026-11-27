@@ -371,7 +371,8 @@
         "customer_inactive": "Ein Kunde ist inaktiv. Bitte die Seite neu laden.",
         "product_not_found": "Ein Produkt wurde nicht gefunden. Bitte die Seite neu laden.",
         "product_inactive": "Ein Produkt ist nicht mehr aktiv. Bitte die Seite neu laden.",
-        "stop_completed": "Der Fahrer hat diesen Kunden schon beliefert. Die Menge bleibt, wie sie geliefert wurde."
+        "stop_completed": "Der Fahrer hat diesen Kunden schon beliefert. Die Menge bleibt, wie sie geliefert wurde.",
+        "amount_required": "Bei {name} fehlt der Betrag. Der Kunde zahlt bar, ohne Betrag kann der Fahrer nicht kassieren."
       },
       "manage": {
         "open": "Stammtouren bearbeiten",
@@ -464,13 +465,17 @@
           "vehicle_required": "{route} hat kein Fahrzeug.",
           "vehicle_invalid": "Das Fahrzeug von {route} ist nicht aktiv.",
           "overloaded": "{route} ist zu schwer.",
-          "conflict": "Gerade hat jemand gleichzeitig geändert. Bitte noch einmal senden."
+          "conflict": "Gerade hat jemand gleichzeitig geändert. Bitte noch einmal senden.",
+          "amount_required": "Bei {name} fehlt der Betrag. Der Kunde zahlt bar, ohne Betrag kann der Fahrer nicht kassieren."
         }
       },
       "marks": {
         "invoice": "Rechnung",
         "fridge": "Kühlschrank",
-        "always": "Immer (beim Kunden eingestellt)"
+        "always": "Immer (beim Kunden eingestellt)",
+        "cash": "Bar",
+        "cashAlways": "Zahlt immer bar (beim Kunden eingestellt)",
+        "amountLabel": "{name} – Betrag bar"
       },
       "tabs": {
         "label": "Routen",
@@ -694,7 +699,9 @@
         "fridge": "Immer in den Kühlschrank",
         "fridgeHint": "Der Fahrer sieht bei jedem Stopp ein Kühlschrank-Symbol. Nur für einen Tag: in der Tagesplanung.",
         "invoice": "Immer Rechnung mitgeben",
-        "invoiceHint": "Der Fahrer sieht bei jedem Stopp ein Rechnungs-Symbol. Nur für einen Tag: in der Tagesplanung."
+        "invoiceHint": "Der Fahrer sieht bei jedem Stopp ein Rechnungs-Symbol. Nur für einen Tag: in der Tagesplanung.",
+        "cash": "Zahlt immer bar",
+        "cashHint": "In der Tagesplanung bekommt dieser Kunde ein Feld für den Betrag des Tages. Der Fahrer kann den Stopp erst nach dem Kassieren abschließen."
       },
       "detail": {
         "number": "Kundennummer {number}",
@@ -1454,8 +1461,9 @@
         "paymentMonthly": "Monatsrechnung (Sammelrechnung)",
         "paymentCash": "Bar bei Lieferung",
         "amount": "Betrag",
-        "amountHint": "Betrag dieser Bestellung in Euro, z. B. 42,50. Leer = noch kein Betrag (erscheint auf der Monatsrechnung als „ohne Betrag“).",
+        "amountHint": "Betrag dieser Bestellung in Euro, z. B. 42,50. Bei „Bar bei Lieferung“ Pflicht, bei Monatsrechnung darf er leer bleiben (erscheint dann als „ohne Betrag“).",
         "amountInvalid": "Bitte einen Betrag wie 42 oder 42,50 eingeben (höchstens zwei Nachkommastellen).",
+        "amountRequired": "Bei „Bar bei Lieferung“ bitte den Betrag eintragen: genau den kassiert der Fahrer.",
         "inbox": {
           "title": "Foto prüfen",
           "back": "Zurück zum Foto-Eingang",
@@ -2167,11 +2175,13 @@
           "button": "Erhalten",
           "hint": "Bargeld erhalten",
           "title": "Bargeld erhalten",
-          "amount": "Insgesamt erhalten (€)",
+          "amount": "Jetzt erhalten (€)",
+          "open": "Noch offen: {amount}",
           "cancel": "Abbrechen",
           "confirm": "Erhalten",
           "toast": "Bargeld von {customer} vermerkt",
           "errors": {
+            "changed": "Der Betrag hat sich inzwischen geändert. Bitte die Seite neu laden.",
             "invalid": "Bitte einen Betrag eingeben, z. B. 42,50.",
             "generic": "Das hat nicht geklappt. Bitte noch einmal versuchen.",
             "forbidden": "Nur das Büro kann das vermerken.",

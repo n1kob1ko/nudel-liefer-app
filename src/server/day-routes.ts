@@ -206,7 +206,9 @@ export type SendDayError =
   | "vehicle_required"
   | "vehicle_invalid"
   | "overloaded"
-  | "conflict";
+  | "conflict"
+  /** A cash order (or a "zahlt bar" customer's order) without the amount of the day. */
+  | "amount_required";
 
 export type SendOutcome = "sent" | "updated" | "unchanged" | "empty";
 
@@ -229,6 +231,8 @@ export type SendDayResult =
       standingTourId?: string;
       /** Overload: kilograms above the capacity. */
       overKg?: number;
+      /** `amount_required`: the customer whose amount is missing. */
+      customerName?: string;
     };
 
 class ConflictError extends Error {}
@@ -299,6 +303,24 @@ export async function sendDayWith(
       orderIds: [],
     };
   });
+
+  // ---- cash without an amount (owner 2026-11-27): the driver could not collect anything, so
+  // nothing is sent until the office typed it. Stops already done are history and do not count.
+  const cashGap = await db.order.findFirst({
+    where: {
+      deliveryDate: day,
+      status: "CONFIRMED",
+      customerId: { in: plan.routes.flatMap((r) => r.order) },
+      items: { some: { quantity: { gt: 0 } } },
+      stopOrders: { none: { stop: { status: { in: ["DELIVERED", "PROBLEM"] } } } },
+      OR: [
+        { paymentTerm: "ON_DELIVERY", OR: [{ amountCents: null }, { amountCents: { lte: 0 } }] },
+        { paymentTerm: "MONTHLY", customer: { paysCash: true } },
+      ],
+    },
+    select: { customer: { select: { name: true } } },
+  });
+  if (cashGap) return { ok: false, error: "amount_required", customerName: cashGap.customer.name };
 
   // ---- check every route before anything is written
   const used = plan.routes.filter((route) =>
